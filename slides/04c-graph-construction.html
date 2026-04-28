@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>04D Graph：图谱构建与落库</title>
+  <link rel="stylesheet" href="slide.css" />
+</head>
+<body>
+  <div class="slide-shell">
+    <div class="slide fit-slide">
+      <header class="slide-topbar">
+        <div class="brand" id="brand"></div>
+        <div class="topbar-nav">
+          <span>项目背景</span>
+          <span>痛点分析</span>
+          <span class="active">处理层</span>
+          <span>分析与碰撞</span>
+        </div>
+        <div class="topbar-right" id="topbar-right">
+          <div class="page-tag">处理层 8/9</div>
+        </div>
+      </header>
+
+      <main class="slide-main">
+        <div class="page-head" style="margin-bottom:16px;">
+          <div class="page-head-left">
+            <div class="page-no">04</div>
+            <div>
+              <h1 class="page-title">Graph：图谱构建与落库</h1>
+              <p class="page-subtitle">图谱构建不是简单把节点和边画出来，而是把实体归并、关系去重、证据挂接和可查询存储一起做完。图谱负责组织关系，后续还会结合结构化数据表、文本检索索引和时间序列组织方式，共同支撑分析与碰撞。</p>
+            </div>
+          </div>
+          <div class="page-tag">Graph Base</div>
+        </div>
+
+        <div style="height: calc(100% - 132px); display:flex; flex-direction:column; gap:14px;">
+          <section class="card">
+            <div class="eyebrow">构建逻辑</div>
+            <h3>从抽取结果到图谱对象</h3>
+            <div class="grid-3" style="margin-top:12px;">
+              <div class="small-card tight">
+                <h4>实体归并</h4>
+                <p class="muted">把不同材料里指向同一人物、账户、案件的记录合并，避免重复节点和碎片化对象。</p>
+              </div>
+              <div class="small-card tight">
+                <h4>关系去重</h4>
+                <p class="muted">把多来源重复出现的联系、交易、共同出现等关系做融合，保留证据强度和来源数量。</p>
+              </div>
+              <div class="small-card tight">
+                <h4>证据挂接</h4>
+                <p class="muted">让每个节点和关系都能回溯到具体文书、流水、日志或记录片段。</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="grid-2" style="grid-template-columns: 1.08fr 0.92fr; gap:14px;">
+            <article class="card">
+              <div class="eyebrow">实现方式</div>
+              <ul class="compact-list">
+                <li><span class="highlight">图数据库或图结构存储</span>：比赛原型可用 Neo4j、NetworkX + JSON 或其他图存储方案实现，不强依赖单一框架。</li>
+                <li><span class="highlight">证据溯源字段</span>：节点与关系保留来源文件、页码、记录编号、时间戳等元数据，支撑后续报告里的“有依据”。</li>
+                <li><span class="highlight">支持上层功能</span>：图谱落好后，人物关系查询、资金链路检索、时间线串联和专题报告都能围绕同一关系主线展开。</li>
+              </ul>
+            </article>
+
+            <article class="card">
+              <div class="eyebrow">这一页最后要落到</div>
+              <div class="grid-3" style="grid-template-columns: 1fr; gap:12px;">
+                <div class="small-card tight">
+                  <h4>关系组织核心</h4>
+                  <p class="muted">图谱不是展示终点，而是 <span class="highlight">关系组织核心</span> 和图谱查询的基础能力。</p>
+                </div>
+                <div class="small-card tight">
+                  <h4>协同工作</h4>
+                  <p class="muted">后续还要配合 <span class="highlight">结构化数据表</span>、<span class="highlight">文本检索索引</span> 与 <span class="highlight">时间序列组织</span> 一起工作。</p>
+                </div>
+                <div class="small-card tight">
+                  <h4>工作底座</h4>
+                  <p class="muted">处理层完成到这里，分析层和碰撞层才真正拥有统一且可追溯的工作底座。</p>
+                </div>
+              </div>
+            </article>
+          </section>
+        </div>
+      </main>
+
+      <footer class="slide-footer">
+        <div id="footer-left"></div>
+        <div id="footer-right"></div>
+      </footer>
+      <div class="watermark">GRAPH</div>
+    </div>
+  </div>
+  <script src="slide-config.js"></script>
+  <script src="slide-nav.js"></script>
+  <script>
+    const cfg = window.SLIDE_CONFIG;
+    document.getElementById("brand").textContent = cfg.platformName;
+    document.getElementById("footer-left").textContent = cfg.footerLeft;
+    document.getElementById("footer-right").textContent = cfg.footerRight;
+  </script>
+</body>
+</html>

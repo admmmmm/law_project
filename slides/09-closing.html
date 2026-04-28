@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>09 结语</title>
+  <link rel="stylesheet" href="slide.css" />
+</head>
+<body>
+  <div class="slide-shell">
+    <div class="slide">
+      <header class="slide-topbar">
+        <div class="brand" id="brand"></div>
+        <div class="topbar-nav">
+          <span>系统设计</span>
+          <span>技术实现</span>
+          <span>应用价值</span>
+          <span class="active">结语</span>
+        </div>
+        <div class="topbar-right" id="topbar-right">
+          <div class="page-tag">结束页</div>
+        </div>
+      </header>
+
+      <main class="slide-main">
+        <div class="cover-main" style="grid-template-columns: 1.1fr 0.9fr;">
+          <section class="cover-left">
+            <div class="cover-kicker">Conclusion</div>
+            <h1 class="cover-title" style="max-width: 760px;">谢谢各位老师评审指正</h1>
+            <p class="cover-subtitle" style="max-width: 760px;">
+              本项目围绕检察侦查场景，构建了一条从证据接入、图谱构建、分析碰撞，到报告、画像、建议输出的完整辅助工作流。
+            </p>
+            <div class="cover-meta">
+              <div class="small-card">
+                <div class="eyebrow">一句话回顾</div>
+                <p class="muted">我们不是在做泛化 AI 工具，而是在做一套面向依法立案侦查后的智能分析辅助平台。</p>
+              </div>
+              <div class="small-card">
+                <div class="eyebrow">核心价值</div>
+                <div class="pill-row">
+                  <div class="pill">证据整合</div>
+                  <div class="pill">关系建模</div>
+                  <div class="pill">多维碰撞</div>
+                  <div class="pill">信息画像</div>
+                  <div class="pill">参考建议</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="cover-right">
+            <div class="cover-visual">
+              <div class="cover-badge">
+                <span></span><span></span><span></span><span></span>
+              </div>
+              <div class="cover-blob one"></div>
+              <div class="cover-blob two"></div>
+              <div class="cover-blob three"></div>
+              <div class="cover-character">终</div>
+              <div class="cover-panel">
+                <div class="eyebrow">Final Message</div>
+                <h3>欢迎老师提问</h3>
+                <p>我们愿意进一步就系统架构、处理层设计、分析与碰撞机制，以及界面演示和应用价值进行说明。</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <footer class="slide-footer">
+        <div id="footer-left"></div>
+        <div id="footer-right"></div>
+      </footer>
+      <div class="watermark">ENDING</div>
+    </div>
+  </div>
+  <script src="slide-config.js"></script>
+  <script src="slide-nav.js"></script>
+  <script>
+    const cfg = window.SLIDE_CONFIG;
+    document.getElementById("brand").textContent = cfg.platformName;
+    document.getElementById("footer-left").textContent = cfg.footerLeft;
+    document.getElementById("footer-right").textContent = cfg.footerRight;
+  </script>
+</body>
+</html>

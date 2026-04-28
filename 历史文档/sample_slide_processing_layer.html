@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>项目目标与定位 - 幻灯片</title>
+    <style>
+        :root {
+            --deep-blue: #0A2540;
+            --main-blue: #1A5FB4;
+            --light-blue: #E1F0FF;
+            --accent-blue: #729FCF;
+            --text-dark: #333333;
+            --text-gray: #666666;
+            --bg-white: #FFFFFF;
+            --border-color: #D1D9E6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+        }
+
+        body {
+            background-color: #F4F7FA;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .slide-container {
+            width: 1280px;
+            height: 720px;
+            background: var(--bg-white);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            position: relative;
+            padding: 40px 60px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border-color);
+        }
+
+        /* 第一层：标题区 */
+        .header {
+            position: relative;
+            height: 100px;
+            margin-bottom: 40px;
+        }
+
+        .section-num {
+            position: absolute;
+            left: -10px;
+            top: -15px;
+            font-size: 100px;
+            font-weight: 900;
+            color: var(--light-blue);
+            line-height: 1;
+            z-index: 1;
+            user-select: none;
+        }
+
+        .title-group {
+            position: relative;
+            z-index: 2;
+            padding-left: 20px;
+            padding-top: 15px;
+        }
+
+        .main-title {
+            font-size: 36px;
+            color: var(--deep-blue);
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .sub-title {
+            font-size: 18px;
+            color: var(--main-blue);
+            margin-top: 8px;
+            font-weight: 500;
+        }
+
+        .page-tag {
+            position: absolute;
+            right: 0;
+            top: 20px;
+            padding: 4px 12px;
+            border: 1px solid var(--main-blue);
+            color: var(--main-blue);
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* 第二层：核心区 */
+        .core-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .core-sentence {
+            font-size: 20px;
+            color: var(--text-dark);
+            padding: 12px 30px;
+            background: var(--light-blue);
+            border-radius: 4px;
+            margin-bottom: 50px;
+            font-weight: 500;
+            border-left: 5px solid var(--main-blue);
+        }
+
+        .flow-container {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+
+        .flow-item {
+            width: 180px;
+            text-align: center;
+            position: relative;
+        }
+
+        .flow-card {
+            background: var(--bg-white);
+            border: 2px solid var(--main-blue);
+            border-radius: 8px;
+            padding: 15px 10px;
+            transition: all 0.3s;
+        }
+
+        .flow-card .step-title {
+            font-weight: bold;
+            color: var(--deep-blue);
+            font-size: 18px;
+            margin-bottom: 6px;
+        }
+
+        .flow-card .step-desc {
+            font-size: 13px;
+            color: var(--text-gray);
+            line-height: 1.4;
+        }
+
+        .flow-arrow {
+            color: var(--main-blue);
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        /* 第三层：结果区 */
+        .result-section {
+            display: flex;
+            gap: 25px;
+            margin-top: 50px;
+        }
+
+        .result-card {
+            flex: 1;
+            background: #F8FAFC;
+            border-top: 3px solid var(--deep-blue);
+            padding: 20px;
+            min-height: 140px;
+        }
+
+        .result-card h4 {
+            color: var(--deep-blue);
+            font-size: 17px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+
+        .result-card h4::before {
+            content: "";
+            display: inline-block;
+            width: 4px;
+            height: 16px;
+            background: var(--main-blue);
+            margin-right: 8px;
+        }
+
+        .result-card ul {
+            list-style: none;
+        }
+
+        .result-card li {
+            font-size: 14px;
+            color: var(--text-gray);
+            margin-bottom: 6px;
+            padding-left: 12px;
+            position: relative;
+        }
+
+        .result-card li::after {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--main-blue);
+        }
+
+        /* 辅助卡片 */
+        .not-to-do {
+            position: absolute;
+            bottom: 40px;
+            right: 60px;
+            width: 240px;
+            background: #FFF5F5;
+            border: 1px dashed #E53E3E;
+            padding: 15px;
+            border-radius: 4px;
+        }
+
+        .not-to-do h5 {
+            color: #C53030;
+            font-size: 15px;
+            margin-bottom: 8px;
+        }
+
+        .not-to-do ul {
+            list-style: none;
+            font-size: 12px;
+            color: #742A2A;
+        }
+
+        .not-to-do li {
+            margin-bottom: 4px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="slide-container">
+        <div class="header">
+            <div class="section-num">03</div>
+            <div class="title-group">
+                <h1 class="main-title">项目目标与定位</h1>
+                <p class="sub-title">面向检察侦查场景的智能分析辅助平台，而非替代办案决策的自动判断系统</p>
+            </div>
+            <div class="page-tag">定位页</div>
+        </div>
+
+        <div class="core-section">
+            <div class="core-sentence">
+                围绕依法立案侦查后的多源证据数据，构建从图谱到底层分析再到画像建议输出的完整辅助链路
+            </div>
+
+            <div class="flow-container">
+                <div class="flow-item">
+                    <div class="flow-card">
+                        <div class="step-title">证据接入</div>
+                        <div class="step-desc">多格式数据统一进入系统</div>
+                    </div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">
+                    <div class="flow-card">
+                        <div class="step-title">图谱构建</div>
+                        <div class="step-desc">形成人、案、钱、行为关系网</div>
+                    </div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">
+                    <div class="flow-card">
+                        <div class="step-title">分析碰撞</div>
+                        <div class="step-desc">多维交叉验证与异常发现</div>
+                    </div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">
+                    <div class="flow-card">
+                        <div class="step-title">画像生成</div>
+                        <div class="step-desc">形成嫌疑人及关系人画像</div>
+                    </div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-item">
+                    <div class="flow-card">
+                        <div class="step-title">建议输出</div>
+                        <div class="step-desc">输出参考信息与侦查建议</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="result-section">
+            <div class="result-card">
+                <h4>参考信息</h4>
+                <ul>
+                    <li>可疑资金流动</li>
+                    <li>关键人物关系链</li>
+                    <li>异常行为与时间节点</li>
+                </ul>
+            </div>
+            <div class="result-card">
+                <h4>信息画像</h4>
+                <ul>
+                    <li>犯罪嫌疑人画像</li>
+                    <li>密切关系人画像</li>
+                    <li>账户与行为特征摘要</li>
+                </ul>
+            </div>
+            <div class="result-card">
+                <h4>参考建议</h4>
+                <ul>
+                    <li>优先核查对象</li>
+                    <li>关键时间窗口</li>
+                    <li>重点复核关系链</li>
+                </ul>
+            </div>
+            <div style="flex: 1; opacity: 0;"></div>
+        </div>
+
+        <div class="not-to-do">
+            <h5>本项目不做什么</h5>
+            <ul>
+                <li>• 不替代侦查人员作出法律判断</li>
+                <li>• 不做泛法律问答机器人</li>
+                <li>• 不做脱离场景的通用 AI 平台</li>
+            </ul>
+        </div>
+    </div>
+
+</body>
+</html>

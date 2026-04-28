@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>04A 处理层设计总览</title>
+  <link rel="stylesheet" href="slide.css" />
+</head>
+<body>
+  <div class="slide-shell">
+    <div class="slide fit-slide">
+      <header class="slide-topbar">
+        <div class="brand" id="brand"></div>
+        <div class="topbar-nav">
+          <span>项目背景</span>
+          <span>痛点分析</span>
+          <span class="active">处理层</span>
+          <span>分析与碰撞</span>
+        </div>
+        <div class="topbar-right" id="topbar-right">
+          <div class="page-tag">处理层 1/5</div>
+        </div>
+      </header>
+
+      <main class="slide-main" style="padding-bottom:24px;">
+        <div style="transform:scale(0.93); transform-origin: top left; width:107.6%; height:107.6%;">
+        <div class="page-head" style="margin-bottom:14px;">
+          <div class="page-head-left">
+            <div class="page-no">04</div>
+            <div>
+              <h1 class="page-title">处理层设计总览</h1>
+              <p class="page-subtitle">处理层负责把依法调取的多源证据转化为系统可用的数据底座。系统以图谱作为关系组织核心，同时结合结构化数据表、文本检索索引和时间序列组织方式，共同支撑分析与碰撞。</p>
+            </div>
+          </div>
+          <div class="page-tag">Evidence → Ontology → Graph</div>
+        </div>
+
+        <div style="height: calc(100% - 122px); display:flex; flex-direction:column; gap:14px;">
+          <section style="display:flex;flex-direction:column;gap:14px; min-height:0;">
+            <div class="quote-box">
+              <strong>从立案后已掌握的部分事实出发，对海量、多格式证据做统一读取、语义建模与图谱化落库。</strong>
+            </div>
+
+            <div class="processing-flow">
+              <article class="processing-step">
+                <div class="processing-step-top">
+                  <div class="processing-no">01</div>
+                  <div class="processing-tag">Evidence</div>
+                </div>
+                <h3>证据接入</h3>
+                <p>把卷宗、笔录、文书、流水、通联、日志等不同来源数据统一读入系统。</p>
+                <ul class="compact-list">
+                  <li>多格式接入</li>
+                  <li>文本与表格抽取</li>
+                  <li>基础清洗和标准化</li>
+                </ul>
+              </article>
+
+              <div class="processing-arrow">→</div>
+
+              <article class="processing-step">
+                <div class="processing-step-top">
+                  <div class="processing-no">02</div>
+                  <div class="processing-tag">Ontology</div>
+                </div>
+                <h3>领域本体</h3>
+                <p>把侦查场景里的对象和关系先定义清楚，形成统一语义结构。</p>
+                <ul class="compact-list">
+                  <li>实体：人、案、账户、交易、行为</li>
+                  <li>关系：联系、转账、共同出现等</li>
+                  <li>本体不是从零自由生成</li>
+                </ul>
+              </article>
+
+              <div class="processing-arrow">→</div>
+
+              <article class="processing-step primary">
+                <div class="processing-step-top">
+                  <div class="processing-no">03</div>
+                  <div class="processing-tag">Graph</div>
+                </div>
+                <h3>图谱构建</h3>
+                <p>完成实体归并、关系去重、证据挂接和图数据库落库，形成后续查询与分析底座。</p>
+                <ul class="compact-list" style="color:rgba(255,255,255,0.88);">
+                  <li>可查</li>
+                  <li>可关联</li>
+                  <li>可追溯</li>
+                </ul>
+              </article>
+            </div>
+
+            <div class="mini-flow">
+              <div class="small-card tight">
+                <div class="eyebrow">输入</div>
+                <h4>多源证据数据</h4>
+                <p class="muted">案卷、流水、通联、日志、文书、身份和财产信息等。</p>
+              </div>
+              <div class="small-card tight">
+                <div class="eyebrow">原则</div>
+                <h4>先验事实 + 统一语义</h4>
+                <p class="muted">处理层默认存在部分已知实体与关系，不是从空白开始。</p>
+              </div>
+              <div class="small-card tight">
+                <div class="eyebrow">输出</div>
+                <h4>多组织方式协同底座</h4>
+                <p class="muted">以图谱组织关系，以结构化表管理字段，以文本索引追溯原文，以时间序列支撑时序分析。</p>
+              </div>
+            </div>
+            <section class="card">
+              <div class="eyebrow">边界说明</div>
+              <div class="grid-3" style="grid-template-columns: repeat(4, 1fr); gap:10px;">
+                <div class="small-card tight">
+                  <h4>使用边界</h4>
+                  <p class="muted"><span class="highlight">依法立案侦查后</span> 才进入系统分析流程。</p>
+                </div>
+                <div class="small-card tight">
+                  <h4>部署方式</h4>
+                  <p class="muted">支持 <span class="highlight">本地化 / 私有化部署</span>，适应涉密环境。</p>
+                </div>
+                <div class="small-card tight">
+                  <h4>处理方式</h4>
+                  <p class="muted">可用 <span class="highlight">任务分工型 multi-agent / 多 worker</span> 处理不同证据类型。</p>
+                </div>
+                <div class="small-card tight">
+                  <h4>能力边界</h4>
+                  <p class="muted">处理层不直接生成犯罪定性结论。</p>
+                </div>
+              </div>
+            </section>
+          </section>
+        </div>
+        </div>
+      </main>
+
+      <footer class="slide-footer">
+        <div id="footer-left"></div>
+        <div id="footer-right"></div>
+      </footer>
+      <div class="watermark">PROCESS</div>
+    </div>
+  </div>
+  <script src="slide-config.js"></script>
+  <script src="slide-nav.js"></script>
+  <script>
+    const cfg = window.SLIDE_CONFIG;
+    document.getElementById("brand").textContent = cfg.platformName;
+    document.getElementById("footer-left").textContent = cfg.footerLeft;
+    document.getElementById("footer-right").textContent = cfg.footerRight;
+  </script>
+</body>
+</html>

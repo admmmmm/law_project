@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>03 项目目标与定位</title>
+  <link rel="stylesheet" href="slide.css" />
+</head>
+<body>
+  <div class="slide-shell">
+    <div class="slide">
+      <header class="slide-topbar">
+        <div class="brand" id="brand"></div>
+        <div class="topbar-nav">
+          <span>项目背景</span>
+          <span>痛点分析</span>
+          <span class="active">项目定位</span>
+          <span>系统设计</span>
+        </div>
+        <div class="topbar-right" id="topbar-right">
+          <div class="page-tag">定位页</div>
+        </div>
+      </header>
+
+      <main class="slide-main">
+        <div class="page-head" style="margin-bottom:18px;">
+          <div class="page-head-left">
+            <div class="page-no">03</div>
+            <div>
+              <h1 class="page-title">项目目标与定位</h1>
+              <p class="page-subtitle">本项目定位为面向检察侦查场景的智能分析辅助平台，在依法立案侦查后，对依法调取的多源数据进行处理、分析、碰撞，并输出参考信息、信息画像和参考建议。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="quote-box" style="margin-bottom:18px;">
+          <strong>一个服务于检察侦查业务流程的专用辅助平台。</strong>
+        </div>
+
+        <section class="flow-row" style="margin-bottom:20px;">
+          <div class="flow-card">
+            <h4>证据接入</h4>
+            
+            <p>把依法调取的多源、多格式证据统一接入系统，完成基础读取和标准化。</p>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-card">
+            <h4>图谱构建</h4>
+            <p>以图谱组织人物、案件、账户、交易、行为之间的关系，同时为结构化表、文本索引和时间序列分析提供统一关联主线。</p>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-card">
+            <h4>分析碰撞</h4>
+            <p>围绕人物关系、资金流动、行为特征和时间节点开展多维分析与交叉验证。</p>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-card">
+            <h4>画像生成</h4>
+            <p>形成犯罪嫌疑人及其密切关系人的结构化信息画像。</p>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-card">
+            <h4>建议输出</h4>
+            <p>输出参考信息、核查建议和重点复核方向，辅助侦查人员研判。</p>
+          </div>
+        </section>
+
+        <div class="grid-3" style="grid-template-columns: 1fr 1fr 0.9fr; gap:18px;">
+          <section class="card">
+            <div class="eyebrow">最终输出</div>
+            <h3>我们要交付什么</h3>
+            <ul class="compact-list">
+              <li>可疑资金流、人员行为、人物关系等参考信息</li>
+              <li>犯罪嫌疑人及密切关系人画像</li>
+              <li>面向侦查的参考建议与线索摘要</li>
+            </ul>
+          </section>
+
+          <section class="card">
+            <div class="eyebrow">使用边界</div>
+            <h3>系统不做什么</h3>
+            <ul class="compact-list">
+              <li>不替代侦查人员作出法律判断</li>
+              <li>不做泛法律问答机器人</li>
+              <li>不做脱离场景的通用大模型平台</li>
+            </ul>
+          </section>
+
+          <section class="card">
+            <div class="eyebrow">核心关键词</div>
+            <div class="pill-row">
+              <div class="pill">检察院</div>
+              <div class="pill">依法立案侦查后</div>
+              <div class="pill">处理</div>
+              <div class="pill">分析</div>
+              <div class="pill">碰撞</div>
+              <div class="pill">画像</div>
+              <div class="pill">建议</div>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <footer class="slide-footer">
+        <div id="footer-left"></div>
+        <div id="footer-right"></div>
+      </footer>
+      <div class="watermark">POSITION</div>
+    </div>
+  </div>
+  <script src="slide-config.js"></script>
+  <script src="slide-nav.js"></script>
+  <script>
+    const cfg = window.SLIDE_CONFIG;
+    document.getElementById("brand").textContent = cfg.platformName;
+    document.getElementById("footer-left").textContent = cfg.footerLeft;
+    document.getElementById("footer-right").textContent = cfg.footerRight;
+  </script>
+</body>
+</html>

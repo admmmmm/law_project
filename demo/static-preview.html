@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>检察侦查画像模型 Demo Preview</title>
+  <style>
+    :root {
+      --bg: #eef3f8;
+      --panel: #fff;
+      --soft: #f7f9fc;
+      --ink: #172235;
+      --muted: #6b7788;
+      --line: #d9e1ea;
+      --blue: #1d5ea8;
+      --cyan: #0c9bb0;
+      --green: #1e8f67;
+      --amber: #c27a16;
+      --red: #c94141;
+      --shadow: 0 18px 40px rgba(48, 72, 104, .12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 1180px;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    .app { min-height: 100vh; display: grid; grid-template-columns: 260px 1fr; }
+    .side { background: #13243a; color: #eaf2fb; padding: 24px 18px; display: flex; flex-direction: column; gap: 24px; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .mark { width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center; background: linear-gradient(135deg, #4f99dc, #0c9bb0); font-size: 22px; font-weight: 900; }
+    .brand strong, .brand span { display: block; }
+    .brand span { margin-top: 3px; color: #9eb2c8; font-size: 12px; }
+    nav { display: grid; gap: 8px; }
+    nav button { height: 44px; border: 0; border-radius: 8px; padding: 0 12px; text-align: left; background: transparent; color: #cbd7e6; cursor: pointer; font-weight: 700; }
+    nav button.active, nav button:hover { background: #eaf2fb; color: #133056; }
+    .security { margin-top: auto; padding: 14px; border-radius: 8px; background: rgba(255,255,255,.08); color: #dbe8f5; font-size: 13px; }
+    main { padding: 24px; }
+    header { height: 82px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .eyebrow { font-size: 12px; font-weight: 900; color: var(--blue); letter-spacing: .08em; text-transform: uppercase; }
+    h1 { margin: 5px 0 0; font-size: 32px; }
+    h2 { margin: 8px 0 12px; font-size: 30px; }
+    h3 { margin: 0 0 8px; }
+    p { color: var(--muted); line-height: 1.7; }
+    .status { min-width: 190px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); text-align: right; }
+    .status span { color: var(--green); font-weight: 900; display: block; }
+    .status strong { color: var(--muted); font-size: 13px; }
+    .panel, .stat, .portrait { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+    .view { display: none; gap: 18px; }
+    .view.active { display: grid; }
+    .hero { min-height: 210px; padding: 28px; display: grid; grid-template-columns: 1fr 360px; gap: 22px; align-items: center; }
+    .flow { display: grid; gap: 10px; }
+    .flow span { padding: 12px 14px; border-radius: 8px; background: #eef6fb; border-left: 4px solid #4a8ed8; font-weight: 900; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+    .stat { height: 112px; padding: 18px; }
+    .stat span, .stat small { display: block; color: var(--muted); }
+    .stat strong { display: block; margin: 3px 0; font-size: 28px; }
+    .split { padding: 24px; display: grid; grid-template-columns: 1fr 420px; gap: 22px; }
+    .timeline, .advice, .detail { display: grid; gap: 10px; }
+    .timeline div, .advice div, .detail span, .tx { padding: 12px 14px; border-radius: 8px; background: var(--soft); border: 1px solid var(--line); }
+    .upload { padding: 28px; text-align: center; border-style: dashed; }
+    .upload button { border: 0; border-radius: 8px; background: var(--blue); color: #fff; padding: 11px 18px; font-weight: 900; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+    th { color: var(--muted); font-size: 13px; }
+    td small { display: block; color: var(--muted); margin-top: 4px; }
+    .risk { display: inline-flex; min-width: 34px; height: 24px; justify-content: center; align-items: center; border-radius: 999px; font-size: 12px; font-weight: 900; }
+    .高 { background: #ffe7e7; color: var(--red); }
+    .中 { background: #fff1d6; color: var(--amber); }
+    .低 { background: #e6f5ee; color: var(--green); }
+    .graph-layout, .report-layout { display: grid; grid-template-columns: 1fr 360px; gap: 18px; }
+    .graph, .panel-pad { padding: 22px; }
+    svg { width: 100%; height: 560px; border-radius: 8px; background: linear-gradient(#e9eff6 1px, transparent 1px), linear-gradient(90deg, #e9eff6 1px, transparent 1px); background-size: 34px 34px; }
+    line { stroke: #8ca3bc; stroke-width: 3; }
+    line.money { stroke: var(--red); }
+    line.contact { stroke: var(--blue); }
+    line.track { stroke: var(--cyan); }
+    svg text { font-size: 14px; fill: #334155; text-anchor: middle; font-weight: 800; }
+    circle { fill: #fff; stroke: var(--blue); stroke-width: 4; }
+    .suspect circle { fill: #fff2f2; stroke: var(--red); }
+    .account circle { fill: #f0fbf7; stroke: var(--green); }
+    .company circle { fill: #fff8ea; stroke: var(--amber); }
+    .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .collision-card { min-height: 145px; padding: 18px; border-radius: 8px; border: 1px solid var(--line); background: var(--soft); }
+    .collision-card div, .tx { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .tx b { color: var(--red); }
+    .portrait-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; }
+    .portrait { min-height: 330px; padding: 22px; }
+    .avatar { width: 58px; height: 58px; border-radius: 8px; background: #eef6fb; color: var(--blue); display: grid; place-items: center; font-weight: 900; font-size: 24px; margin-bottom: 20px; }
+    .bar { height: 8px; border-radius: 99px; background: #e7edf4; overflow: hidden; margin: 12px 0 8px; }
+    .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--blue), var(--red)); }
+    .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    .tags em { font-style: normal; padding: 6px 9px; border-radius: 999px; background: #eef6fb; color: var(--blue); font-size: 12px; font-weight: 900; }
+    .report-block { margin-top: 22px; padding: 22px; background: var(--soft); border-radius: 8px; border-left: 5px solid var(--blue); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="side">
+      <div class="brand"><div class="mark">检</div><div><strong>检察侦查画像模型</strong><span>Investigation Intelligence</span></div></div>
+      <nav>
+        <button class="active" data-view="overview">总览</button>
+        <button data-view="evidence">证据接入</button>
+        <button data-view="graph">图谱穿透</button>
+        <button data-view="collision">分析碰撞</button>
+        <button data-view="portrait">信息画像</button>
+        <button data-view="report">报告建议</button>
+      </nav>
+      <div class="security">依法立案侦查后使用</div>
+    </aside>
+    <main>
+      <header><div><span class="eyebrow">案件编号 BJJC-2026-0418</span><h1 id="title">总览</h1></div><div class="status"><span>已立案侦查</span><strong>2026-04-18</strong></div></header>
+
+      <section class="view active" id="overview">
+        <div class="panel hero"><div><span class="eyebrow">当前案件</span><h2>张某涉嫌司法工作人员职务犯罪辅助分析案</h2><p>围绕司法工作人员张某在案件办理过程中的异常资金往来、频繁通联、关系勾连与关键时间节点行为展开辅助分析。</p></div><div class="flow"><span>证据接入</span><span>标准化</span><span>图谱构建</span><span>交叉碰撞</span><span>画像建议</span></div></div>
+        <div class="stats"><div class="stat"><span>证据文件</span><strong>5</strong><small>多格式已接入</small></div><div class="stat"><span>重点对象</span><strong>5</strong><small>含1名核心嫌疑人</small></div><div class="stat"><span>异常交易</span><strong>4</strong><small>集中于关键窗口</small></div><div class="stat"><span>碰撞线索</span><strong>4</strong><small>两项高风险</small></div></div>
+        <div class="panel split"><div><span class="eyebrow">重点提示</span><h3>资金、轨迹与通联在同一时间窗口重叠</h3><p>系统将关系图谱、结构化流水、通联详单与时序记录共同组织，输出可疑资金流、异常行为和关系人画像。</p></div><div class="timeline"><div><strong>04-06 21:13</strong><span>分拆转账</span></div><div><strong>04-07 00:42</strong><span>午夜交易</span></div><div><strong>04-08 09:35</strong><span>企业过桥</span></div><div><strong>04-10 16:02</strong><span>异常外流</span></div></div></div>
+      </section>
+
+      <section class="view" id="evidence">
+        <div class="panel upload"><h2>拖拽或选择证据文件</h2><p>支持 Word、PDF、Excel、CSV、OCR 文本、银行流水、通联记录、门禁日志等多源数据。</p><button>模拟导入证据包</button></div>
+        <div class="panel panel-pad"><span class="eyebrow">解析队列</span><table><thead><tr><th>文件</th><th>来源</th><th>状态</th><th>实体</th><th>关系</th><th>风险</th></tr></thead><tbody id="fileRows"></tbody></table></div>
+      </section>
+
+      <section class="view graph-layout" id="graph">
+        <div class="panel graph"><span class="eyebrow">关系组织核心</span><svg viewBox="0 0 900 460" id="graphSvg"></svg></div>
+        <aside class="panel panel-pad"><span class="eyebrow">穿透分析详情</span><h3>企业X → 离岸账户</h3><p>该路径同时命中资金流动、人物关系和关键时间窗口，建议作为优先复核链路。</p><div class="detail"><span>穿透层级：二度</span><span>关系类型：资金往来 / 通讯关联</span><span>证据来源：银行流水、通联详单、企业登记</span></div></aside>
+      </section>
+
+      <section class="view" id="collision">
+        <div class="panel panel-pad"><span class="eyebrow">多维碰撞矩阵</span><div class="grid2" id="collisionGrid"></div></div>
+        <div class="panel panel-pad"><span class="eyebrow">可疑资金窗口</span><div class="timeline" id="txList"></div></div>
+      </section>
+
+      <section class="view portrait-grid" id="portrait"></section>
+
+      <section class="view report-layout" id="report">
+        <div class="panel panel-pad"><span class="eyebrow">专题报告生成</span><h2>张某关系链与资金流动综合分析报告</h2><p>系统基于图谱查询结果、碰撞结果和画像结果，生成面向侦查人员的结构化参考建议。</p><div class="report-block"><h3>核心结论</h3><p>张某与李某、王某之间存在资金、通联与时间窗口的多重重合，其中账户A至李某的分拆转账与后续企业X离岸转出形成连续链路。</p></div></div>
+        <aside class="panel panel-pad"><span class="eyebrow">参考建议</span><div class="advice" id="advice"></div></aside>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const files = [
+      ["银行流水_张某_2026Q1.xlsx", "银行调取", "已解析", 18, 42, "高"],
+      ["通联详单_核心人员.csv", "运营商", "已解析", 23, 71, "中"],
+      ["讯问笔录_李某.docx", "卷宗材料", "已解析", 9, 16, "中"],
+      ["涉案财物清单.pdf", "监察移送", "待复核", 12, 8, "低"],
+      ["出入记录_办案区.csv", "门禁系统", "已解析", 14, 29, "中"]
+    ];
+    const txs = [
+      ["04-06 21:13", "账户A", "李某", 48000, "分拆转账", "高"],
+      ["04-07 00:42", "李某", "王某", 52000, "午夜交易", "高"],
+      ["04-08 09:35", "王某", "企业X", 300000, "企业过桥", "中"],
+      ["04-10 16:02", "企业X", "离岸账户", 860000, "异常外流", "高"],
+      ["04-12 18:20", "账户A", "赵某", 12000, "低额试探", "中"]
+    ];
+    const people = [
+      ["张某", "核心嫌疑人", 89, ["司法工作人员", "关键账户", "多线重合"]],
+      ["李某", "密切关系人", 76, ["频繁通联", "资金中转"]],
+      ["王某", "资金关联人", 68, ["企业账户", "大额转账"]],
+      ["赵某", "外围联系人", 51, ["轨迹重合"]],
+      ["企业X", "资金节点", 72, ["过桥账户", "离岸转出"]]
+    ];
+    const collisions = [
+      ["人物 x 资金", "张某关系圈内出现多笔拆分转账，收款对象与密切关系人重叠。", "高"],
+      ["人物 x 行为", "李某与赵某在关键时间窗口存在轨迹重合，并伴随高频通联。", "中"],
+      ["资金 x 时间", "异常资金流动集中于案件关键节点前后 72 小时。", "高"],
+      ["行为 x 时间", "案发后出现夜间登录、文件访问和通联突增。", "中"]
+    ];
+    const nodes = [
+      ["p1","张某",380,225,"suspect"],["p2","李某",185,155,"person"],["p3","王某",585,145,"person"],["p4","赵某",150,350,"person"],["p5","企业X",610,345,"company"],["a1","账户A",390,65,"account"],["a2","离岸账户",765,260,"account"]
+    ];
+    const edges = [["p1","p2","频繁通联","contact"],["p1","a1","控制账户","money"],["p2","p4","共同出现","track"],["p1","p3","案件关联","case"],["p3","p5","资金往来","money"],["p5","a2","异常转出","money"],["a1","p2","分拆转账","money"]];
+    const advice = ["建议优先核查账户A与李某之间的分拆转账记录。", "建议围绕企业X及离岸账户补充调取资金流向证明材料。", "建议复核04-06至04-10期间的通联、出入和操作日志。", "建议将李某列为高关联密切关系人，形成单独画像卡片。"];
+
+    const titles = { overview: "总览", evidence: "证据接入", graph: "图谱穿透", collision: "分析碰撞", portrait: "信息画像", report: "报告建议" };
+    document.querySelectorAll("nav button").forEach(btn => btn.onclick = () => {
+      document.querySelectorAll("nav button,.view").forEach(el => el.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(btn.dataset.view).classList.add("active");
+      document.getElementById("title").textContent = titles[btn.dataset.view];
+    });
+    document.getElementById("fileRows").innerHTML = files.map(f => `<tr><td><strong>${f[0]}</strong><small>${f[0].split(".").pop().toUpperCase()}</small></td><td>${f[1]}</td><td>${f[2]}</td><td>${f[3]}</td><td>${f[4]}</td><td><span class="risk ${f[5]}">${f[5]}</span></td></tr>`).join("");
+    document.getElementById("txList").innerHTML = txs.map(t => `<div class="tx"><div><strong>${t[1]} → ${t[2]}</strong><span>${t[0]} · ${t[4]}</span></div><b>¥${t[3].toLocaleString()}</b></div>`).join("");
+    document.getElementById("collisionGrid").innerHTML = collisions.map(c => `<article class="collision-card"><div><h3>${c[0]}</h3><span class="risk ${c[2]}">${c[2]}</span></div><p>${c[1]}</p></article>`).join("");
+    document.getElementById("portrait").innerHTML = people.map(p => `<article class="portrait"><div class="avatar">${p[0][0]}</div><span>${p[1]}</span><h3>${p[0]}</h3><div class="bar"><i style="width:${p[2]}%"></i></div><strong>风险指数 ${p[2]}</strong><div class="tags">${p[3].map(t => `<em>${t}</em>`).join("")}</div></article>`).join("");
+    document.getElementById("advice").innerHTML = advice.map(i => `<div>${i}</div>`).join("");
+    const nodeMap = Object.fromEntries(nodes.map(n => [n[0], n]));
+    const svg = document.getElementById("graphSvg");
+    svg.innerHTML = edges.map(e => {
+      const a = nodeMap[e[0]], b = nodeMap[e[1]];
+      return `<g><line class="${e[3]}" x1="${a[2]}" y1="${a[3]}" x2="${b[2]}" y2="${b[3]}"></line><text x="${(a[2]+b[2])/2}" y="${(a[3]+b[3])/2 - 7}">${e[2]}</text></g>`;
+    }).join("") + nodes.map(n => `<g class="${n[4]}"><circle cx="${n[2]}" cy="${n[3]}" r="${n[4] === "suspect" ? 42 : 34}"></circle><text x="${n[2]}" y="${n[3] + 5}">${n[1]}</text></g>`).join("");
+  </script>
+</body>
+</html>

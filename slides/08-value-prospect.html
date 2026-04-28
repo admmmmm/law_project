@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>08 应用价值与发展前景</title>
+  <link rel="stylesheet" href="slide.css" />
+</head>
+<body>
+  <div class="slide-shell">
+    <div class="slide fit-slide">
+      <header class="slide-topbar">
+        <div class="brand" id="brand"></div>
+        <div class="topbar-nav">
+          <span>技术实现</span>
+          <span>创新特色</span>
+          <span class="active">应用价值</span>
+          <span>发展前景</span>
+        </div>
+        <div class="topbar-right" id="topbar-right">
+          <div class="page-tag">价值页</div>
+        </div>
+      </header>
+
+      <main class="slide-main">
+        <div class="page-head" style="margin-bottom:18px;">
+          <div class="page-head-left">
+            <div class="page-no">08</div>
+            <div>
+              <h1 class="page-title">应用价值与发展前景</h1>
+              <p class="page-subtitle">本项目的价值不在于替代侦查判断，而在于通过数字化处理、关系建模和结构化输出，帮助检察侦查人员更快地发现线索、整理关系、形成研判支撑。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2-uneven" style="height: calc(100% - 132px);">
+          <section style="display:flex;flex-direction:column;gap:18px;">
+            <section class="card">
+              <div class="eyebrow">应用价值</div>
+              <div class="grid-3">
+                <article class="small-card">
+                  <h4>提升处理效率</h4>
+                  <p class="muted">把原本依赖大量人工阅读、归纳和比对的工作前移到系统中处理，提高多源证据整合效率。</p>
+                </article>
+                <article class="small-card">
+                  <h4>增强线索发现能力</h4>
+                  <p class="muted">通过人物、资金、行为、时间的交叉碰撞，帮助发现隐藏关联和异常节点。</p>
+                </article>
+                <article class="small-card">
+                  <h4>规范成果表达</h4>
+                  <p class="muted">将分析结果沉淀为关系查询、结构化统计、专题报告、画像卡片和建议输出，便于汇报与复核。</p>
+                </article>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="eyebrow">发展前景</div>
+              <section class="flow-row">
+                <div class="flow-card">
+                  <h4>V1 比赛原型</h4>
+                  <p>完成证据接入、图谱构建、查询展示、画像与报告的完整演示闭环。</p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-card">
+                  <h4>V2 场景增强</h4>
+                  <p>加入更细致的规则化碰撞、线索排序和更丰富的可视化分析界面。</p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-card">
+                  <h4>V3 能力拓展</h4>
+                  <p>结合图计算与图神经网络方法，增强隐性关系挖掘和高风险节点识别能力。</p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-card">
+                  <h4>V4 场景迁移</h4>
+                  <p>在数字检察和更多司法辅助场景中扩展适配，形成更完整的场景化工具。</p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-card">
+                  <h4>长期方向</h4>
+                  <p>从比赛原型逐步演进为可落地的辅助分析平台，提升数字法治与智慧检务支撑能力。</p>
+                </div>
+              </section>
+            </section>
+          </section>
+
+
+        </div>
+      </main>
+
+      <footer class="slide-footer">
+        <div id="footer-left"></div>
+        <div id="footer-right"></div>
+      </footer>
+      <div class="watermark">VALUE</div>
+    </div>
+  </div>
+  <script src="slide-config.js"></script>
+  <script src="slide-nav.js"></script>
+  <script>
+    const cfg = window.SLIDE_CONFIG;
+    document.getElementById("brand").textContent = cfg.platformName;
+    document.getElementById("footer-left").textContent = cfg.footerLeft;
+    document.getElementById("footer-right").textContent = cfg.footerRight;
+  </script>
+</body>
+</html>

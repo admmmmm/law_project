@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>04 处理层设计</title>
+  <link rel="stylesheet" href="slide.css" />
+</head>
+<body>
+  <div class="slide-shell">
+    <div class="slide">
+      <header class="slide-topbar">
+        <div class="brand" id="brand"></div>
+        <div class="topbar-nav">
+          <span>项目背景</span>
+          <span>场景分析</span>
+          <span class="active">系统设计</span>
+          <span>输出能力</span>
+        </div>
+        <div class="topbar-right" id="topbar-right">
+          <div class="page-tag">处理层</div>
+        </div>
+      </header>
+
+      <main class="slide-main">
+        <div class="page-head">
+          <div class="page-head-left">
+            <div class="page-no">04</div>
+            <div>
+              <h1 class="page-title">处理层设计</h1>
+              <p class="page-subtitle">处理层负责把依法调取的多源证据数据转化为统一语义、统一结构、统一关系的侦查图谱，不直接做案件定性，而是为后续分析与碰撞提供可追溯底座。</p>
+            </div>
+          </div>
+          <div class="page-tag">Evidence → Ontology → Graph</div>
+        </div>
+
+        <div class="processing-layout">
+          <section class="processing-main">
+            <div class="quote-box">
+              <strong>处理层的任务不是“简单读文件”，而是把原始证据材料转成可计算、可关联、可查询的侦查图谱数据底座。</strong>
+            </div>
+
+            <div class="processing-flow">
+              <article class="processing-step">
+                <div class="processing-step-top">
+                  <div class="processing-no">01</div>
+                  <div class="processing-tag">证据解析</div>
+                </div>
+                <h3>多格式证据接入与标准化</h3>
+                <p>面向 PDF、Word、Excel、CSV、流水、日志、OCR 文本等多源材料完成统一解析，把非结构化文本和结构化记录都转成可继续处理的标准化中间数据。</p>
+                <ul>
+                  <li>完成文本提取、字段清洗、时间归一与来源标注</li>
+                  <li>兼顾案卷材料、通联记录、交易数据、行为日志等异构输入</li>
+                  <li>形成后续实体与关系抽取可直接使用的数据入口</li>
+                </ul>
+              </article>
+
+              <div class="processing-arrow">→</div>
+
+              <article class="processing-step">
+                <div class="processing-step-top">
+                  <div class="processing-no">02</div>
+                  <div class="processing-tag">领域本体</div>
+                </div>
+                <h3>已有侦查事实 + 本体扩展建模</h3>
+                <p>本体建模并不是从零自由生成，而是在案件已经立案、已有部分 entity 和 relation 的前提下，对案件、人员、账户、交易、行为、时间节点等核心对象进行统一建模。</p>
+                <ul>
+                  <li>接住已知案件、嫌疑人、关系人、账户和交易链条</li>
+                  <li>由 LLM 在此基础上补充未被显式标出的实体与关系</li>
+                  <li>形成侦查场景统一的 schema，支撑后续图谱构建</li>
+                </ul>
+              </article>
+
+              <div class="processing-arrow">→</div>
+
+              <article class="processing-step primary">
+                <div class="processing-step-top">
+                  <div class="processing-no">03</div>
+                  <div class="processing-tag">图谱构建</div>
+                </div>
+                <h3>实体归并、关系落库与证据挂接</h3>
+                <p>将抽取结果真正转化为侦查图谱，完成节点、边、来源证据和对象归并，使后续图谱查询、专题报告、信息画像与建议生成建立在可追溯关系网络之上。</p>
+                <ul>
+                  <li>实体去重与同名归并，避免关系网络碎片化</li>
+                  <li>关系落库并挂接来源证据，保留可解释链路</li>
+                  <li>形成后续分析与碰撞层可直接调用的查询底座</li>
+                </ul>
+              </article>
+            </div>
+
+            <div class="processing-bottom">
+              <div class="small-card">
+                <div class="eyebrow">Input</div>
+                <h4>多源证据数据</h4>
+                <p class="muted">案卷文本、交易流水、通联记录、行为日志、文书材料等统一接入，支撑真实侦查场景下的大规模数据处理。</p>
+              </div>
+              <div class="small-card">
+                <div class="eyebrow">Core</div>
+                <h4>结构化处理能力</h4>
+                <p class="muted">以标准化、本体建模和图谱构建为核心，把异构证据材料转成统一语义对象与关系网络。</p>
+              </div>
+              <div class="small-card">
+                <div class="eyebrow">Output</div>
+                <h4>可查询图谱底座</h4>
+                <p class="muted">输出多维实体节点、关系边与来源证据，为后续分析、碰撞、画像和建议生成提供标准支撑。</p>
+              </div>
+            </div>
+          </section>
+
+          <aside class="processing-side">
+            <section class="card">
+              <div class="eyebrow">设计原则</div>
+              <h3>从“立案后已有事实”出发</h3>
+              <ul class="list">
+                <li>系统启动时通常已经存在部分已知人物、账户、案件节点和关系链。</li>
+                <li>处理层需要先接住这些已知事实，再由模型辅助补充潜在 entity 与 relation。</li>
+                <li>这样既符合侦查实际，也避免把领域本体做成脱离业务场景的空模型。</li>
+              </ul>
+            </section>
+
+            <section class="card">
+              <div class="eyebrow">实现方式</div>
+              <h3>本地部署 + 多模块并行</h3>
+              <ul class="list">
+                <li>考虑涉密或半涉密环境，模型与系统支持本地化或私有化部署。</li>
+                <li>面对海量证据，可采用任务分工型 multi-agent / 多 worker 方式并行处理不同类型数据。</li>
+                <li>LLM 负责结构化补全和语义归纳，后端负责校验、汇总与落库。</li>
+              </ul>
+            </section>
+
+            <section class="card">
+              <div class="eyebrow">边界说明</div>
+              <h3>处理层不做什么</h3>
+              <ul class="list">
+                <li>不直接生成案件定性判断</li>
+                <li>不替代侦查人员作出法律结论</li>
+                <li>不直接输出嫌疑人认定结果</li>
+              </ul>
+            </section>
+          </aside>
+        </div>
+      </main>
+
+      <footer class="slide-footer">
+        <div id="footer-left"></div>
+        <div id="footer-right"></div>
+      </footer>
+      <div class="watermark">PROCESS</div>
+    </div>
+  </div>
+  <script src="slide-config.js"></script>
+  <script src="slide-nav.js"></script>
+  <script>
+    const cfg = window.SLIDE_CONFIG;
+    document.getElementById('brand').textContent = cfg.platformName;
+    document.getElementById('footer-left').textContent = cfg.footerLeft;
+    document.getElementById('footer-right').textContent = cfg.footerRight;
+  </script>
+</body>
+</html>

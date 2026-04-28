@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>00 目录页</title>
+  <link rel="stylesheet" href="slide.css" />
+</head>
+<body>
+  <div class="slide-shell">
+    <div class="slide">
+      <header class="slide-topbar">
+        <div class="brand" id="brand"></div>
+        <div class="topbar-nav">
+          <span>标题页</span>
+          <span class="active">目录</span>
+          <span>项目背景</span>
+          <span>系统设计</span>
+        </div>
+        <div class="topbar-right" id="topbar-right">
+          <div class="page-tag">目录页</div>
+        </div>
+      </header>
+
+      <main class="slide-main">
+        <div class="agenda-layout">
+          <section class="agenda-left">
+            <div class="blob-main"></div>
+            <div class="blob-soft"></div>
+            <div class="blob-dark"></div>
+            <div class="agenda-char">目录</div>
+          </section>
+
+          <section class="agenda-right">
+            <div class="agenda-dots"><span></span><span></span><span></span><span></span></div>
+            <div class="agenda-list">
+              <div class="agenda-item active">
+                <div class="agenda-no">01</div>
+                <div class="agenda-text">项目背景与需求来源</div>
+              </div>
+              <div class="agenda-item">
+                <div class="agenda-no">06</div>
+                <div class="agenda-text">技术实现与可行性</div>
+              </div>
+              <div class="agenda-item">
+                <div class="agenda-no">02</div>
+                <div class="agenda-text">场景痛点分析</div>
+              </div>
+              <div class="agenda-item">
+                <div class="agenda-no">07</div>
+                <div class="agenda-text">创新点与特色</div>
+              </div>
+              <div class="agenda-item">
+                <div class="agenda-no">03</div>
+                <div class="agenda-text">项目目标与定位</div>
+              </div>
+              <div class="agenda-item">
+                <div class="agenda-no">08</div>
+                <div class="agenda-text">应用价值与发展前景</div>
+              </div>
+              <div class="agenda-item">
+                <div class="agenda-no">04</div>
+                <div class="agenda-text">处理层设计</div>
+              </div>
+              <div class="agenda-item">
+                <div class="agenda-no">09</div>
+                <div class="agenda-text">系统演示与页面效果</div>
+              </div>
+              <div class="agenda-item">
+                <div class="agenda-no">05</div>
+                <div class="agenda-text">分析与碰撞层设计</div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <footer class="slide-footer">
+        <div id="footer-left"></div>
+        <div id="footer-right"></div>
+      </footer>
+      <div class="watermark">AGENDA</div>
+    </div>
+  </div>
+  <script src="slide-config.js"></script>
+  <script src="slide-nav.js"></script>
+  <script>
+    const cfg = window.SLIDE_CONFIG;
+    document.getElementById('brand').textContent = cfg.platformName;
+    document.getElementById('footer-left').textContent = cfg.footerLeft;
+    document.getElementById('footer-right').textContent = cfg.footerRight;
+  </script>
+</body>
+</html>

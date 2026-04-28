@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>04D 大数据关系穿透分析界面</title>
+  <link rel="stylesheet" href="slide.css" />
+</head>
+<body>
+  <div class="slide-shell">
+    <div class="slide fit-slide">
+      <header class="slide-topbar">
+        <div class="brand" id="brand"></div>
+        <div class="topbar-nav">
+          <span>项目背景</span>
+          <span>痛点分析</span>
+          <span class="active">处理层</span>
+          <span>分析与碰撞</span>
+        </div>
+        <div class="topbar-right" id="topbar-right">
+          <div class="page-tag">处理层 9/9</div>
+        </div>
+      </header>
+
+      <main class="slide-main">
+        <div class="page-head" style="margin-bottom:16px;">
+          <div class="page-head-left">
+            <div class="page-no">04</div>
+            <div>
+              <h1 class="page-title">大数据关系穿透分析界面</h1>
+              <p class="page-subtitle">对应“处理层图谱构建 + 分析与碰撞层资金/关系分析”，是把数据转化为侦查链条的核心界面。</p>
+            </div>
+          </div>
+          <div class="page-tag">Graph Demo</div>
+        </div>
+
+        <section class="card" style="height: calc(100% - 104px); padding:16px;">
+          <div style="display:grid; grid-template-columns: 1.48fr 0.52fr; gap:16px; height:100%;">
+            <div style="min-width:0; min-height:0; border:1px solid var(--line); border-radius:20px; overflow:hidden; background:#f8fbff; padding:18px;">
+              <img
+                src="处理层设计总览材料/graph.png"
+                alt="大数据关系穿透分析界面"
+                style="width:100%; height:100%; object-fit:contain; display:block; background:#fff; border-radius:14px;"
+              />
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:10px; min-width:0;">
+              <div class="small-card tight">
+                <h4>核心定位</h4>
+                <p class="muted">承接 <span class="highlight">图谱构建</span> 与 <span class="highlight">资金/关系分析</span>，用于把案件对象、资金链路和通讯联系组织为可穿透的侦查图谱。</p>
+              </div>
+              <div class="small-card tight">
+                <h4>功能拆解</h4>
+                <ul class="compact-list">
+                  <li>把嫌疑人、律师、关联企业、离岸账户等对象组织为图谱节点，把资金往来和通讯关联组织为边。</li>
+                  <li>通过穿透分析详情还原“嫌疑人—企业—离岸账户”的完整资金路径。</li>
+                  <li>支持按关系类型、穿透层级、筛选条件聚焦关键线索。</li>
+                </ul>
+              </div>
+              <div class="small-card tight" style="flex:1;">
+                <h4>工作流作用</h4>
+                <p class="muted">负责把结构化证据转化为 <span class="highlight">可视化关系图谱</span>，完成资金和关系的穿透分析，还原犯罪利益链条并发现隐藏节点。</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="slide-footer">
+        <div id="footer-left"></div>
+        <div id="footer-right"></div>
+      </footer>
+      <div class="watermark">GRAPH</div>
+    </div>
+  </div>
+  <script src="slide-config.js"></script>
+  <script src="slide-nav.js"></script>
+  <script>
+    const cfg = window.SLIDE_CONFIG;
+    document.getElementById("brand").textContent = cfg.platformName;
+    document.getElementById("footer-left").textContent = cfg.footerLeft;
+    document.getElementById("footer-right").textContent = cfg.footerRight;
+  </script>
+</body>
+</html>

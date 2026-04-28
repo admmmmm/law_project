@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Slides Index</title>
+  <link rel="stylesheet" href="slide.css" />
+</head>
+<body>
+  <div class="index-wrap">
+    <div class="index-head">
+      <h1 id="project-title">HTML Slides</h1>
+      <p id="project-subtitle">目录加载中</p>
+    </div>
+    <div class="index-list" id="index-list"></div>
+  </div>
+
+  <script src="slide-config.js"></script>
+  <script>
+    const cfg = window.SLIDE_CONFIG;
+    document.getElementById("project-title").textContent = cfg.projectTitle;
+    document.getElementById("project-subtitle").textContent = cfg.projectSubtitle;
+
+    const list = document.getElementById("index-list");
+    cfg.pageOrder.forEach((page) => {
+      const a = document.createElement("a");
+      a.href = page.file;
+      a.className = "index-item";
+      a.innerHTML = `
+        <div>
+          <strong>${page.id} · ${page.title}</strong>
+          <div><span>${page.file}</span></div>
+        </div>
+        <span>打开页面</span>
+      `;
+      list.appendChild(a);
+    });
+  </script>
+</body>
+</html>

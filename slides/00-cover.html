@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>00 标题页</title>
+  <link rel="stylesheet" href="slide.css" />
+</head>
+<body>
+  <div class="slide-shell">
+    <div class="slide">
+      <header class="slide-topbar">
+        <div class="brand" id="brand"></div>
+        <div class="topbar-nav">
+          <span class="active">标题页</span>
+          <span>目录</span>
+          <span>项目背景</span>
+          <span>系统设计</span>
+        </div>
+        <div class="topbar-right" id="topbar-right">
+          <div class="page-tag">封面</div>
+        </div>
+      </header>
+
+      <main class="slide-main">
+        <div class="cover-main">
+          <section class="cover-left">
+            <div class="cover-kicker">挑战杯 · 揭榜挂帅专项赛</div>
+            <h1 class="cover-title" id="cover-title"></h1>
+            <p class="cover-subtitle" id="cover-subtitle"></p>
+            <div class="cover-meta">
+              <div class="small-card">
+                <div class="eyebrow">项目定位</div>
+                <p class="muted">面向检察侦查场景，围绕依法立案侦查后的多源证据数据，提供处理、分析、碰撞、画像与建议输出的一体化辅助能力。</p>
+              </div>
+              <div class="small-card">
+                <div class="eyebrow">核心关键词</div>
+                <div class="pill-row">
+                  <div class="pill">检察机关</div>
+                  <div class="pill">依法立案侦查后</div>
+                  <div class="pill">处理</div>
+                  <div class="pill">分析</div>
+                  <div class="pill">碰撞</div>
+                  <div class="pill">信息画像</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="cover-right">
+            <div class="cover-visual">
+              <div class="cover-badge">
+                <span></span><span></span><span></span><span></span>
+              </div>
+              <div class="cover-blob one"></div>
+              <div class="cover-blob two"></div>
+              <div class="cover-blob three"></div>
+              <div class="cover-character">智</div>
+              <div class="cover-panel">
+                <div class="eyebrow">Presentation Cover</div>
+                <h3>检察侦查智能分析平台</h3>
+                <p>从证据接入、图谱构建，到专题分析、信息画像与参考建议输出，形成完整的侦查辅助工作流。</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <footer class="slide-footer">
+        <div id="footer-left"></div>
+        <div id="footer-right"></div>
+      </footer>
+      <div class="watermark">COVER</div>
+    </div>
+  </div>
+  <script src="slide-config.js"></script>
+  <script src="slide-nav.js"></script>
+  <script>
+    const cfg = window.SLIDE_CONFIG;
+    document.getElementById('brand').textContent = cfg.platformName;
+    document.getElementById('cover-title').textContent = cfg.projectTitle;
+    document.getElementById('cover-subtitle').textContent = cfg.projectSubtitle;
+    document.getElementById('footer-left').textContent = cfg.footerLeft;
+    document.getElementById('footer-right').textContent = cfg.footerRight;
+  </script>
+</body>
+</html>
+

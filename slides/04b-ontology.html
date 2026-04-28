@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>04B 领域本体设计</title>
+  <link rel="stylesheet" href="slide.css" />
+</head>
+<body>
+  <div class="slide-shell">
+    <div class="slide fit-slide">
+      <header class="slide-topbar">
+        <div class="brand" id="brand"></div>
+        <div class="topbar-nav">
+          <span>项目背景</span>
+          <span>痛点分析</span>
+          <span class="active">处理层</span>
+          <span>分析与碰撞</span>
+        </div>
+        <div class="topbar-right" id="topbar-right">
+          <div class="page-tag">处理层 5/8</div>
+        </div>
+      </header>
+
+      <main class="slide-main">
+        <div class="page-head">
+          <div class="page-head-left">
+            <div class="page-no">04</div>
+            <div>
+              <h1 class="page-title">领域本体设计</h1>
+              <p class="page-subtitle">领域本体的作用，是把“检察侦查场景里要看什么、怎么关联、怎么理解”先定义清楚。它决定了图谱里的关系对象，也决定了结构化表、文本索引和时间序列能否围绕同一语义对象协同工作。</p>
+            </div>
+          </div>
+          <div class="page-tag">Schema First</div>
+        </div>
+
+        <div style="height: calc(100% - 132px); display:flex; flex-direction:column; gap:14px;">
+          <div class="quote-box">
+            <strong>本体不是让模型自由命名，而是以已有侦查事实为先验输入，用模板 + LLM 辅助补全实体类型和关系类型。</strong>
+          </div>
+
+          <section class="grid-2" style="grid-template-columns: 1.1fr 0.9fr; gap:14px; align-items:stretch;">
+            <article class="card">
+              <div class="eyebrow">本体定义什么</div>
+              <h3>实体类型 + 关系类型</h3>
+              <div class="grid-2" style="gap:14px; margin-top:12px;">
+                <div class="small-card tight">
+                  <h4>实体类型</h4>
+                  <p class="muted">嫌疑人、密切关系人、案件、账户、交易、行为事件、司法文书、单位等。</p>
+                </div>
+                <div class="small-card tight">
+                  <h4>关系类型</h4>
+                  <p class="muted">转账给、频繁联系、共同出现、案件关联、上下级、审批参与、账户控制、文书指向等。</p>
+                </div>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="eyebrow">本体怎么用</div>
+              <h3>先验输入 + 模板驱动</h3>
+              <ul class="compact-list" style="margin-top:12px;">
+                <li><span class="highlight">先验输入</span>：以立案后已掌握的嫌疑人、关系人、案件节点、账户和文书信息为起点。</li>
+                <li><span class="highlight">模板驱动</span>：先定义稳定的实体与关系模板，再让模型做补全、映射和扩展。</li>
+                <li><span class="highlight">统一语义</span>：为图谱、结构化表、文本索引、时间序列以及分析碰撞提供公共语言。</li>
+              </ul>
+            </article>
+          </section>
+
+          <section class="card">
+            <div class="eyebrow">为什么这一页重要</div>
+            <div class="grid-3" style="grid-template-columns: repeat(3, 1fr); gap:12px;">
+              <div class="small-card tight">
+                <h4>统一语义</h4>
+                <p class="muted">没有领域本体，图谱只能“连起来”，很难“讲明白”。</p>
+              </div>
+              <div class="small-card tight">
+                <h4>约束输出</h4>
+                <p class="muted">本体决定后续报告里能不能稳定输出 <span class="highlight">可疑资金流、人员行为、人物关系</span> 等结果。</p>
+              </div>
+              <div class="small-card tight">
+                <h4>支撑上层</h4>
+                <p class="muted">本体越清楚，后面的关系查询、结构化统计、文本追溯、时序分析、画像生成和建议输出越稳。</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <footer class="slide-footer">
+        <div id="footer-left"></div>
+        <div id="footer-right"></div>
+      </footer>
+      <div class="watermark">ONTOLOGY</div>
+    </div>
+  </div>
+  <script src="slide-config.js"></script>
+  <script src="slide-nav.js"></script>
+  <script>
+    const cfg = window.SLIDE_CONFIG;
+    document.getElementById("brand").textContent = cfg.platformName;
+    document.getElementById("footer-left").textContent = cfg.footerLeft;
+    document.getElementById("footer-right").textContent = cfg.footerRight;
+  </script>
+</body>
+</html>

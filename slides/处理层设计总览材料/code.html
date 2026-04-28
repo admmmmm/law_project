@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>司法哨兵 | 多模态数据资产库</title>
+<!-- Google Fonts: Public Sans & Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Public+Sans:wght@400;700;900&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Design System Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "inverse-on-surface": "#eff1f4",
+                        "secondary": "#4c616c",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-high": "#e6e8eb",
+                        "on-primary-fixed": "#001b3c",
+                        "inverse-primary": "#a7c8ff",
+                        "on-tertiary": "#ffffff",
+                        "surface-bright": "#f7f9fc",
+                        "on-tertiary-container": "#ff6d63",
+                        "outline-variant": "#c3c6d1",
+                        "surface-dim": "#d8dadd",
+                        "primary": "#001e40",
+                        "on-error-container": "#93000a",
+                        "outline": "#737780",
+                        "on-tertiary-fixed-variant": "#93000e",
+                        "on-surface": "#191c1e",
+                        "tertiary": "#460003",
+                        "on-tertiary-fixed": "#410003",
+                        "inverse-surface": "#2d3133",
+                        "on-primary": "#ffffff",
+                        "background": "#f7f9fc",
+                        "primary-container": "#003366",
+                        "on-secondary-container": "#526772",
+                        "on-primary-fixed-variant": "#1f477b",
+                        "surface-variant": "#e0e3e6",
+                        "surface-container": "#eceef1",
+                        "on-secondary-fixed": "#071e27",
+                        "tertiary-fixed": "#ffdad6",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb4ac",
+                        "error-container": "#ffdad6",
+                        "secondary-container": "#cfe6f2",
+                        "tertiary-container": "#6e0008",
+                        "secondary-fixed": "#cfe6f2",
+                        "secondary-fixed-dim": "#b4cad6",
+                        "primary-fixed": "#d5e3ff",
+                        "surface-container-highest": "#e0e3e6",
+                        "on-primary-container": "#799dd6",
+                        "on-surface-variant": "#43474f",
+                        "surface": "#f7f9fc",
+                        "on-background": "#191c1e",
+                        "surface-container-low": "#f2f4f7",
+                        "on-secondary-fixed-variant": "#354a53",
+                        "primary-fixed-dim": "#a7c8ff",
+                        "error": "#ba1a1a",
+                        "surface-tint": "#3a5f94",
+                        "on-error": "#ffffff"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    fontFamily: {
+                        "headline": ["Public Sans", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    },
+                    boxShadow: {
+                        'ambient-sm': '0 2px 4px 0 rgba(0, 30, 64, 0.05)',
+                        'ambient-lg': '0 10px 15px -3px rgba(0, 30, 64, 0.05), 0 4px 6px -4px rgba(0, 30, 64, 0.05)',
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .material-symbols-outlined.fill { font-variation-settings: 'FILL' 1; }
+        
+        /* Custom scrollbar for high-density data areas */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e0e3e6; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #c3c6d1; }
+        
+        /* Midnight Gradient utility */
+        .bg-midnight-gradient { background: linear-gradient(135deg, #001e40 0%, #003366 100%); }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body overflow-hidden flex h-screen">
+<!-- === SHARED COMPONENT: SideNavBar === -->
+<nav class="fixed left-0 top-0 h-full flex flex-col items-center py-6 gap-8 bg-[#D8DADD] w-20 z-50">
+<!-- Header -->
+<div class="flex flex-col items-center gap-2 px-1 text-center cursor-default">
+<div class="w-10 h-10 rounded-lg bg-midnight-gradient flex items-center justify-center shadow-ambient-sm shrink-0 overflow-hidden">
+<img alt="State Emblem" class="w-full h-full object-cover mix-blend-overlay opacity-80" data-alt="Abstract geometric dark blue 3D emblem symbolizing structure and authority" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA03zOdVgU0cNZ386tweWqcggAYHVkuJM1rRcddk2XruCpIgJlHzpxstQ2kMFx1lyKPw6OaondUcpB_oYppsn2ws9W4imGeaJESyvwgeAzDzOxSRwIjrTVFbW12zxJqsz64BiWuohna8Pa84IffSst7a8tzw5nF10H1eI9WTQ5594YAiH6q86NydUXX4fwVaGavKZOgjtKL3hQjn6L2YyhRRxA-Y51WiVo0cV5kCTFF5WhX7WBysQ5ShsaX8V2S-gUJI1HeJBk5-N4H"/>
+</div>
+<div class="font-['Inter'] text-[10px] font-bold uppercase tracking-widest text-[#001e40] leading-tight">司法哨兵</div>
+<div class="font-['Inter'] text-[8px] font-bold uppercase tracking-widest text-slate-500">数据节点_01</div>
+</div>
+<!-- CTA -->
+<button class="w-12 h-12 rounded-full bg-midnight-gradient flex items-center justify-center shadow-ambient-lg text-white hover:scale-95 transition-all duration-200 ease-linear" title="新建研判">
+<span class="material-symbols-outlined text-xl">add</span>
+</button>
+<!-- Main Tabs (Active Semantic Match: Evidence for a Case Analysis Screen) -->
+<div class="flex flex-col w-full mt-4">
+<!-- Tab 1: Intelligence -->
+<button class="w-full h-16 flex flex-col items-center justify-center gap-1 text-slate-600 hover:bg-slate-200 transition-all duration-200 ease-linear border-l-4 border-transparent group">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">analytics</span>
+<span class="font-['Inter'] text-[8px] font-bold uppercase tracking-widest">情报</span>
+</button>
+<!-- Tab 2: Evidence (ACTIVE) -->
+<button class="w-full h-16 flex flex-col items-center justify-center gap-1 bg-white text-[#BA1A1A] border-l-4 border-[#BA1A1A] transition-all duration-200 ease-linear group">
+<span class="material-symbols-outlined fill">folder_shared</span>
+<span class="font-['Inter'] text-[8px] font-bold uppercase tracking-widest">证据</span>
+</button>
+<!-- Tab 3: Surveillance -->
+<button class="w-full h-16 flex flex-col items-center justify-center gap-1 text-slate-600 hover:bg-slate-200 transition-all duration-200 ease-linear border-l-4 border-transparent group">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">visibility</span>
+<span class="font-['Inter'] text-[8px] font-bold uppercase tracking-widest">监测</span>
+</button>
+<!-- Tab 4: Archives -->
+<button class="w-full h-16 flex flex-col items-center justify-center gap-1 text-slate-600 hover:bg-slate-200 transition-all duration-200 ease-linear border-l-4 border-transparent group">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">account_balance_wallet</span>
+<span class="font-['Inter'] text-[8px] font-bold uppercase tracking-widest">卷宗</span>
+</button>
+<!-- Tab 5: Protocol -->
+<button class="w-full h-16 flex flex-col items-center justify-center gap-1 text-slate-600 hover:bg-slate-200 transition-all duration-200 ease-linear border-l-4 border-transparent group">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">gavel</span>
+<span class="font-['Inter'] text-[8px] font-bold uppercase tracking-widest">程序</span>
+</button>
+</div>
+<div class="mt-auto flex flex-col w-full mb-4">
+<!-- Footer Tabs -->
+<button class="w-full h-14 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-all duration-200 ease-linear" title="安全">
+<span class="material-symbols-outlined text-lg">shield_lock</span>
+</button>
+<button class="w-full h-14 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-all duration-200 ease-linear" title="支持">
+<span class="material-symbols-outlined text-lg">help_center</span>
+</button>
+</div>
+</nav>
+<!-- === MAIN CONTENT WRAPPER === -->
+<div class="ml-20 flex-1 flex flex-col h-full w-[calc(100%-5rem)] relative">
+<!-- === SHARED COMPONENT: TopNavBar === -->
+<header class="flex justify-between items-center w-full px-6 h-16 bg-slate-50/60 backdrop-blur-xl border-b border-slate-200 shadow-sm shadow-[#001e40]/5 z-40 shrink-0">
+<!-- Brand Logo / Title -->
+<div class="text-lg font-black tracking-tighter text-[#001e40] font-['Public_Sans'] uppercase flex items-center gap-3">
+                午夜法槌 | 司法研判
+            </div>
+<!-- Right Actions -->
+<div class="flex items-center gap-6">
+<!-- Search Bar Placeholder -->
+<div class="relative hidden md:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">search</span>
+<input class="pl-10 pr-4 py-1.5 bg-white border border-slate-200 rounded text-sm w-64 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-slate-900 font-medium placeholder:font-normal placeholder:text-slate-400 transition-colors" placeholder="全局实体查询..." type="text"/>
+</div>
+<div class="flex items-center gap-4 text-slate-500">
+<button class="hover:bg-slate-100 p-1.5 rounded transition-colors scale-95 duration-100 ease-in-out">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="hover:bg-slate-100 p-1.5 rounded transition-colors scale-95 duration-100 ease-in-out">
+<span class="material-symbols-outlined">account_balance</span>
+</button>
+<button class="hover:bg-slate-100 p-1.5 rounded transition-colors scale-95 duration-100 ease-in-out">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded bg-surface-variant overflow-hidden border border-slate-200 ml-2">
+<img alt="Chief Investigator Profile" class="w-full h-full object-cover" data-alt="Professional portrait of a middle-aged male executive in a dark suit against a neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwrIfEfmaP75juyuHi7UUqC7MBl16x00Oaioft1VPTCOFWr_3V_QZ3uUCZDCzWMsgETfSV8Iqm2yLZF2pAVnNKzCVgTqprIWjL7o3sHNWKJjx2ZR1V79Zgkq177c2rnwhf9YyHK0vTDmRBcdUAY6odamKUEn47ka5CZB2NUT3aO-DTCsZfOECl9VSenWf8Np0Og7TVVis39g5rGEJNPJZjATO06HW9Txtrl48BMrmJq736Z0o66Is1IfdyV0lcZjZI9BbypRu5Eqwe"/>
+</div>
+</div>
+</div>
+</header>
+<!-- === CANVAS: MULTI-MODAL DATA ASSET LIBRARY === -->
+<main class="flex-1 overflow-y-auto bg-surface-container-low p-6 md:p-8">
+<div class="max-w-screen-2xl mx-auto space-y-6">
+<!-- Page Header (Editorial Focus) -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4 border-b-4 border-surface-container border-opacity-50">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<span class="bg-primary text-on-primary text-[10px] font-bold px-2 py-0.5 rounded tracking-widest uppercase">机密情报</span>
+<span class="text-secondary text-xs font-medium font-mono">案件编号: 2023-SPC-0042</span>
+</div>
+<h1 class="font-headline font-black text-2xl md:text-3xl tracking-tight text-primary uppercase">多模态数据集成资产库</h1>
+<h2 class="font-label text-sm text-secondary mt-1 tracking-wide">
+<span class="text-on-surface font-semibold">涉案主体:</span> 马某 (原副局长) | <span class="text-on-surface font-semibold">案由:</span> 玩忽职守案
+                        </h2>
+</div>
+<div class="flex flex-col items-end gap-2">
+<div class="bg-error-container text-on-error-container px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-ambient-sm">
+<span class="material-symbols-outlined text-[16px] fill">emergency</span>
+                            优先级: 目标已锁定
+                        </div>
+<div class="text-[10px] text-secondary font-mono tracking-widest">
+                            最后同步: 2023-10-24 08:14:32 Z
+                        </div>
+</div>
+</div>
+<!-- Asymmetric Bento Grid layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 auto-rows-[minmax(280px,auto)]">
+<!-- 1. Holographic Personnel Profile (Col 1-4) -->
+<div class="col-span-1 lg:col-span-4 lg:row-span-2 bg-surface-container-lowest rounded-lg shadow-ambient-sm border-l-4 border-primary flex flex-col overflow-hidden relative">
+<!-- Decorative Top Graphic -->
+<div class="h-20 bg-surface-bright w-full relative overflow-hidden border-b border-surface-variant/50">
+<div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9IiNjM2M2ZDEiLz48L3N2Zz4=')] opacity-30"></div>
+</div>
+<div class="px-6 pb-6 -mt-10 flex-1 flex flex-col relative z-10">
+<!-- Avatar & Core Identity -->
+<div class="flex items-end gap-4 mb-6">
+<div class="w-24 h-24 rounded bg-surface-container-highest shadow-ambient-lg border-2 border-surface-container-lowest overflow-hidden">
+<img alt="Target Subject Photo" class="w-full h-full object-cover grayscale contrast-125" data-alt="Black and white high contrast profile photo of a mature asian male with a stern expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCexnGWFc6FG1Okq5qtAVsi-QjaHy8m6k7YNxrMlMbnEhyOdGm4tfD1FcZ7QOq2kRa4sdp8MEqQFuWYlfjgfY6qYeAM_g43N1nwrhs3dlXic8CfERzPJLDy7ZAoYTjUx3SglxEXRbL6NeyriAnviVsXsAMcZt1RrnEqMD-2ffH-L44JK1ViCazq2sBrdFwfo90fxGY8dGDvDOw5Dz7UUyVtNHS_47Nk77ZtYzWe00JOMa7BQU4SiyxrvGWO1IY7guzFAVUwPPh2WnlM"/>
+</div>
+<div class="pb-1">
+<h3 class="font-headline font-black text-2xl text-primary leading-none">马某</h3>
+<p class="text-xs text-secondary font-mono mt-1">身份证号: 3201021965****401X</p>
+</div>
+</div>
+<!-- Biometrics & Risk Score -->
+<div class="grid grid-cols-2 gap-4 mb-6 p-4 bg-surface-bright rounded">
+<div class="flex flex-col gap-1">
+<span class="text-[10px] text-secondary font-bold uppercase tracking-wider">社会风险指数</span>
+<div class="flex items-end gap-1 text-error">
+<span class="font-headline font-black text-3xl leading-none">89</span>
+<span class="text-xs font-bold mb-0.5">/100</span>
+</div>
+<div class="w-full h-1 bg-surface-variant mt-1 rounded-full overflow-hidden">
+<div class="h-full bg-error w-[89%]"></div>
+</div>
+</div>
+<div class="flex flex-col gap-2 justify-center pl-4 border-l border-surface-variant">
+<div class="flex items-center gap-2 text-xs text-on-surface">
+<span class="material-symbols-outlined text-[14px] text-primary">fingerprint</span>
+<span>生物指纹: <span class="font-bold text-primary">已匹配</span></span>
+</div>
+<div class="flex items-center gap-2 text-xs text-on-surface">
+<span class="material-symbols-outlined text-[14px] text-primary">biotech</span>
+<span>DNA 档案: <span class="font-bold text-primary">已归档</span></span>
+</div>
+</div>
+</div>
+<!-- Affiliations Details -->
+<div class="flex-1">
+<h4 class="text-[10px] font-bold text-secondary uppercase tracking-widest mb-3 border-b border-surface-variant pb-1">实体关联</h4>
+<ul class="space-y-3 text-sm">
+<li class="flex justify-between items-start">
+<span class="text-secondary w-20 shrink-0">官方职务</span>
+<span class="text-on-surface font-medium text-right">原市城市管理局副局长</span>
+</li>
+<li class="flex justify-between items-start">
+<span class="text-secondary w-20 shrink-0">状态</span>
+<span class="text-error font-bold text-right flex items-center gap-1 justify-end">
+<span class="w-2 h-2 rounded-full bg-error"></span> 停职 (留置)
+                                        </span>
+</li>
+<li class="flex justify-between items-start">
+<span class="text-secondary w-20 shrink-0">已知关联人</span>
+<span class="text-on-surface text-right text-xs">李某 (承包商), 王某 (会计)</span>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- 3. Spatiotemporal Trajectory Clusters (Col 5-12, Row 1) -->
+<div class="col-span-1 lg:col-span-8 bg-surface-container-lowest rounded-lg shadow-ambient-sm flex flex-col md:flex-row overflow-hidden border border-transparent hover:border-surface-variant transition-colors">
+<!-- Data Rows (Left side) -->
+<div class="flex-1 p-6 flex flex-col border-r border-surface-variant/50">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline font-bold text-primary text-base flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">share_location</span>
+                                    时空轨迹簇
+                                </h3>
+<span class="text-[10px] bg-secondary-container text-on-secondary-container px-2 py-1 rounded font-bold">14 个数据源活跃</span>
+</div>
+<!-- Timeline List -->
+<div class="flex-1 overflow-y-auto pr-2 relative">
+<!-- Tonal Line -->
+<div class="absolute left-2 top-2 bottom-2 w-0.5 bg-surface-variant"></div>
+<div class="space-y-4 relative z-10">
+<!-- Row 1 -->
+<div class="flex gap-4 group">
+<div class="w-4 h-4 rounded-full bg-primary-container border-2 border-white shrink-0 mt-0.5 shadow-sm"></div>
+<div class="flex-1 bg-surface-bright group-hover:bg-surface-container-low transition-colors p-3 rounded border border-surface-variant/30">
+<div class="flex justify-between text-xs mb-1">
+<span class="font-mono font-bold text-primary">2023-09-12 14:23:05</span>
+<span class="text-secondary bg-surface-container px-1.5 rounded">基站定位</span>
+</div>
+<p class="text-sm text-on-surface font-medium">朝阳区 4A 基站</p>
+<p class="text-[10px] text-secondary mt-1 font-mono">IMEI: 86429****2193</p>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="flex gap-4 group">
+<div class="w-4 h-4 rounded-full bg-error text-white border-2 border-white shrink-0 mt-0.5 shadow-sm flex items-center justify-center">
+<span class="material-symbols-outlined text-[10px]">warning</span>
+</div>
+<div class="flex-1 bg-error-container/20 group-hover:bg-error-container/40 transition-colors p-3 rounded border border-error/20">
+<div class="flex justify-between text-xs mb-1">
+<span class="font-mono font-bold text-error">2023-09-12 21:45:12</span>
+<span class="text-error bg-white px-1.5 rounded font-medium border border-error/20">车牌识别摄像头</span>
+</div>
+<p class="text-sm text-on-surface font-medium">G4 北收费站，进入河北</p>
+<p class="text-[10px] text-error mt-1 font-mono">车牌: 京A88*** (妻子注册)</p>
+</div>
+</div>
+<!-- Row 3 -->
+<div class="flex gap-4 group">
+<div class="w-4 h-4 rounded-full bg-surface-variant border-2 border-white shrink-0 mt-0.5 shadow-sm"></div>
+<div class="flex-1 bg-surface-bright group-hover:bg-surface-container-low transition-colors p-3 rounded border border-surface-variant/30">
+<div class="flex justify-between text-xs mb-1">
+<span class="font-mono font-bold text-secondary">2023-09-10 08:30:00</span>
+<span class="text-secondary bg-surface-container px-1.5 rounded">航空记录</span>
+</div>
+<p class="text-sm text-on-surface font-medium">航班 CA1890 (PEK -&gt; SZX)</p>
+<p class="text-[10px] text-secondary mt-1 font-mono">座位: 4F (检测到头等舱升舱)</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Map Visual Placeholder -->
+<div class="w-full md:w-[40%] bg-surface-container-highest relative overflow-hidden hidden md:block">
+<!-- Simulated Map Background using gradients to avoid inline images/base64 -->
+<div class="absolute inset-0 bg-[#e0e3e6]" style="background-image: radial-gradient(#c3c6d1 1px, transparent 1px); background-size: 20px 20px;">
+</div>
+<!-- Map Overlay UI -->
+<div class="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1.5 rounded shadow-ambient-sm border border-slate-200">
+<span class="text-[10px] font-bold tracking-widest uppercase text-primary">北京电子围栏</span>
+</div>
+<!-- Fake Map Nodes -->
+<div class="absolute top-1/4 left-1/4 w-3 h-3 rounded-full bg-primary/40 animate-pulse"></div>
+<div class="absolute top-1/4 left-1/4 w-2 h-2 rounded-full bg-primary transform translate-x-0.5 translate-y-0.5"></div>
+<div class="absolute bottom-1/3 right-1/3 w-4 h-4 rounded-full bg-error/40 animate-pulse"></div>
+<div class="absolute bottom-1/3 right-1/3 w-2 h-2 rounded-full bg-error transform translate-x-1 translate-y-1"></div>
+<!-- Connecting Line SVG -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+<path class="opacity-60" d="M 50 50 Q 150 100, 200 150" fill="transparent" stroke="#ba1a1a" stroke-dasharray="4 4" stroke-width="1.5"></path>
+</svg>
+</div>
+</div>
+<!-- 2. Cross-platform Financial Details (Col 5-9, Row 2) -->
+<div class="col-span-1 lg:col-span-5 bg-surface-container-lowest rounded-lg shadow-ambient-sm p-6 flex flex-col">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline font-bold text-primary text-base flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">account_balance</span>
+                                多源资金明细
+                            </h3>
+<button class="text-xs text-primary font-bold hover:underline flex items-center">
+                                导出 CSV <span class="material-symbols-outlined text-[14px] ml-1">download</span>
+</button>
+</div>
+<div class="flex-1 overflow-x-auto">
+<table class="w-full text-left text-sm border-collapse">
+<thead>
+<tr class="border-b-2 border-surface-variant text-xs text-secondary uppercase tracking-wider font-bold">
+<th class="py-2 pr-4 font-mono">日期</th>
+<th class="py-2 px-4">平台</th>
+<th class="py-2 px-4">交易方</th>
+<th class="py-2 pl-4 text-right">金额 (CNY)</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-variant/50">
+<tr class="hover:bg-surface-bright transition-colors">
+<td class="py-3 pr-4 font-mono text-[11px] text-secondary">09-11 10:20</td>
+<td class="py-3 px-4">
+<div class="flex items-center gap-1.5">
+<span class="w-5 h-5 rounded bg-[#108EE9] text-white flex items-center justify-center text-[10px] font-bold">ZFB</span>
+<span class="text-xs font-medium">支付宝</span>
+</div>
+</td>
+<td class="py-3 px-4 text-xs font-medium">XXX 贸易公司</td>
+<td class="py-3 pl-4 text-right font-mono font-bold text-on-surface">50,000.00</td>
+</tr>
+<tr class="hover:bg-surface-bright transition-colors bg-error-container/10 border-l-2 border-error">
+<td class="py-3 pr-4 font-mono text-[11px] text-error pl-2">09-08 15:44</td>
+<td class="py-3 px-4">
+<div class="flex items-center gap-1.5">
+<span class="w-5 h-5 rounded border border-[#B22222] text-[#B22222] flex items-center justify-center text-[10px] font-bold">BOC</span>
+<span class="text-xs font-medium text-error">中国银行</span>
+</div>
+</td>
+<td class="py-3 px-4 text-xs font-bold text-error">离岸账户 (HK)</td>
+<td class="py-3 pl-4 text-right font-mono font-black text-error">1,250,000.00</td>
+</tr>
+<tr class="hover:bg-surface-bright transition-colors">
+<td class="py-3 pr-4 font-mono text-[11px] text-secondary">09-05 08:12</td>
+<td class="py-3 px-4">
+<div class="flex items-center gap-1.5">
+<span class="w-5 h-5 rounded bg-[#09B83E] text-white flex items-center justify-center text-[10px] font-bold">WX</span>
+<span class="text-xs font-medium">微信支付</span>
+</div>
+</td>
+<td class="py-3 px-4 text-xs font-medium">奢侈品店</td>
+<td class="py-3 pl-4 text-right font-mono font-bold text-on-surface">12,800.00</td>
+</tr>
+<tr class="hover:bg-surface-bright transition-colors">
+<td class="py-3 pr-4 font-mono text-[11px] text-secondary">08-28 14:00</td>
+<td class="py-3 px-4">
+<div class="flex items-center gap-1.5">
+<span class="w-5 h-5 rounded bg-surface-variant text-secondary flex items-center justify-center text-[10px] font-bold">ICBC</span>
+<span class="text-xs font-medium">工商银行</span>
+</div>
+</td>
+<td class="py-3 px-4 text-xs font-medium">薪资存款</td>
+<td class="py-3 pl-4 text-right font-mono font-bold text-[#09B83E]">+18,450.00</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="mt-4 text-[10px] text-secondary text-right font-mono uppercase border-t border-surface-variant pt-2">
+                            不明资金流出总额: <span class="text-error font-bold ml-1">1,312,800.00 CNY</span>
+</div>
+</div>
+<!-- 4. Digital Footprint & Comms (Col 10-12, Row 2) -->
+<div class="col-span-1 lg:col-span-3 bg-surface-container-lowest rounded-lg shadow-ambient-sm p-6 flex flex-col border border-transparent hover:border-primary/20 transition-colors">
+<div class="flex justify-between items-center mb-4 pb-2 border-b border-surface-variant">
+<h3 class="font-headline font-bold text-primary text-base flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[18px]">forum</span>
+                                数字足迹
+                            </h3>
+<div class="w-2 h-2 rounded-full bg-error animate-pulse" title="实时拦截"></div>
+</div>
+<div class="flex-1 overflow-y-auto space-y-4 pr-1">
+<!-- Message Bubble 1 -->
+<div class="flex flex-col gap-1 items-start">
+<span class="text-[10px] text-secondary font-mono">2023-09-11 22:15 • WX-提取</span>
+<div class="bg-surface-container-low border border-surface-variant rounded-r-lg rounded-bl-lg p-3 text-sm text-on-surface shadow-sm">
+                                    "招标流程的文件清理干净了吗？"
+                                </div>
+</div>
+<!-- Message Bubble 2 (Target) -->
+<div class="flex flex-col gap-1 items-end mt-2">
+<span class="text-[10px] text-secondary font-mono">2023-09-11 22:18 • 目标</span>
+<div class="bg-primary/5 border border-primary/20 rounded-l-lg rounded-br-lg p-3 text-sm text-primary font-medium shadow-sm max-w-[90%]">
+                                    "处理好了。别再打这个号码了。用 Telegram。"
+                                </div>
+</div>
+<!-- Sys Log -->
+<div class="flex items-center gap-2 mt-4">
+<div class="h-px bg-surface-variant flex-1"></div>
+<span class="text-[9px] text-secondary uppercase tracking-widest font-bold">检测到应用切换</span>
+<div class="h-px bg-surface-variant flex-1"></div>
+</div>
+<!-- Message Bubble 3 -->
+<div class="flex flex-col gap-1 items-end mt-2">
+<span class="text-[10px] text-error font-mono font-bold">2023-09-11 22:25 • TG-拦截</span>
+<div class="bg-error-container text-on-error-container border border-error/30 rounded-l-lg rounded-br-lg p-3 text-sm shadow-sm max-w-[90%]">
+                                    "明早把那 120 万转到香港账户。审计组周三到。"
+                                </div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

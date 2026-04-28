@@ -1,0 +1,6 @@
+﻿account_status,wechat_id,name,register_time,id_card,phone,binding_status,bank_name,bank_card,id_card_from_path,account_from_path,source_file,source_sheet,source_row
+正常,tom123,张三,2023-07-14 23:48,110108199807051211,15412345678,绑定确认(正常),光大借记卡快捷支付,621312001211123,110108199807051211,tom123,数据样本1\数据包\数据样本1-微信\注册信息\IDCARD\110108199807051211\tom123\TenpayRegInfo1.xls,TenpayRegInfo,1
+正常,jerry123,李四,2015-01-30 01:09,231025199102022212,15512345679,绑定确认(正常),光大借记卡快捷支付,621423332512,231025199102022212,jerry123,数据样本1\数据包\数据样本1-微信\注册信息\IDCARD\231025199102022212\jerry123\TenpayRegInfo1.xls,TenpayRegInfo,1
+,,,,,,解除绑定,光大借记卡快捷支付,621455661212,231025199102022212,jerry123,数据样本1\数据包\数据样本1-微信\注册信息\IDCARD\231025199102022212\jerry123\TenpayRegInfo1.xls,TenpayRegInfo,2
+,,,,,,绑定确认(正常),中行借记卡快捷支付(北京),6217123458992031,231025199102022212,jerry123,数据样本1\数据包\数据样本1-微信\注册信息\IDCARD\231025199102022212\jerry123\TenpayRegInfo1.xls,TenpayRegInfo,3
+,,,,,,绑定确认(正常),微众银行借记卡快捷支付,6217123458120384,231025199102022212,jerry123,数据样本1\数据包\数据样本1-微信\注册信息\IDCARD\231025199102022212\jerry123\TenpayRegInfo1.xls,TenpayRegInfo,4

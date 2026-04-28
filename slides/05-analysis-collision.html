@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>05 分析与碰撞层设计</title>
+  <link rel="stylesheet" href="slide.css" />
+</head>
+<body>
+  <div class="slide-shell">
+    <div class="slide fit-slide">
+      <header class="slide-topbar">
+        <div class="brand" id="brand"></div>
+        <div class="topbar-nav">
+          <span>处理层</span>
+          <span class="active">分析与碰撞</span>
+          <span>画像输出</span>
+          <span>建议生成</span>
+        </div>
+        <div class="topbar-right" id="topbar-right">
+          <div class="page-tag">逻辑架构页</div>
+        </div>
+      </header>
+
+      <main class="slide-main">
+        <div class="page-head" style="margin-bottom:14px;">
+          <div class="page-head-left">
+            <div class="page-no">05</div>
+            <div>
+              <h1 class="page-title">分析与碰撞层设计</h1>
+              <p class="page-subtitle">分析负责提炼规律，碰撞负责交叉验证。系统以图谱作为关系组织核心，同时结合结构化数据表、文本检索索引和时间序列组织方式，共同支撑分析与碰撞。</p>
+            </div>
+          </div>
+          <div class="page-tag">Analysis + Collision</div>
+        </div>
+
+        <div class="quote-box" style="margin-bottom:14px;">
+          <strong>图谱只是关系底座，不是唯一的数据组织方式；真正把“数据关联”转成“侦查关注点”的，是分析与碰撞这一层。</strong>
+        </div>
+
+        <div class="grid-2-uneven" style="height: calc(100% - 118px); align-items:stretch;">
+          <section style="display:flex;flex-direction:column;gap:14px;">
+            <div class="grid-2" style="gap:14px;">
+              <article class="card">
+                <div class="eyebrow">分析模块</div>
+                <h3>分析：规律提炼</h3>
+                <p class="muted">基于侦查图谱，提炼人物关系强度、资金流向特征和行为规律轨迹。</p>
+                <ul class="compact-list" style="margin-top:10px;">
+                  <li>人物关系分析</li>
+                  <li>资金链路概括</li>
+                  <li>行为轨迹整理</li>
+                </ul>
+              </article>
+
+              <article class="card">
+                <div class="eyebrow">碰撞模块</div>
+                <h3>碰撞：交叉验证</h3>
+                <p class="muted">对多源证据做横向比对，发现证言、资金、关系和时间上的异常重叠。</p>
+                <ul class="compact-list" style="margin-top:10px;">
+                  <li>多源证据比对</li>
+                  <li>异常点自动提示</li>
+                  <li>重点对象快速聚焦</li>
+                </ul>
+              </article>
+            </div>
+
+            <section class="card">
+              <div class="eyebrow">核心分析维度</div>
+              <div class="grid-3" style="grid-template-columns: repeat(4, 1fr); gap:12px;">
+                <article class="small-card tight">
+                  <h4>人物关系</h4>
+                  <p class="muted">识别桥接点、隐藏关联人和利益共同体。</p>
+                </article>
+                <article class="small-card tight">
+                  <h4>资金流动</h4>
+                  <p class="muted">关注异常转账循环和资金回流路径。</p>
+                </article>
+                <article class="small-card tight">
+                  <h4>行为特征</h4>
+                  <p class="muted">提炼异常通联、轨迹重合和习惯偏离。</p>
+                </article>
+                <article class="small-card tight">
+                  <h4>时间序列</h4>
+                  <p class="muted">还原案发时序，锁定风险爆发窗口。</p>
+                </article>
+              </div>
+            </section>
+          </section>
+
+          <aside style="display:flex;flex-direction:column;gap:14px;">
+            <section class="card">
+              <div class="eyebrow">产出路径</div>
+              <div style="display:grid;gap:10px;">
+                <div class="small-card tight" style="display:flex;justify-content:space-between;align-items:center;">
+                  <strong class="highlight">参考信息</strong>
+                  <span class="muted">Clues</span>
+                </div>
+                <div class="small-card tight" style="display:flex;justify-content:space-between;align-items:center;">
+                  <strong class="highlight">信息画像</strong>
+                  <span class="muted">Profiling</span>
+                </div>
+                <div class="small-card tight" style="display:flex;justify-content:space-between;align-items:center;">
+                  <strong class="highlight">参考建议</strong>
+                  <span class="muted">Advice</span>
+                </div>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="eyebrow">一句话总结</div>
+              <div class="grid-3" style="grid-template-columns: 1fr; gap:10px;">
+                <div class="small-card tight">
+                  <h4>规律 + 验证</h4>
+                  <p class="muted">分析看规律，碰撞做验证。</p>
+                </div>
+                <div class="small-card tight">
+                  <h4>最终结果</h4>
+                  <p class="muted">最终输出不是图谱本身，而是线索、画像和建议。</p>
+                </div>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </main>
+
+      <footer class="slide-footer">
+        <div id="footer-left"></div>
+        <div id="footer-right"></div>
+      </footer>
+      <div class="watermark">ANALYSIS</div>
+    </div>
+  </div>
+  <script src="slide-config.js"></script>
+  <script src="slide-nav.js"></script>
+  <script>
+    const cfg = window.SLIDE_CONFIG;
+    document.getElementById("brand").textContent = cfg.platformName;
+    document.getElementById("footer-left").textContent = cfg.footerLeft;
+    document.getElementById("footer-right").textContent = cfg.footerRight;
+  </script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>06 多维分析与交叉碰撞机制</title>
+  <link rel="stylesheet" href="slide.css" />
+</head>
+<body>
+  <div class="slide-shell">
+    <div class="slide fit-slide">
+      <header class="slide-topbar">
+        <div class="brand" id="brand"></div>
+        <div class="topbar-nav">
+          <span>分析与碰撞</span>
+          <span class="active">交叉机制</span>
+          <span>线索摘要</span>
+          <span>侦查建议</span>
+        </div>
+        <div class="topbar-right" id="topbar-right">
+          <div class="page-tag">机制页</div>
+        </div>
+      </header>
+
+      <main class="slide-main">
+        <div class="page-head" style="margin-bottom:18px;">
+          <div class="page-head-left">
+            <div class="page-no">06</div>
+            <div>
+              <h1 class="page-title">多维分析与交叉碰撞机制</h1>
+              <p class="page-subtitle">通过“人、钱、行、时”四维交叉验证，把复杂数据关系压缩成更可执行的侦查关注点。</p>
+            </div>
+          </div>
+          <div class="page-tag">Collision Matrix</div>
+        </div>
+
+        <div class="grid-2-uneven" style="height: calc(100% - 132px);">
+          <section style="display:flex;flex-direction:column;gap:18px;">
+            <section class="card stretch-card">
+              <div class="eyebrow">交叉碰撞矩阵</div>
+              <div class="grid-3" style="grid-template-columns: 1fr 1fr; gap:16px;">
+                <article class="small-card">
+                  <h4>人物 × 资金</h4>
+                  <p class="muted">识别关系网内的非正常资金往来，关注隐性关系人与账户之间的利益链。</p>
+                </article>
+                <article class="small-card">
+                  <h4>人物 × 行为</h4>
+                  <p class="muted">识别表面无关人员在关键节点的时空交集，发现协同异常轨迹。</p>
+                </article>
+                <article class="small-card">
+                  <h4>资金 × 时间</h4>
+                  <p class="muted">匹配敏感时段与资金波动，锁定与办案节点吻合的异常窗口。</p>
+                </article>
+                <article class="small-card">
+                  <h4>行为 × 时间</h4>
+                  <p class="muted">分析时序突变，关注毁证、规避或逃避行为。</p>
+                </article>
+              </div>
+            </section>
+
+            <section class="card">
+              <div class="eyebrow">从碰撞到结果</div>
+              <div class="grid-3">
+                <article class="small-card tight">
+                  <h4>画像生成</h4>
+                  <p class="muted">形成人员、关系人和异常账户的结构化描述。</p>
+                </article>
+                <article class="small-card tight">
+                  <h4>线索摘要</h4>
+                  <p class="muted">提炼多证据共同支持的异常点。</p>
+                </article>
+                <article class="small-card tight">
+                  <h4>侦查建议</h4>
+                  <p class="muted">输出优先核查对象、关键时间段和重点关系链。</p>
+                </article>
+              </div>
+            </section>
+          </section>
+
+          <aside style="display:flex;flex-direction:column;gap:18px;">
+            <section class="card stretch-card" style="padding:16px;">
+              <div class="eyebrow">碰撞机制界面展示</div>
+              <div style="height: calc(100% - 26px); min-height:0; border:1px solid var(--line); border-radius:18px; overflow:hidden; background:#f8fbff; padding:14px;">
+                <img
+                  src="处理层设计总览材料/collision.png"
+                  alt="多维分析与交叉碰撞机制界面"
+                  style="width:100%; height:100%; object-fit:contain; display:block; background:#fff; border-radius:12px;"
+                />
+              </div>
+            </section>
+          </aside>
+        </div>
+      </main>
+
+      <footer class="slide-footer">
+        <div id="footer-left"></div>
+        <div id="footer-right"></div>
+      </footer>
+      <div class="watermark">COLLISION</div>
+    </div>
+  </div>
+  <script src="slide-config.js"></script>
+  <script src="slide-nav.js"></script>
+  <script>
+    const cfg = window.SLIDE_CONFIG;
+    document.getElementById("brand").textContent = cfg.platformName;
+    document.getElementById("footer-left").textContent = cfg.footerLeft;
+    document.getElementById("footer-right").textContent = cfg.footerRight;
+  </script>
+</body>
+</html>

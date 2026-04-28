@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>04B Evidence：证据接入与读取</title>
+  <link rel="stylesheet" href="slide.css" />
+</head>
+<body>
+  <div class="slide-shell">
+    <div class="slide fit-slide">
+      <header class="slide-topbar">
+        <div class="brand" id="brand"></div>
+        <div class="topbar-nav">
+          <span>项目背景</span>
+          <span>痛点分析</span>
+          <span class="active">处理层</span>
+          <span>分析与碰撞</span>
+        </div>
+        <div class="topbar-right" id="topbar-right">
+          <div class="page-tag">处理层 3/7</div>
+        </div>
+      </header>
+
+      <main class="slide-main">
+        <div class="page-head" style="margin-bottom:18px;">
+          <div class="page-head-left">
+            <div class="page-no">04</div>
+            <div>
+              <h1 class="page-title">Evidence：证据接入与读取</h1>
+              <p class="page-subtitle">Evidence 层负责把“材料”和“数据”统一接入系统，并完成读取、抽取和标准化，为后续关系组织与分析碰撞打基础。</p>
+            </div>
+          </div>
+          <div class="page-tag">Multi-source Input</div>
+        </div>
+
+        <div style="height: calc(100% - 132px); display:flex; flex-direction:column; gap:14px;">
+          <section class="grid-2" style="grid-template-columns: 1.15fr 0.85fr; gap:14px; align-items:stretch;">
+            <article class="card">
+              <div class="eyebrow">证据类型归纳</div>
+              <h3>两大类输入：材料类 + 数据类</h3>
+              <div class="grid-2" style="gap:14px; margin-top:12px;">
+                <div class="small-card tight">
+                  <h4>非结构化材料</h4>
+                  <p class="muted">公安侦查卷、讯问笔录、同步录音录像、鉴定意见、搜查笔录、扣押清单，以及判决书、裁定书、庭审记录、执行材料、留置笔录、谈话录音、涉案财物清单等。</p>
+                </div>
+                <div class="small-card tight">
+                  <h4>结构化数据</h4>
+                  <p class="muted">通话详单、短信和聊天记录，银行流水、支付宝、微信支付、证券期货数据，以及户籍、出入境、婚姻、房产、车辆、工商、税务、社保、公积金、理财等数据。</p>
+                </div>
+              </div>
+            </article>
+
+            <article class="card">
+              <div class="eyebrow">读取方式</div>
+              <h3>识别格式 -> 抽取字段 -> 标准化</h3>
+              <ul class="compact-list" style="margin-top:12px;">
+                <li><span class="highlight">格式识别</span>：区分 PDF、Word、Excel、CSV、OCR、日志和导出记录，进入对应解析链路。</li>
+                <li><span class="highlight">内容抽取</span>：抽取时间、金额、账户、人员、地点、设备、交易对象等核心字段。</li>
+                <li><span class="highlight">标准化处理</span>：统一时间格式、姓名写法、证件号、账户号、金额单位，形成可继续分析的标准字段。</li>
+              </ul>
+            </article>
+          </section>
+
+          <section class="card">
+            <div class="eyebrow">这一页想传达的重点</div>
+            <div class="grid-3" style="grid-template-columns: repeat(3, 1fr); gap:12px;">
+              <div class="small-card tight">
+                <h4>数据特点</h4>
+                <p class="muted">Evidence 层面对的是 <span class="highlight">多源、异构、海量</span> 的真实侦查数据。</p>
+              </div>
+              <div class="small-card tight">
+                <h4>核心难点</h4>
+                <p class="muted">难点不是单条数据看不懂，而是来源多、格式杂、字段不统一。</p>
+              </div>
+              <div class="small-card tight">
+                <h4>后续前提</h4>
+                <p class="muted">只有先完成读取、清洗和标准化，后续本体建模及多种数据组织方式才有可能成立。</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <footer class="slide-footer">
+        <div id="footer-left"></div>
+        <div id="footer-right"></div>
+      </footer>
+      <div class="watermark">EVIDENCE</div>
+    </div>
+  </div>
+  <script src="slide-config.js"></script>
+  <script src="slide-nav.js"></script>
+  <script>
+    const cfg = window.SLIDE_CONFIG;
+    document.getElementById("brand").textContent = cfg.platformName;
+    document.getElementById("footer-left").textContent = cfg.footerLeft;
+    document.getElementById("footer-right").textContent = cfg.footerRight;
+  </script>
+</body>
+</html>

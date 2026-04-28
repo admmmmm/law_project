@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>06 技术实现与可行性</title>
+  <link rel="stylesheet" href="slide.css" />
+</head>
+<body>
+  <div class="slide-shell">
+    <div class="slide fit-slide">
+      <header class="slide-topbar">
+        <div class="brand" id="brand"></div>
+        <div class="topbar-nav">
+          <span>处理层</span>
+          <span>分析与碰撞</span>
+          <span class="active">技术实现</span>
+          <span>创新特色</span>
+        </div>
+        <div class="topbar-right" id="topbar-right">
+          <div class="page-tag">可行性页</div>
+        </div>
+      </header>
+
+      <main class="slide-main">
+        <div class="page-head" style="margin-bottom:18px;">
+          <div class="page-head-left">
+            <div class="page-no">06</div>
+            <div>
+              <h1 class="page-title">技术实现与可行性</h1>
+              <p class="page-subtitle">系统采用前后端分离架构，前端负责交互展示，后端负责证据解析、关系组织、分析碰撞和结果生成。系统以图谱作为关系组织核心，同时结合结构化数据表、文本检索索引和时间序列组织方式，共同支撑分析与碰撞。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2-uneven" style="height: calc(100% - 132px);">
+          <section style="display:flex;flex-direction:column;gap:18px;">
+            <section class="card">
+              <div class="eyebrow">总体架构</div>
+              <section class="flow-row">
+                <div class="flow-card">
+                  <h4>前端展示层</h4>
+                  <p>总览页、图谱页、资金页、画像页、报告页，用于交互呈现和结果展示。</p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-card">
+                  <h4>后端处理层</h4>
+                  <p>负责证据读取、字段抽取、本体建模，以及图谱、结构化表、文本索引、时间序列等多种底层组织方式的统一输出。</p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-card">
+                  <h4>分析输出层</h4>
+                  <p>负责分析、碰撞、报告、画像和建议生成，形成最终辅助研判结果。</p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-card">
+                  <h4>部署形态</h4>
+                  <p>支持本地化、私有化、内网部署，适应涉密和业务场景要求。</p>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-card">
+                  <h4>可视化呈现</h4>
+                  <p>以关系查询、专题报告、画像卡片和线索建议为主要展示结果。</p>
+                </div>
+              </section>
+            </section>
+
+            <section class="card">
+              <div class="eyebrow">为什么能做出来</div>
+              <div class="grid-3">
+                <article class="small-card tight">
+                  <h4>已有参考基础</h4>
+                  <p class="muted">可参考 MiroFish 的证据解析、本体生成、图谱构建和报告生成思路，但改造成检察侦查场景。</p>
+                </article>
+                <article class="small-card tight">
+                  <h4>技术路径明确</h4>
+                  <p class="muted">文件解析、规则清洗、图谱存储、结构化表查询、文本检索、时间序列组织和 LLM 归纳输出，都有成熟实现路径。</p>
+                </article>
+                <article class="small-card tight">
+                  <h4>比赛原型可控</h4>
+                  <p class="muted">当前阶段不追求全量实战系统，重点是做出完整链路和可信演示原型。</p>
+                </article>
+              </div>
+            </section>
+          </section>
+
+          <aside style="display:flex;flex-direction:column;gap:18px;">
+            <section class="card">
+              <div class="eyebrow">可行性判断</div>
+              <div class="grid-3" style="grid-template-columns: 1fr; gap:12px;">
+                <div class="small-card tight">
+                  <h4>前后端可做</h4>
+                  <p class="muted">前端用 HTML / Vue 可快速完成页面原型，后端的文件解析、关系建模和接口输出都有成熟方案。</p>
+                </div>
+                <div class="small-card tight">
+                  <h4>模型定位清晰</h4>
+                  <p class="muted">LLM 主要负责归纳、成文和解释，不承担不受控的核心推理。</p>
+                </div>
+                <div class="small-card tight">
+                  <h4>部署路径明确</h4>
+                  <p class="muted">可走本地化和私有化部署，适应实际业务场景。</p>
+                </div>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </main>
+
+      <footer class="slide-footer">
+        <div id="footer-left"></div>
+        <div id="footer-right"></div>
+      </footer>
+      <div class="watermark">TECH</div>
+    </div>
+  </div>
+  <script src="slide-config.js"></script>
+  <script src="slide-nav.js"></script>
+  <script>
+    const cfg = window.SLIDE_CONFIG;
+    document.getElementById("brand").textContent = cfg.platformName;
+    document.getElementById("footer-left").textContent = cfg.footerLeft;
+    document.getElementById("footer-right").textContent = cfg.footerRight;
+  </script>
+</body>
+</html>

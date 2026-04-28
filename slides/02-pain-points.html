@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>02 场景痛点分析</title>
+  <link rel="stylesheet" href="slide.css" />
+</head>
+<body>
+  <div class="slide-shell">
+    <div class="slide">
+      <header class="slide-topbar">
+        <div class="brand" id="brand"></div>
+        <div class="topbar-nav">
+          <span>项目背景</span>
+          <span class="active">场景分析</span>
+          <span>系统设计</span>
+          <span>输出能力</span>
+        </div>
+        <div class="topbar-right" id="topbar-right">
+          <div class="page-tag">痛点页</div>
+        </div>
+      </header>
+
+      <main class="slide-main">
+        <div class="page-head">
+          <div class="page-head-left">
+            <div class="page-no">02</div>
+            <div>
+              <h1 class="page-title">场景痛点分析</h1>
+              <p class="page-subtitle">数据杂、关联隐、呈现散。传统人工方式难以快速应对多源、分散、隐蔽的复杂证据数据。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-bottom:24px;">
+          <section class="card">
+            <div class="eyebrow">痛点 01</div>
+            <h3>数据整合与处理难</h3>
+            <ul class="list">
+              <li>数据来源分散，格式复杂且不统一。</li>
+              <li>非结构化卷宗与结构化记录混合，难以直接分析。</li>
+              <li>人工清洗成本高、效率低、时效性差。</li>
+            </ul>
+          </section>
+
+          <section class="card">
+            <div class="eyebrow">痛点 02</div>
+            <h3>线索关联与发现难</h3>
+            <ul class="list">
+              <li>人物、账户、行为和案件节点分散在不同材料中。</li>
+              <li>深层联系隐蔽，人工难以快速串联完整链条。</li>
+              <li>关键信息容易遗漏，交叉印证成本高。</li>
+            </ul>
+          </section>
+
+          <section class="card">
+            <div class="eyebrow">痛点 03</div>
+            <h3>分析成果固化与呈现难</h3>
+            <ul class="list">
+              <li>结果常停留在草稿、口头或分散表格中。</li>
+              <li>证据链、关系链与时间线难以统一展示。</li>
+              <li>成果不够直观，也不利于复核与复用。</li>
+            </ul>
+          </section>
+        </div>
+
+        <div class="quote-box">
+          <strong>传统人工方式难以兼顾研判效率、分析精度与成果规范性，亟需构建面向检察侦查的智能分析辅助平台。</strong>
+        </div>
+      </main>
+
+      <footer class="slide-footer">
+        <div id="footer-left"></div>
+        <div id="footer-right"></div>
+      </footer>
+      <div class="watermark">PAIN</div>
+    </div>
+  </div>
+  <script src="slide-config.js"></script>
+  <script src="slide-nav.js"></script>
+  <script>
+    const cfg = window.SLIDE_CONFIG;
+    document.getElementById('brand').textContent = cfg.platformName;
+    document.getElementById('footer-left').textContent = cfg.footerLeft;
+    document.getElementById('footer-right').textContent = cfg.footerRight;
+  </script>
+</body>
+</html>

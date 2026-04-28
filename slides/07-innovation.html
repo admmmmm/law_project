@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>07 创新点与特色</title>
+  <link rel="stylesheet" href="slide.css" />
+</head>
+<body>
+  <div class="slide-shell">
+    <div class="slide">
+      <header class="slide-topbar">
+        <div class="brand" id="brand"></div>
+        <div class="topbar-nav">
+          <span>项目背景</span>
+          <span>场景分析</span>
+          <span>系统设计</span>
+          <span class="active">创新特色</span>
+        </div>
+        <div class="topbar-right" id="topbar-right">
+          <div class="page-tag">创新页</div>
+        </div>
+      </header>
+
+      <main class="slide-main">
+        <div class="page-head">
+          <div class="page-head-left">
+            <div class="page-no">07</div>
+            <div>
+              <h1 class="page-title">创新点与特色</h1>
+              <p class="page-subtitle">围绕检察侦查真实需求，形成从领域建模、图谱构建到专题报告、信息画像与建议输出的完整辅助链路。</p>
+            </div>
+          </div>
+          <div class="page-tag">Innovation</div>
+        </div>
+
+        <div class="innovation-layout">
+          <section class="innovation-grid">
+            <div class="innovation-card">
+              <div class="innovation-icon">◎</div>
+              <h3>面向检察侦查场景的专用领域建模</h3>
+              <p>精准定义案件、人员、账户、交易、行为等多维实体，构建具备强可解释性的领域本体，确保数据建模逻辑与司法业务场景深度契合。</p>
+            </div>
+
+            <div class="innovation-card">
+              <div class="innovation-icon">✦</div>
+              <h3>处理、分析、碰撞的一体化设计</h3>
+              <p>打通从原始数据清洗、关系图谱构建，到结构化表、文本索引、时间序列协同分析和规则碰撞的全闭环链路，实现侦查线索的自动化发现、交叉验证与穿透式研判。</p>
+            </div>
+
+            <div class="innovation-card">
+              <div class="innovation-icon">▣</div>
+              <h3>支持专题线路和组合线路报告生成</h3>
+              <p>可围绕资金、行为、时间线、人物关系等单维度或多维度组合输出深度分析报告，更适配不同侦查阶段的使用需求。</p>
+            </div>
+
+            <div class="innovation-card">
+              <div class="innovation-icon">◈</div>
+              <h3>面向嫌疑人及其关联人的信息画像</h3>
+              <p>深度萃取身份特征、关系密度、资金交互与异常行为标签，形成结构化画像结论，并针对性输出后续侦查参考建议。</p>
+            </div>
+          </section>
+
+          <aside class="innovation-side">
+            <div class="radar-wrap">
+              <div class="radar-title">系统特色能力雷达图</div>
+              <svg class="radar-svg" viewBox="0 0 320 320" aria-label="系统特色能力雷达图">
+                <g transform="translate(160 160)">
+                  <polygon points="0,-110 104,-34 64,90 -64,90 -104,-34" fill="none" stroke="#d7e4fb" stroke-width="2"></polygon>
+                  <polygon points="0,-84 79,-26 49,68 -49,68 -79,-26" fill="none" stroke="#e3ecfb" stroke-width="2"></polygon>
+                  <polygon points="0,-58 54,-18 34,46 -34,46 -54,-18" fill="none" stroke="#edf4ff" stroke-width="2"></polygon>
+                  <line x1="0" y1="0" x2="0" y2="-110" stroke="#d7e4fb" stroke-width="1.5"></line>
+                  <line x1="0" y1="0" x2="104" y2="-34" stroke="#d7e4fb" stroke-width="1.5"></line>
+                  <line x1="0" y1="0" x2="64" y2="90" stroke="#d7e4fb" stroke-width="1.5"></line>
+                  <line x1="0" y1="0" x2="-64" y2="90" stroke="#d7e4fb" stroke-width="1.5"></line>
+                  <line x1="0" y1="0" x2="-104" y2="-34" stroke="#d7e4fb" stroke-width="1.5"></line>
+
+                  <polygon points="0,-96 88,-28 60,84 -58,82 -92,-30"
+                    fill="rgba(95,143,224,0.22)"
+                    stroke="#1d4f9a"
+                    stroke-width="4"></polygon>
+                </g>
+                <text class="radar-label" x="160" y="26" text-anchor="middle">多格式导入</text>
+                <text class="radar-label" x="278" y="100" text-anchor="middle">关系查询</text>
+                <text class="radar-label" x="250" y="262" text-anchor="middle">碰撞分析</text>
+                <text class="radar-label" x="78" y="262" text-anchor="middle">报告生成</text>
+                <text class="radar-label" x="34" y="100" text-anchor="middle">画像建议</text>
+              </svg>
+              <div class="radar-subtitle">基于五大核心维度的系统能力评估，体现平台在多格式数据处理、关系组织、碰撞分析、报告生成与画像输出上的一体化优势。</div>
+            </div>
+          </aside>
+        </div>
+      </main>
+
+      <footer class="slide-footer">
+        <div id="footer-left"></div>
+        <div id="footer-right"></div>
+      </footer>
+      <div class="watermark">INNOVATION</div>
+    </div>
+  </div>
+  <script src="slide-config.js"></script>
+  <script src="slide-nav.js"></script>
+  <script>
+    const cfg = window.SLIDE_CONFIG;
+    document.getElementById('brand').textContent = cfg.platformName;
+    document.getElementById('footer-left').textContent = cfg.footerLeft;
+    document.getElementById('footer-right').textContent = cfg.footerRight;
+  </script>
+</body>
+</html>
