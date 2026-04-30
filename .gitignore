@@ -1,1 +1,5 @@
 初期进展/历史文档/检察侦查画像模型.pptx
+__pycache__/
+*.py[cod]
+.venv/
+*.log
