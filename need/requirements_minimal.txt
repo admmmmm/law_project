@@ -1,0 +1,16 @@
+numpy
+torch
+sentence-transformers
+FlagEmbedding
+transformers
+huggingface_hub
+pydantic
+openai
+httpx
+tenacity
+filelock
+igraph
+tqdm
+pandas
+packaging
+python-dateutil
