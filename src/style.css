@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-surface-container-low: #f2f4f6;
+  --color-on-tertiary: #ffffff;
+  --color-secondary-fixed-dim: #a7c8ff;
+  --color-surface-dim: #d8dadc;
+  --color-surface-container: #eceef0;
+  --color-secondary-container: #90bafd;
+  --color-on-background: #191c1e;
+  --color-on-tertiary-container: #009397;
+  --color-surface-tint: #515f78;
+  --color-primary-fixed: #d6e3ff;
+  --color-on-secondary: #ffffff;
+  --color-surface-bright: #f7f9fb;
+  --color-tertiary-fixed-dim: #2bdbe1;
+  --color-primary-fixed-dim: #b9c7e4;
+  --color-on-tertiary-fixed: #002021;
+  --color-on-primary-container: #76849f;
+  --color-tertiary: #000000;
+  --color-on-error-container: #93000a;
+  --color-on-secondary-fixed: #001b3c;
+  --color-tertiary-container: #002021;
+  --color-secondary-fixed: #d5e3ff;
+  --color-primary-container: #0d1c32;
+  --color-on-error: #ffffff;
+  --color-on-surface: #191c1e;
+  --color-on-tertiary-fixed-variant: #004f52;
+  --color-secondary: #325f9c;
+  --color-on-surface-variant: #44474d;
+  --color-on-secondary-fixed-variant: #114783;
+  --color-inverse-primary: #b9c7e4;
+  --color-error: #ba1a1a;
+  --color-outline: #75777e;
+  --color-surface-container-high: #e6e8ea;
+  --color-surface-container-lowest: #ffffff;
+  --color-inverse-surface: #2d3133;
+  --color-error-container: #ffdad6;
+  --color-surface: #f7f9fb;
+  --color-inverse-on-surface: #eff1f3;
+  --color-on-primary-fixed-variant: #39475f;
+  --color-background: #f7f9fb;
+  --color-surface-variant: #e0e3e5;
+  --color-tertiary-fixed: #58f8fe;
+  --color-surface-container-highest: #e0e3e5;
+  --color-on-secondary-container: #154985;
+  --color-on-primary-fixed: #0d1c32;
+  --color-primary: #000000;
+  --color-on-primary: #ffffff;
+  --color-outline-variant: #c5c6cd;
+
+  --font-body-sm: 'Inter', sans-serif;
+  --font-label-caps: 'Inter', sans-serif;
+  --font-data-mono: monospace;
+  --font-body-md: 'Inter', sans-serif;
+  --font-h3: 'Inter', sans-serif;
+  --font-h1: 'Inter', sans-serif;
+  --font-h2: 'Inter', sans-serif;
+  
+  --spacing-density-comfortable: 16px;
+  --spacing-margin: 24px;
+  --spacing-gutter: 16px;
+  --spacing-unit: 4px;
+  --spacing-container-max: 1600px;
+  --spacing-density-compact: 8px;
+}

@@ -1,1 +1,8 @@
-初期进展/历史文档/检察侦查画像模型.pptx
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
