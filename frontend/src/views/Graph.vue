@@ -39,6 +39,27 @@
           :on-node-click="onNodeClick"
           :on-line-click="onLineClick"
         />
+        <div v-if="!loading && graph.nodes.length > 0" class="graph-controls">
+          <div class="control-head">
+            <span>时间轴添加证据</span>
+            <strong>{{ currentTimelineLabel }}</strong>
+          </div>
+          <input
+            v-model.number="timelineIndex"
+            class="timeline"
+            type="range"
+            min="0"
+            :max="Math.max(timelinePoints.length - 1, 0)"
+            step="1"
+            @input="renderGraph"
+          />
+          <div class="tag-list">
+            <label v-for="item in availableCategories" :key="item.key" class="tag-item">
+              <input v-model="selectedCategories" type="checkbox" :value="item.key" @change="renderGraph" />
+              <span>{{ item.label }}</span>
+            </label>
+          </div>
+        </div>
         <div v-if="!loading && graph.nodes.length > 0" class="graph-note">
           当前渲染 {{ renderedNodeCount }} / {{ graph.nodes.length }} 个节点，{{ renderedEdgeCount }} / {{ graph.edges.length }} 条关系
         </div>
@@ -95,6 +116,9 @@ const selectedMeta = ref('');
 const graph = ref<InvestigationGraph>({ case_id: activeCaseId.value, nodes: [], edges: [], clues: [] });
 const renderedNodeCount = ref(0);
 const renderedEdgeCount = ref(0);
+const timelineIndex = ref(0);
+const timelinePoints = ref<string[]>(['全部时间']);
+const selectedCategories = ref<string[]>([]);
 const MAX_RENDER_NODES = 260;
 const MAX_RENDER_EDGES = 520;
 
@@ -121,6 +145,11 @@ const graphOptions = {
 };
 
 const nodeMap = computed(() => new Map(graph.value.nodes.map((node) => [node.node_id, node])));
+const availableCategories = computed(() => {
+  const keys = Array.from(new Set(graph.value.nodes.map((node) => node.type))).sort();
+  return keys.map((key) => ({ key, label: categoryLabel(key) }));
+});
+const currentTimelineLabel = computed(() => timelinePoints.value[timelineIndex.value] || '全部时间');
 
 onMounted(loadGraph);
 
@@ -130,6 +159,7 @@ async function loadGraph() {
   error.value = '';
   try {
     graph.value = await backendApi.getGraph(activeCaseId.value);
+    syncTimelineAndTags();
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
@@ -146,6 +176,7 @@ async function runAnalysis() {
   try {
     await backendApi.runAnalysis(activeCaseId.value);
     graph.value = await backendApi.getGraph(activeCaseId.value);
+    syncTimelineAndTags();
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
@@ -169,18 +200,31 @@ function renderGraph() {
 }
 
 function buildRenderableGraph() {
-  if (graph.value.nodes.length <= MAX_RENDER_NODES && graph.value.edges.length <= MAX_RENDER_EDGES) {
-    return { nodes: graph.value.nodes, edges: graph.value.edges };
+  const categorySet = new Set(selectedCategories.value);
+  const cutoff = timelinePoints.value[timelineIndex.value] || '';
+  const hasCutoff = Boolean(cutoff && cutoff !== '全部时间');
+  const allowedByTime = (value: string | null) => !hasCutoff || !value || value <= cutoff;
+  const filteredNodes = graph.value.nodes.filter((node) => categorySet.has(node.type) && allowedByTime(itemDate(node)));
+  const filteredNodeIds = new Set(filteredNodes.map((node) => node.node_id));
+  const filteredEdges = graph.value.edges.filter(
+    (edge) =>
+      filteredNodeIds.has(edge.source_id) &&
+      filteredNodeIds.has(edge.target_id) &&
+      allowedByTime(itemDate(edge)),
+  );
+
+  if (filteredNodes.length <= MAX_RENDER_NODES && filteredEdges.length <= MAX_RENDER_EDGES) {
+    return { nodes: filteredNodes, edges: filteredEdges };
   }
 
   const clueEvidenceIds = new Set(graph.value.clues.flatMap((clue) => clue.evidence_ids));
   const degree = new Map<string, number>();
-  graph.value.edges.forEach((edge) => {
+  filteredEdges.forEach((edge) => {
     degree.set(edge.source_id, (degree.get(edge.source_id) || 0) + 1);
     degree.set(edge.target_id, (degree.get(edge.target_id) || 0) + 1);
   });
 
-  const scoredNodes = graph.value.nodes
+  const scoredNodes = filteredNodes
     .map((node) => ({
       node,
       score:
@@ -191,13 +235,70 @@ function buildRenderableGraph() {
     .sort((a, b) => b.score - a.score);
 
   const selectedIds = new Set(scoredNodes.slice(0, MAX_RENDER_NODES).map((item) => item.node.node_id));
-  const nodes = graph.value.nodes.filter((node) => selectedIds.has(node.node_id));
-  const edges = graph.value.edges
+  const nodes = filteredNodes.filter((node) => selectedIds.has(node.node_id));
+  const edges = filteredEdges
     .filter((edge) => selectedIds.has(edge.source_id) && selectedIds.has(edge.target_id))
     .sort((a, b) => Number(b.properties?.count || 1) - Number(a.properties?.count || 1))
     .slice(0, MAX_RENDER_EDGES);
 
   return { nodes, edges };
+}
+
+function syncTimelineAndTags() {
+  const dates = new Set<string>();
+  graph.value.nodes.forEach((node) => {
+    const date = itemDate(node);
+    if (date) dates.add(date);
+  });
+  graph.value.edges.forEach((edge) => {
+    const date = itemDate(edge);
+    if (date) dates.add(date);
+  });
+  const sortedDates = Array.from(dates).sort();
+  timelinePoints.value = sortedDates.length ? sortedDates : ['全部时间'];
+  timelineIndex.value = Math.max(timelinePoints.value.length - 1, 0);
+  selectedCategories.value = availableCategories.value.map((item) => item.key);
+}
+
+function itemDate(item: GraphNode | GraphEdge) {
+  const properties = item.properties || {};
+  const candidates = [
+    properties.time,
+    properties.date,
+    properties.time_sample,
+    properties.created_at,
+    'label' in item ? item.label : '',
+    'relation' in item ? item.relation : '',
+    properties.preview,
+  ];
+  for (const value of candidates) {
+    const parsed = normalizeDate(value);
+    if (parsed) return parsed;
+  }
+  return null;
+}
+
+function normalizeDate(value: unknown) {
+  if (value === null || value === undefined) return null;
+  const text = String(value);
+  const match = text.match(/(19|20)\d{2}[年/-]?\d{1,2}([月/-]?\d{1,2})?/);
+  if (!match) return null;
+  const parts = match[0].replace(/[年月]/g, '-').replace(/日/g, '').replace(/\//g, '-').split('-').filter(Boolean);
+  const year = parts[0];
+  const month = (parts[1] || '01').padStart(2, '0');
+  const day = (parts[2] || '01').padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function categoryLabel(key: string) {
+  const labels: Record<string, string> = {
+    evidence: '证据文档',
+    entity: '人物/主体',
+    transaction: '资金/交易',
+    algorithm_provider: '算法节点',
+    confirmed_memory: '人工记忆',
+  };
+  return labels[key] || key;
 }
 
 function toRelationNode(node: GraphNode) {
@@ -333,7 +434,7 @@ function trim(text: string, length: number) {
 .graph-note {
   position: absolute;
   left: 16px;
-  top: 16px;
+  top: 142px;
   max-width: 520px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
@@ -344,5 +445,53 @@ function trim(text: string, length: number) {
   font-weight: 700;
   pointer-events: none;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+.graph-controls {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  width: min(560px, calc(100% - 32px));
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #0f172a;
+  padding: 12px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.1);
+}
+.control-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.control-head strong {
+  color: #0f766e;
+}
+.timeline {
+  width: 100%;
+  margin: 10px 0;
+  accent-color: #0f766e;
+}
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tag-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.tag-item input {
+  accent-color: #0f766e;
 }
 </style>
