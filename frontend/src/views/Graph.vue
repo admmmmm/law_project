@@ -33,6 +33,7 @@
         </div>
         <RelationGraph
           v-else
+          :key="graphRenderKey"
           ref="graphRef"
           class="graph-view h-full w-full"
           :options="graphOptions"
@@ -136,6 +137,7 @@ const graphRef = ref<any>(null);
 const selectedLabel = ref('');
 const selectedMeta = ref('');
 const graph = ref<InvestigationGraph>({ case_id: activeCaseId.value, nodes: [], edges: [], clues: [] });
+const graphRenderKey = ref(0);
 const renderedNodeCount = ref(0);
 const renderedEdgeCount = ref(0);
 const timelineIndex = ref(0);
@@ -205,8 +207,8 @@ const graphOptions = {
 const nodeMap = computed(() => new Map(graph.value.nodes.map((node) => [node.node_id, node])));
 const availableCategories = computed(() => {
   const counts = new Map<string, number>();
-  graph.value.nodes.forEach((node) => addCount(counts, primaryTag(node)));
-  graph.value.edges.forEach((edge) => addCount(counts, primaryTag(edge)));
+  graph.value.nodes.forEach((node) => itemTags(node).forEach((tag) => addCount(counts, tag)));
+  graph.value.edges.forEach((edge) => itemTags(edge).forEach((tag) => addCount(counts, tag)));
   return FILTER_TAGS.filter((item) => counts.has(item.key)).map((item) => ({ ...item, count: counts.get(item.key) || 0 }));
 });
 const currentTimelineLabel = computed(() => timelinePoints.value[timelineIndex.value] || '全部时间');
@@ -257,7 +259,11 @@ function renderGraph() {
     nodes: visible.nodes.map(toRelationNode),
     lines: visible.edges.map(toRelationLine),
   };
-  graphRef.value.setJsonData(jsonData);
+  graphRef.value.setJsonData(jsonData, (graphInstance: any) => {
+    graphInstance.doLayout();
+    graphInstance.moveToCenter();
+    graphInstance.zoomToFit();
+  });
 }
 
 function buildRenderableGraph() {
@@ -265,13 +271,12 @@ function buildRenderableGraph() {
   const cutoff = timelinePoints.value[timelineIndex.value] || '';
   const hasCutoff = Boolean(cutoff && cutoff !== '全部时间');
   const allowedByTime = (value: string | null) => !hasCutoff || !value || value <= cutoff;
-  const timeNodes = graph.value.nodes.filter((node) => allowedByTime(itemDate(node)));
+  const timeNodes = graph.value.nodes.filter((node) => allowedByTime(itemDate(node)) && selectedByTags(node, categorySet));
   const timeNodeIds = new Set(timeNodes.map((node) => node.node_id));
   const selectedEdges = graph.value.edges.filter(
-    (edge) => categorySet.has(primaryTag(edge)) && allowedByTime(itemDate(edge)) && timeNodeIds.has(edge.source_id) && timeNodeIds.has(edge.target_id),
+    (edge) => selectedByTags(edge, categorySet) && allowedByTime(itemDate(edge)) && timeNodeIds.has(edge.source_id) && timeNodeIds.has(edge.target_id),
   );
-  const selectedEdgeNodeIds = new Set(selectedEdges.flatMap((edge) => [edge.source_id, edge.target_id]));
-  const filteredNodes = timeNodes.filter((node) => categorySet.has(primaryTag(node)) || selectedEdgeNodeIds.has(node.node_id));
+  const filteredNodes = timeNodes;
   const filteredNodeIds = new Set(filteredNodes.map((node) => node.node_id));
   let filteredEdges = selectedEdges.filter((edge) => filteredNodeIds.has(edge.source_id) && filteredNodeIds.has(edge.target_id));
 
@@ -372,8 +377,10 @@ function setViewMode(mode: 'core' | 'evidence' | 'all') {
   renderGraph();
 }
 
-function setLayoutMode(mode: 'tree' | 'center' | 'circle' | 'force') {
+async function setLayoutMode(mode: 'tree' | 'center' | 'circle' | 'force') {
   layoutMode.value = mode;
+  graphRenderKey.value += 1;
+  await nextTick();
   renderGraph();
 }
 
@@ -404,31 +411,39 @@ function layoutConfig(mode: 'tree' | 'center' | 'circle' | 'force') {
   return { label: 'center', layoutName: 'center', layoutDirection: 'v' };
 }
 
-function primaryTag(item: GraphNode | GraphEdge) {
-  if ('relation' in item) return edgeTag(item);
-  return nodeTag(item);
+function selectedByTags(item: GraphNode | GraphEdge, selected: Set<string>) {
+  return itemTags(item).some((tag) => selected.has(tag));
 }
 
-function nodeTag(node: GraphNode) {
-  if (clueRelatedNodeIds().has(node.node_id)) return 'clue_related';
-  if (itemDate(node)) return 'time_mapped';
-  if (node.type === 'algorithm_provider') return 'algorithm';
-  if (node.type === 'confirmed_memory') return 'memory';
-  if (node.type === 'transaction') return 'fund_account';
-  if (node.type === 'evidence') return isBankItem(node) ? 'bank_flow_evidence' : 'case_evidence';
-  if (looksLikeOrganization(node.label)) return 'organization';
-  if (looksLikePerson(node.label)) return 'person';
-  return 'other';
+function itemTags(item: GraphNode | GraphEdge) {
+  if ('relation' in item) return edgeTags(item);
+  return nodeTags(item);
 }
 
-function edgeTag(edge: GraphEdge) {
-  if (clueRelatedEdge(edge)) return 'clue_related';
-  if (edge.properties?.count && Number(edge.properties.count) > 1) return 'repeated_relation';
-  if (itemDate(edge)) return 'time_mapped';
-  if (isFundEdge(edge)) return 'fund_flow';
-  if (isDutyEdge(edge)) return 'duty_behavior';
-  if (isSubjectiveEdge(edge)) return 'subjective_state';
-  return 'other';
+function nodeTags(node: GraphNode) {
+  const tags: string[] = [];
+  if (node.type === 'algorithm_provider') tags.push('algorithm');
+  if (node.type === 'confirmed_memory') tags.push('memory');
+  if (node.type === 'transaction') tags.push('fund_account');
+  if (node.type === 'evidence') tags.push(isBankItem(node) ? 'bank_flow_evidence' : 'case_evidence');
+  if (looksLikeOrganization(node.label)) tags.push('organization');
+  if (looksLikePerson(node.label)) tags.push('person');
+  if (clueRelatedNodeIds().has(node.node_id)) tags.push('clue_related');
+  if (itemDate(node)) tags.push('time_mapped');
+  if (tags.length === 0) tags.push('other');
+  return tags;
+}
+
+function edgeTags(edge: GraphEdge) {
+  const tags: string[] = [];
+  if (clueRelatedEdge(edge)) tags.push('clue_related');
+  if (edge.properties?.count && Number(edge.properties.count) > 1) tags.push('repeated_relation');
+  if (itemDate(edge)) tags.push('time_mapped');
+  if (isFundEdge(edge)) tags.push('fund_flow');
+  if (isDutyEdge(edge)) tags.push('duty_behavior');
+  if (isSubjectiveEdge(edge)) tags.push('subjective_state');
+  if (tags.length === 0) tags.push('other');
+  return tags;
 }
 
 function clueRelatedNodeIds() {

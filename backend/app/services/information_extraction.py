@@ -70,7 +70,7 @@ def route_extraction(
     resolved = resolve_source_type(source_type, filename)
     if resolved.lower() in STRUCTURED_TYPES or resolved in STRUCTURED_TYPES:
         rows = parse_structured_content(source_type=resolved, content=content, raw_bytes=raw_bytes)
-        triples = map_rows_to_triples(rows, evidence_id=evidence_id)
+        triples = map_rows_to_triples(rows, evidence_id=evidence_id, filename=filename)
         return ExtractionResult(
             route="structured",
             triples=triples,
@@ -127,10 +127,17 @@ def parse_structured_content(source_type: str, content: str, raw_bytes: bytes | 
     return rows
 
 
-def map_rows_to_triples(rows: list[dict[str, str]], evidence_id: str | None = None) -> list[ExtractedTriple]:
+def map_rows_to_triples(rows: list[dict[str, str]], evidence_id: str | None = None, filename: str | None = None) -> list[ExtractedTriple]:
     triples: list[ExtractedTriple] = []
     for index, row in enumerate(rows, start=1):
         lowered = {key.strip().lower(): value.strip() for key, value in row.items()}
+        if _is_case_timeline_row(row):
+            triples.extend(_timeline_row_to_triples(row, lowered, index, evidence_id))
+            continue
+
+        is_bank_flow = _is_bank_flow_row(row)
+        graph_eligible = _bank_flow_graph_eligible(row, lowered, filename) if is_bank_flow else True
+
         subject = _pick(row, lowered, "subject", "主体", "账户真实姓名", "账户假名", "付款方", "交易方", "姓名", "用户ID") or f"记录{index}"
         relation = _pick(row, lowered, "relation", "关系", "借贷类型", "资金方向_按账户", "交易业务类型", "交易用途类型") or "关联"
         obj = _pick(row, lowered, "object", "客体", "对手真实姓名", "对手假名", "对手方ID", "收款方", "对方户名", "value") or "未识别对象"
@@ -140,9 +147,18 @@ def map_rows_to_triples(rows: list[dict[str, str]], evidence_id: str | None = No
             "row_index": index,
             "amount": amount,
             "time": time,
+            "original_time": _pick(row, lowered, "原始交易时间"),
+            "mapped_case_time": _pick(row, lowered, "映射案情时间"),
+            "time_mapping_rule": _pick(row, lowered, "时间映射规则"),
+            "time_mapping_note": _pick(row, lowered, "时间映射说明"),
             "account_alias": _pick(row, lowered, "账户假名"),
             "counterparty_alias": _pick(row, lowered, "对手假名"),
+            "is_bank_flow": is_bank_flow,
+            "is_case_person": _pick(row, lowered, "是否案件映射人物"),
+            "is_core_counterparty": _pick(row, lowered, "是否案件核心对手方"),
             "source_file": _pick(row, lowered, "来源文件"),
+            "source_dataset": Path(filename).name if filename else None,
+            "graph_eligible": graph_eligible,
         }
         props = {key: value for key, value in properties.items() if value not in (None, "")}
         triples.append(ExtractedTriple(subject=subject, relation=relation, object=obj, evidence_id=evidence_id, properties=props))
@@ -151,6 +167,55 @@ def map_rows_to_triples(rows: list[dict[str, str]], evidence_id: str | None = No
         if time:
             triples.append(ExtractedTriple(subject=subject, relation="发生时间", object=time, evidence_id=evidence_id, properties=props))
     return triples
+
+
+def _timeline_row_to_triples(
+    row: dict[str, str],
+    lowered: dict[str, str],
+    index: int,
+    evidence_id: str | None,
+) -> list[ExtractedTriple]:
+    fact = _pick(row, lowered, "案件事实") or f"案件事实{index}"
+    people = _pick(row, lowered, "相关人") or "案件时间线"
+    time = _pick(row, lowered, "时间")
+    evidence = _pick(row, lowered, "相关证据")
+    properties = {
+        "row_index": index,
+        "time": time,
+        "mapped_case_time": time,
+        "case_fact": fact,
+        "related_people": people,
+        "related_evidence": evidence,
+        "source_dataset": "case_timeline",
+        "graph_eligible": True,
+    }
+    props = {key: value for key, value in properties.items() if value not in (None, "")}
+    triples = [ExtractedTriple(subject=people, relation="案件事实", object=fact, evidence_id=evidence_id, properties=props)]
+    if evidence:
+        triples.append(ExtractedTriple(subject=fact, relation="对应证据", object=evidence, evidence_id=evidence_id, properties=props))
+    return triples
+
+
+def _is_case_timeline_row(row: dict[str, str]) -> bool:
+    return any("案件事实" in key for key in row)
+
+
+def _is_bank_flow_row(row: dict[str, str]) -> bool:
+    keys = "".join(row.keys())
+    return any(token in keys for token in ("交易金额", "账户真实姓名", "对手真实姓名", "映射案情时间", "资金方向"))
+
+
+def _bank_flow_graph_eligible(row: dict[str, str], lowered: dict[str, str], filename: str | None) -> bool:
+    dataset = (filename or "").lower()
+    if "case_relevant_bank_flows" in dataset:
+        return True
+    if "cleaned_bank_flows" in dataset:
+        return _truthy(_pick(row, lowered, "是否案件核心对手方"))
+    return _truthy(_pick(row, lowered, "是否案件核心对手方")) or _truthy(_pick(row, lowered, "是否案件映射人物"))
+
+
+def _truthy(value: str | None) -> bool:
+    return str(value or "").strip().lower() in {"true", "1", "yes", "y", "是", "核心"}
 
 
 def build_passages_from_triples(triples: list[ExtractedTriple]) -> list[PassageRecord]:

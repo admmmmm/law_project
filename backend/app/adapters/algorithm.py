@@ -149,6 +149,8 @@ class AlgorithmAdapter:
         triple: ExtractedTriple,
         evidence_id: str,
     ) -> None:
+        if triple.properties.get("graph_eligible") is False:
+            return
         if triple.relation in {"交易金额", "发生时间"}:
             return
         key = (triple.subject, triple.relation, triple.object)
