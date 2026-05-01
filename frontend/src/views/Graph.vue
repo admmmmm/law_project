@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full flex flex-col bg-slate-100">
+  <div class="h-full flex flex-col bg-slate-100 text-slate-900">
     <div class="h-14 bg-white border-b border-slate-200 px-5 flex items-center justify-between shrink-0">
       <div>
         <div class="font-bold text-slate-900">证据图谱</div>
@@ -22,7 +22,7 @@
     </div>
 
     <div v-else class="flex-1 grid grid-cols-[1fr_340px] min-h-0">
-      <section class="bg-white min-h-0">
+      <section class="graph-stage min-h-0">
         <div v-if="loading" class="h-full grid place-items-center text-slate-500">正在加载图谱...</div>
         <div v-else-if="graph.nodes.length === 0" class="h-full grid place-items-center text-center">
           <div>
@@ -34,7 +34,7 @@
         <RelationGraph
           v-else
           ref="graphRef"
-          class="h-full w-full"
+          class="graph-view h-full w-full"
           :options="graphOptions"
           :on-node-click="onNodeClick"
           :on-line-click="onLineClick"
@@ -102,6 +102,8 @@ const graphOptions = {
   defaultNodeHeight: 42,
   defaultLineColor: '#64748b',
   defaultLineWidth: 1.5,
+  defaultNodeFontColor: '#0f172a',
+  backgroundColor: '#f8fafc',
   layouts: [
     {
       label: 'center',
@@ -217,6 +219,8 @@ function trim(text: string, length: number) {
 <style scoped>
 .btn {
   border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
   border-radius: 6px;
   padding: 7px 11px;
   font-size: 13px;
@@ -250,5 +254,37 @@ function trim(text: string, length: number) {
 .panel h3 {
   font-weight: 800;
   margin-bottom: 8px;
+}
+.graph-stage {
+  background: #f8fafc;
+  color: #0f172a;
+}
+.graph-view {
+  width: 100%;
+  height: 100%;
+  background: #f8fafc;
+}
+.graph-view :deep(.relation-graph),
+.graph-view :deep(.rel-map),
+.graph-view :deep(.rel-map-canvas),
+.graph-view :deep(.rel-map-background) {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+.graph-view :deep(.c-node-text),
+.graph-view :deep(.c-node-name),
+.graph-view :deep(.rel-node-text) {
+  color: #0f172a !important;
+  fill: #0f172a !important;
+  font-weight: 800;
+  text-shadow: 0 1px 0 #ffffff;
+}
+.graph-view :deep(.c-rg-line-text),
+.graph-view :deep(.rel-line-text) {
+  color: #334155 !important;
+  fill: #334155 !important;
+  paint-order: stroke;
+  stroke: #ffffff;
+  stroke-width: 3px;
 }
 </style>

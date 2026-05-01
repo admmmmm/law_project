@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full overflow-auto bg-slate-100 p-5">
+  <div class="whiteboard-page h-full overflow-auto bg-slate-100 p-5">
     <div class="mx-auto max-w-5xl space-y-4">
       <section class="board">
         <div>
@@ -143,8 +143,12 @@ async function withLoading(task: () => Promise<void>) {
 .card {
   border: 1px solid #cbd5e1;
   background: white;
+  color: #0f172a;
   border-radius: 8px;
   padding: 18px;
+}
+.whiteboard-page {
+  color: #0f172a;
 }
 .board {
   display: flex;
@@ -153,10 +157,12 @@ async function withLoading(task: () => Promise<void>) {
   gap: 16px;
 }
 h1 {
+  color: #0f172a;
   font-size: 24px;
   font-weight: 800;
 }
 h2 {
+  color: #0f172a;
   font-size: 15px;
   font-weight: 800;
   margin-bottom: 12px;
@@ -169,9 +175,15 @@ p,
 .field {
   width: 100%;
   border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
   border-radius: 6px;
   padding: 8px;
   font-size: 13px;
+}
+.field option {
+  background: #ffffff;
+  color: #0f172a;
 }
 .primary,
 .secondary {
@@ -187,6 +199,7 @@ p,
 }
 .secondary {
   border: 1px solid #94a3b8;
+  background: #ffffff;
   color: #0f172a;
 }
 button:disabled {
@@ -204,6 +217,7 @@ button:disabled {
 }
 .stats b {
   display: block;
+  color: #0f172a;
   font-size: 24px;
 }
 .stats span {
