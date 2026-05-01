@@ -1,10 +1,10 @@
 {
-  "name": "react-example",
+  "name": "procuratorial-investigation-portrait-frontend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
+    "dev": "vite --port=5173 --host=127.0.0.1 --strictPort",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",

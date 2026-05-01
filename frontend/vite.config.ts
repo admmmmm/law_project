@@ -16,6 +16,9 @@ export default defineConfig(({mode}) => {
       },
     },
     server: {
+      host: '127.0.0.1',
+      port: 5173,
+      strictPort: true,
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       hmr: process.env.DISABLE_HMR !== 'true',
       proxy: {
