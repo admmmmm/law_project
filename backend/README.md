@@ -36,9 +36,45 @@ uvicorn app.main:app --reload
 - API 文档：`http://127.0.0.1:8000/docs`
 - 健康检查：`http://127.0.0.1:8000/api/v1/health`
 
+## HippoRAG 接入
+
+当前默认算法提供方已经切到 `hipporag`。运行分析时，后端会把已导入证据的 passage 写入 HippoRAG，执行 LLM/OpenIE、BGE-M3 embedding、HippoRAG 图构建，再把 OpenIE 抽出的事实三元组合并进业务图谱。
+
+建议使用已经验证过的 Python 3.10 环境，不要用 Miniconda base：
+
+```powershell
+cd C:\Users\adm14\Desktop\law_project\backend
+$env:DEEPSEEK_API_KEY="你的 DeepSeek Key"
+$env:TRANSFORMERS_OFFLINE="1"
+$env:HF_HUB_OFFLINE="1"
+$env:HIPPORAG_EMBEDDING_MODEL="C:\Users\adm14\.cache\huggingface\hub\BAAI\bge-m3"
+C:\Users\adm14\AppData\Local\Programs\Python\Python310\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+可调环境变量：
+
+- `ALGORITHM_PROVIDER=hipporag`：启用 HippoRAG；临时调试可设为 `stub`。
+- `HIPPORAG_LLM_NAME=deepseek-chat`
+- `HIPPORAG_LLM_BASE_URL=https://api.deepseek.com`
+- `HIPPORAG_EMBEDDING_MODEL=本地 BGE-M3 路径`
+- `HIPPORAG_MAX_DOCS=80`：单次分析最多送入 HippoRAG 的 passage 数，避免联调时过慢。
+- `HIPPORAG_SAVE_DIR=../outputs/hipporag_cases`
+
+如果没有 key 或模型环境不可用，系统不会中断分析，会回落到现有规则聚合图，并在图谱中 `HippoRAG` 算法节点的属性里显示错误。
+
 ## 与外部模块的接入点
 
 - 算法核心：替换 `app/adapters/algorithm.py` 中的 `AlgorithmAdapter` 实现。
 - 人工干预：前端调用 `PATCH /api/v1/cases/{case_id}/graph/interventions`。
 - 记忆功能：前端调用 `POST /api/v1/cases/{case_id}/memories`，确认事实后可触发写回图谱。
 - 前端：所有接口统一挂在 `/api/v1` 下。
+
+
+
+
+cd C:\Users\adm14\Desktop\law_project\backend
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+-----
+cd C:\Users\adm14\Desktop\law_project\frontend
+npm run dev
+然后打开 http://127.0.0.1:5173。

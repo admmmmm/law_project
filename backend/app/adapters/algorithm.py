@@ -34,6 +34,17 @@ class HippoRagBridge:
             self.error = str(exc)
             return None
 
+    def load_config_class(self) -> type[Any] | None:
+        if str(self.hipporag_src) not in sys.path:
+            sys.path.insert(0, str(self.hipporag_src))
+        try:
+            from hipporag.utils.config_utils import BaseConfig
+
+            return BaseConfig
+        except Exception as exc:  # pragma: no cover - depends on optional local deps
+            self.error = str(exc)
+            return None
+
     def status(self) -> dict[str, Any]:
         klass = self.load_class()
         return {
@@ -58,18 +69,166 @@ class AlgorithmAdapter:
         raw_contents: dict[str, str],
         extractions: dict[str, ExtractionResult] | None = None,
     ) -> InvestigationGraph:
-        graph = self._build_aggregated_graph(case_id, evidence, raw_contents, extractions or {})
+        extractions = extractions or {}
+        hippo_result = self._run_hipporag(case_id, evidence, raw_contents, extractions) if self.hipporag else None
+        if hippo_result and hippo_result["triples"]:
+            extractions = self._merge_hipporag_extractions(extractions, hippo_result)
+        graph = self._build_aggregated_graph(case_id, evidence, raw_contents, extractions)
         if self.hipporag:
+            properties = self.hipporag.status()
+            if hippo_result:
+                properties.update(
+                    {
+                        "indexed_docs": hippo_result.get("indexed_docs", 0),
+                        "openie_triples": len(hippo_result.get("triples", [])),
+                        "openie_entities": len(hippo_result.get("entities", [])),
+                        "graph_nodes": hippo_result.get("graph_nodes"),
+                        "graph_edges": hippo_result.get("graph_edges"),
+                        "retrieve_ready": hippo_result.get("retrieve_ready", False),
+                        "error": hippo_result.get("error"),
+                    }
+                )
             graph.nodes.append(
                 GraphNode(
                     node_id="algorithm:hipporag",
                     label="HippoRAG",
                     type="algorithm_provider",
-                    properties=self.hipporag.status(),
-                    manually_verified=True,
+                    properties=properties,
+                    manually_verified=not bool(properties.get("error")),
                 )
             )
         return graph
+
+    def _run_hipporag(
+        self,
+        case_id: str,
+        evidence: list[EvidenceRecord],
+        raw_contents: dict[str, str],
+        extractions: dict[str, ExtractionResult],
+    ) -> dict[str, Any]:
+        assert self.hipporag is not None
+        result: dict[str, Any] = {
+            "triples": [],
+            "entities": [],
+            "doc_evidence": {},
+            "indexed_docs": 0,
+            "retrieve_ready": False,
+            "error": None,
+        }
+        klass = self.hipporag.load_class()
+        config_class = self.hipporag.load_config_class()
+        if klass is None or config_class is None:
+            result["error"] = self.hipporag.error or "HippoRAG class is unavailable"
+            return result
+
+        docs, doc_evidence = self._build_hipporag_docs(evidence, raw_contents, extractions)
+        if not docs:
+            result["error"] = "no passages available for HippoRAG indexing"
+            return result
+        docs = docs[: max(settings.hipporag_max_docs, 1)]
+        result["doc_evidence"] = {doc: doc_evidence.get(doc) for doc in docs}
+        result["indexed_docs"] = len(docs)
+
+        try:
+            save_dir = self._case_hipporag_save_dir(case_id)
+            config = config_class(
+                llm_name=settings.hipporag_llm_name,
+                llm_base_url=settings.hipporag_llm_base_url,
+                embedding_model_name=settings.hipporag_embedding_model,
+                save_dir=str(save_dir),
+                retrieval_top_k=settings.hipporag_retrieval_top_k,
+            )
+            hipporag = klass(global_config=config)
+            hipporag.index(docs)
+            result.update(self._read_hipporag_openie(hipporag, result["doc_evidence"]))
+            graph = getattr(hipporag, "graph", None)
+            if graph is not None:
+                result["graph_nodes"] = graph.vcount()
+                result["graph_edges"] = graph.ecount()
+            result["retrieve_ready"] = True
+        except Exception as exc:  # pragma: no cover - requires external model/API
+            result["error"] = str(exc)
+        return result
+
+    def _build_hipporag_docs(
+        self,
+        evidence: list[EvidenceRecord],
+        raw_contents: dict[str, str],
+        extractions: dict[str, ExtractionResult],
+    ) -> tuple[list[str], dict[str, str]]:
+        docs: list[str] = []
+        doc_evidence: dict[str, str] = {}
+        seen: set[str] = set()
+
+        def add_doc(text: str, evidence_id: str) -> None:
+            normalized = " ".join(str(text or "").split())
+            if not normalized or normalized in seen:
+                return
+            seen.add(normalized)
+            docs.append(normalized)
+            doc_evidence[normalized] = evidence_id
+
+        for item in evidence:
+            extraction = extractions.get(item.evidence_id)
+            if extraction and extraction.passages:
+                for passage in extraction.passages:
+                    add_doc(passage.text, passage.evidence_id or item.evidence_id)
+            else:
+                add_doc(raw_contents.get(item.evidence_id, item.content_preview), item.evidence_id)
+
+        return docs, doc_evidence
+
+    def _case_hipporag_save_dir(self, case_id: str) -> Path:
+        root = Path(settings.hipporag_save_dir)
+        if not root.is_absolute():
+            root = Path(__file__).resolve().parents[3] / root
+        path = root / case_id
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def _read_hipporag_openie(self, hipporag: Any, doc_evidence: dict[str, str | None]) -> dict[str, Any]:
+        all_openie_info, _ = hipporag.load_existing_openie([])
+        triples: list[ExtractedTriple] = []
+        entities: set[str] = set()
+        for row in all_openie_info:
+            passage = " ".join(str(row.get("passage", "")).split())
+            evidence_id = doc_evidence.get(passage)
+            entities.update(str(entity) for entity in row.get("extracted_entities", []) if entity)
+            for item in row.get("extracted_triples", []):
+                if not isinstance(item, (list, tuple)) or len(item) < 3:
+                    continue
+                subject, relation, obj = (str(item[0]).strip(), str(item[1]).strip(), str(item[2]).strip())
+                if not subject or not relation or not obj:
+                    continue
+                triples.append(
+                    ExtractedTriple(
+                        subject=subject,
+                        relation=relation,
+                        object=obj,
+                        evidence_id=evidence_id,
+                        properties={
+                            "source_dataset": "hipporag_openie",
+                            "graph_eligible": True,
+                            "passage": passage[:300],
+                        },
+                    )
+                )
+        return {"triples": triples, "entities": sorted(entities)}
+
+    def _merge_hipporag_extractions(
+        self,
+        extractions: dict[str, ExtractionResult],
+        hippo_result: dict[str, Any],
+    ) -> dict[str, ExtractionResult]:
+        merged = dict(extractions)
+        for triple in hippo_result["triples"]:
+            evidence_id = triple.evidence_id or "hipporag"
+            existing = merged.get(evidence_id)
+            if existing is None:
+                merged[evidence_id] = ExtractionResult(route="hipporag_openie", triples=[triple], passages=[], metadata={})
+            else:
+                merged[evidence_id] = existing.model_copy(update={"triples": [*existing.triples, triple]})
+        return merged
 
     def _build_aggregated_graph(
         self,
