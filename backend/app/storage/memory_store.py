@@ -3,7 +3,7 @@ from threading import Lock
 
 from app.schemas.case import CaseDetail
 from app.schemas.graph import InvestigationGraph
-from app.schemas.ingestion import EvidenceRecord
+from app.schemas.ingestion import EvidenceRecord, ExtractionResult
 from app.schemas.memory import MemoryRecord
 
 
@@ -11,6 +11,7 @@ from app.schemas.memory import MemoryRecord
 class MemoryStore:
     cases: dict[str, CaseDetail] = field(default_factory=dict)
     evidence: dict[str, list[EvidenceRecord]] = field(default_factory=dict)
+    extractions: dict[str, ExtractionResult] = field(default_factory=dict)
     graphs: dict[str, InvestigationGraph] = field(default_factory=dict)
     memories: dict[str, list[MemoryRecord]] = field(default_factory=dict)
     raw_contents: dict[str, str] = field(default_factory=dict)

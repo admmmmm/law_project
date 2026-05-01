@@ -7,16 +7,11 @@ from typing import Any
 from app.core.config import settings
 from app.schemas.common import new_id
 from app.schemas.graph import GraphEdge, GraphNode, InvestigationGraph, SuspiciousClue
-from app.schemas.ingestion import EvidenceRecord
+from app.schemas.ingestion import EvidenceRecord, ExtractionResult
 
 
 class HippoRagBridge:
-    """Lazy bridge to the vendored HippoRAG code under need/HippoRAG.
-
-    HippoRAG has heavy optional dependencies, so importing it at FastAPI startup would
-    make the backend brittle. This bridge only loads the package when the provider is
-    explicitly selected.
-    """
+    """Lazy bridge to the vendored HippoRAG code under need/HippoRAG."""
 
     def __init__(self) -> None:
         self.repo_root = Path(__file__).resolve().parents[3]
@@ -34,7 +29,7 @@ class HippoRagBridge:
             from hipporag.HippoRAG import HippoRAG
 
             return HippoRAG
-        except Exception as exc:  # pragma: no cover - depends on local heavy deps
+        except Exception as exc:  # pragma: no cover - depends on optional local deps
             self.error = str(exc)
             return None
 
@@ -55,8 +50,14 @@ class AlgorithmAdapter:
         self.provider = provider
         self.hipporag = HippoRagBridge() if provider == "hipporag" else None
 
-    def build_graph(self, case_id: str, evidence: list[EvidenceRecord], raw_contents: dict[str, str]) -> InvestigationGraph:
-        graph = self._build_stub_graph(case_id, evidence, raw_contents)
+    def build_graph(
+        self,
+        case_id: str,
+        evidence: list[EvidenceRecord],
+        raw_contents: dict[str, str],
+        extractions: dict[str, ExtractionResult] | None = None,
+    ) -> InvestigationGraph:
+        graph = self._build_graph_from_extractions(case_id, evidence, raw_contents, extractions or {})
         if self.hipporag:
             graph.nodes.append(
                 GraphNode(
@@ -69,62 +70,115 @@ class AlgorithmAdapter:
             )
         return graph
 
-    def _build_stub_graph(self, case_id: str, evidence: list[EvidenceRecord], raw_contents: dict[str, str]) -> InvestigationGraph:
+    def _build_graph_from_extractions(
+        self,
+        case_id: str,
+        evidence: list[EvidenceRecord],
+        raw_contents: dict[str, str],
+        extractions: dict[str, ExtractionResult],
+    ) -> InvestigationGraph:
         nodes: list[GraphNode] = []
         edges: list[GraphEdge] = []
         clues: list[SuspiciousClue] = []
+        node_ids: set[str] = set()
+
+        def add_node(
+            node_id: str,
+            label: str,
+            node_type: str,
+            evidence_id: str,
+            properties: dict[str, Any] | None = None,
+        ) -> None:
+            if node_id in node_ids:
+                return
+            node_ids.add(node_id)
+            nodes.append(
+                GraphNode(
+                    node_id=node_id,
+                    label=label,
+                    type=node_type,
+                    properties={key: value for key, value in (properties or {}).items() if value is not None},
+                    evidence_ids=[evidence_id],
+                )
+            )
 
         for item in evidence:
             content = raw_contents.get(item.evidence_id, item.content_preview)
             doc_node_id = f"doc:{item.evidence_id}"
-            nodes.append(
-                GraphNode(
-                    node_id=doc_node_id,
-                    label=item.title,
-                    type="evidence",
-                    properties={"source_type": item.source_type, "preview": item.content_preview},
+            add_node(
+                doc_node_id,
+                item.title,
+                "evidence",
+                item.evidence_id,
+                {"source_type": item.source_type, "preview": item.content_preview},
+            )
+
+            extraction = extractions.get(item.evidence_id)
+            if extraction:
+                for index, triple in enumerate(extraction.triples[:240]):
+                    subject_id = f"entity:{triple.subject}"
+                    object_id = f"entity:{triple.object}"
+                    add_node(subject_id, triple.subject, "entity", item.evidence_id)
+                    add_node(object_id, triple.object, _node_type_for(triple.relation), item.evidence_id, triple.properties)
+                    edges.append(
+                        GraphEdge(
+                            edge_id=new_id("edge"),
+                            source_id=subject_id,
+                            target_id=object_id,
+                            relation=triple.relation,
+                            confidence=0.74,
+                            evidence_ids=[item.evidence_id],
+                        )
+                    )
+                    if index < 5:
+                        edges.append(
+                            GraphEdge(
+                                edge_id=new_id("edge"),
+                                source_id=doc_node_id,
+                                target_id=subject_id,
+                                relation="mentions",
+                                confidence=0.62,
+                                evidence_ids=[item.evidence_id],
+                            )
+                        )
+
+            clues.extend(self._clues_from_content(item, content))
+
+        return InvestigationGraph(case_id=case_id, nodes=nodes, edges=edges, clues=clues)
+
+    def _clues_from_content(self, item: EvidenceRecord, content: str) -> list[SuspiciousClue]:
+        clues: list[SuspiciousClue] = []
+        if any(keyword in content for keyword in ["转账", "流水", "金额", "交易", "银行", "收款", "付款"]):
+            clues.append(
+                SuspiciousClue(
+                    clue_id=new_id("clue"),
+                    title="资金往来线索",
+                    category="fund_flow",
+                    description=f"证据《{item.title}》包含交易、流水或金额信息，已生成资金关系节点。",
+                    risk_level="medium",
                     evidence_ids=[item.evidence_id],
                 )
             )
-
-            if any(keyword in content for keyword in ["资金", "转账", "交易", "流水", "好处费", "受贿"]):
-                clues.append(
-                    SuspiciousClue(
-                        clue_id=new_id("clue"),
-                        title="疑似资金流动线索",
-                        category="fund_flow",
-                        description=f"材料《{item.title}》包含资金、交易或受贿相关信息，建议与人物关系和时间线继续碰撞。",
-                        risk_level="medium",
-                        evidence_ids=[item.evidence_id],
-                    )
+        if any(keyword in content for keyword in ["明知", "故意", "徇私", "隐瞒", "释放", "拘留", "立案", "调解"]):
+            clues.append(
+                SuspiciousClue(
+                    clue_id=new_id("clue"),
+                    title="职务行为与主观状态线索",
+                    category="duty_behavior",
+                    description=f"证据《{item.title}》包含可能关联徇私、明知、隐瞒或执法处置的表述。",
+                    risk_level="high",
+                    evidence_ids=[item.evidence_id],
                 )
+            )
+        return clues
 
-            if any(keyword in content for keyword in ["徇私", "枉法", "裁判", "执行", "调解", "释放"]):
-                clues.append(
-                    SuspiciousClue(
-                        clue_id=new_id("clue"),
-                        title="疑似职务行为异常线索",
-                        category="duty_behavior",
-                        description=f"材料《{item.title}》出现徇私、枉法、调解或释放相关表述，建议核查职权边界和案件流程。",
-                        risk_level="high",
-                        evidence_ids=[item.evidence_id],
-                    )
-                )
 
-        if len(nodes) >= 2:
-            for previous, current in zip(nodes, nodes[1:]):
-                edges.append(
-                    GraphEdge(
-                        edge_id=new_id("edge"),
-                        source_id=previous.node_id,
-                        target_id=current.node_id,
-                        relation="same_case_material",
-                        confidence=0.6,
-                        evidence_ids=list(set(previous.evidence_ids + current.evidence_ids)),
-                    )
-                )
-
-        return InvestigationGraph(case_id=case_id, nodes=nodes, edges=edges, clues=clues)
+def _node_type_for(relation: str) -> str:
+    if relation in {"交易金额", "发生时间"}:
+        return "fact"
+    if any(word in relation for word in ("资金", "交易", "收入", "支出", "转账")):
+        return "transaction"
+    return "entity"
 
 
 def get_algorithm_adapter() -> AlgorithmAdapter:

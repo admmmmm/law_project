@@ -53,14 +53,37 @@ export interface PortraitReport {
   suggestions: string[];
 }
 
+export interface IngestionResult {
+  case_id: string;
+  accepted: boolean;
+  evidence: {
+    evidence_id: string;
+    case_id: string;
+    title: string;
+    source_type: string;
+    source_ref?: string | null;
+    content_preview: string;
+    created_at: string;
+  };
+  extraction?: {
+    route: string;
+    triples: Array<{ subject: string; relation: string; object: string }>;
+    passages: Array<{ text: string }>;
+    metadata: Record<string, string | number | boolean | null>;
+  } | null;
+  next_step: string;
+}
+
+export interface AnalysisRunResult {
+  case_id: string;
+  status: string;
+  summary: string;
+  graph: InvestigationGraph;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_PREFIX}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers ?? {}),
-    },
-    ...init,
-  });
+  const headers = init?.body instanceof FormData ? init.headers : { 'Content-Type': 'application/json', ...(init?.headers ?? {}) };
+  const response = await fetch(`${API_PREFIX}${path}`, { headers, ...init });
 
   if (!response.ok) {
     const message = await response.text();
@@ -78,15 +101,25 @@ export const backendApi = {
       method: 'POST',
       body: JSON.stringify({ title, description }),
     }),
-  ingestText: (caseId: string, title: string, content: string) =>
-    request(`/cases/${caseId}/ingestions/text`, {
+  ingestText: (caseId: string, title: string, content: string, sourceType = 'text') =>
+    request<IngestionResult>(`/cases/${caseId}/ingestions/text`, {
       method: 'POST',
-      body: JSON.stringify({ title, content, source_type: 'frontend_text' }),
+      body: JSON.stringify({ title, content, source_type: sourceType }),
     }),
-  runAnalysis: (caseId: string) =>
-    request(`/cases/${caseId}/analysis/run`, {
+  ingestFile: (caseId: string, file: File, sourceType = 'unknown', title?: string) => {
+    const body = new FormData();
+    body.append('file', file);
+    body.append('source_type', sourceType);
+    if (title) body.append('title', title);
+    return request<IngestionResult>(`/cases/${caseId}/ingestions/files`, {
       method: 'POST',
-      body: JSON.stringify({}),
+      body,
+    });
+  },
+  runAnalysis: (caseId: string) =>
+    request<AnalysisRunResult>(`/cases/${caseId}/analysis/run`, {
+      method: 'POST',
+      body: JSON.stringify({ scopes: ['full'] }),
     }),
   getGraph: (caseId: string) => request<InvestigationGraph>(`/cases/${caseId}/graph`),
   generatePortrait: (caseId: string) =>

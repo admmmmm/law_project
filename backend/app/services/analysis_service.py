@@ -16,7 +16,7 @@ class AnalysisService:
                 raise not_found("case not found")
 
             evidence = self.store.evidence.get(case_id, [])
-            graph = self.algorithm.build_graph(case_id, evidence, self.store.raw_contents)
+            graph = self.algorithm.build_graph(case_id, evidence, self.store.raw_contents, self.store.extractions)
             self.store.graphs[case_id] = graph
             self.store.cases[case_id] = case.model_copy(update={"status": "analyzed"})
 

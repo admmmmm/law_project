@@ -20,8 +20,30 @@ class EvidenceRecord(BaseModel):
     created_at: datetime
 
 
+class ExtractedTriple(BaseModel):
+    subject: str
+    relation: str
+    object: str
+    evidence_id: str | None = None
+    properties: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
+
+
+class PassageRecord(BaseModel):
+    text: str
+    evidence_id: str | None = None
+    triple_index: int | None = None
+
+
+class ExtractionResult(BaseModel):
+    route: str
+    triples: list[ExtractedTriple] = Field(default_factory=list)
+    passages: list[PassageRecord] = Field(default_factory=list)
+    metadata: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
+
+
 class IngestionResult(BaseModel):
     case_id: str
     accepted: bool
     evidence: EvidenceRecord
+    extraction: ExtractionResult | None = None
     next_step: str = "run_analysis"

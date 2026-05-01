@@ -17,6 +17,7 @@ async def ingest_file(
     service: IngestionServiceDep,
     file: UploadFile = File(...),
     source_type: str = Form(default="unknown"),
+    title: str | None = Form(default=None),
 ) -> IngestionResult:
     content = await file.read()
-    return service.ingest_file(case_id=case_id, filename=file.filename or "uploaded-file", content=content, source_type=source_type)
+    return service.ingest_file(case_id=case_id, filename=title or file.filename or "uploaded-file", content=content, source_type=source_type)
