@@ -202,7 +202,6 @@ def main() -> None:
         write_xlsx(DATA_DIR / "案情梳理_合成后移版.xlsx", timeline, TIMELINE_COLUMNS)
     write_xlsx(OUT_DIR / "name_mapping.xlsx", mappings, ["假名", "案件真实姓名"])
     write_xlsx(OUT_DIR / "time_mapping.xlsx", time_rules, ["规则ID", "适用条件", "原始起点", "原始终点", "案情起点", "案情终点", "说明"])
-    (DATA_DIR / "案情梳理.md").write_text(build_case_markdown(), encoding="utf-8")
     (OUT_DIR / "summary.md").write_text(
         "\n".join(
             [
