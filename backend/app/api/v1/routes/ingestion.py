@@ -1,7 +1,7 @@
 from fastapi import APIRouter, File, Form, UploadFile
 
 from app.core.dependencies import IngestionServiceDep
-from app.schemas.ingestion import IngestionResult, TextIngestionRequest
+from app.schemas.ingestion import BatchIngestionResult, IngestionResult, TextIngestionRequest
 
 router = APIRouter()
 
@@ -21,3 +21,25 @@ async def ingest_file(
 ) -> IngestionResult:
     content = await file.read()
     return service.ingest_file(case_id=case_id, filename=title or file.filename or "uploaded-file", content=content, source_type=source_type)
+
+
+@router.post("/{case_id}/ingestions/batch", response_model=BatchIngestionResult)
+async def ingest_batch(
+    case_id: str,
+    service: IngestionServiceDep,
+    files: list[UploadFile] = File(...),
+    source_type: str = Form(default="unknown"),
+) -> BatchIngestionResult:
+    payload: list[tuple[str, bytes]] = []
+    for file in files:
+        payload.append((file.filename or "uploaded-file", await file.read()))
+    return service.ingest_many_files(case_id=case_id, files=payload, source_type=source_type)
+
+
+@router.post("/{case_id}/ingestions/archive", response_model=BatchIngestionResult)
+async def ingest_archive(
+    case_id: str,
+    service: IngestionServiceDep,
+    file: UploadFile = File(...),
+) -> BatchIngestionResult:
+    return service.ingest_archive(case_id=case_id, filename=file.filename or "archive.zip", content=await file.read())

@@ -47,3 +47,14 @@ class IngestionResult(BaseModel):
     evidence: EvidenceRecord
     extraction: ExtractionResult | None = None
     next_step: str = "run_analysis"
+
+
+class BatchIngestionResult(BaseModel):
+    case_id: str
+    accepted: bool
+    imported_count: int = 0
+    skipped_count: int = 0
+    evidences: list[EvidenceRecord] = Field(default_factory=list)
+    results: list[IngestionResult] = Field(default_factory=list)
+    skipped: list[dict[str, str]] = Field(default_factory=list)
+    next_step: str = "run_analysis"

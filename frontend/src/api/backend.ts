@@ -74,6 +74,17 @@ export interface IngestionResult {
   next_step: string;
 }
 
+export interface BatchIngestionResult {
+  case_id: string;
+  accepted: boolean;
+  imported_count: number;
+  skipped_count: number;
+  evidences: IngestionResult['evidence'][];
+  results: IngestionResult[];
+  skipped: Array<{ filename: string; reason: string }>;
+  next_step: string;
+}
+
 export interface AnalysisRunResult {
   case_id: string;
   status: string;
@@ -112,6 +123,23 @@ export const backendApi = {
     body.append('source_type', sourceType);
     if (title) body.append('title', title);
     return request<IngestionResult>(`/cases/${caseId}/ingestions/files`, {
+      method: 'POST',
+      body,
+    });
+  },
+  ingestBatch: (caseId: string, files: File[]) => {
+    const body = new FormData();
+    files.forEach((file) => body.append('files', file, file.webkitRelativePath || file.name));
+    body.append('source_type', 'unknown');
+    return request<BatchIngestionResult>(`/cases/${caseId}/ingestions/batch`, {
+      method: 'POST',
+      body,
+    });
+  },
+  ingestArchive: (caseId: string, file: File) => {
+    const body = new FormData();
+    body.append('file', file);
+    return request<BatchIngestionResult>(`/cases/${caseId}/ingestions/archive`, {
       method: 'POST',
       body,
     });
