@@ -16,6 +16,7 @@ class GraphEdge(BaseModel):
     target_id: str
     relation: str
     confidence: float = Field(default=0.5, ge=0, le=1)
+    properties: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
     evidence_ids: list[str] = Field(default_factory=list)
     manually_verified: bool = False
 

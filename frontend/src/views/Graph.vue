@@ -1,152 +1,119 @@
 <template>
-  <div class="h-full flex flex-col bg-slate-950 text-white">
-    <div class="h-14 border-b border-slate-800 px-5 flex items-center justify-between shrink-0">
+  <div class="h-full flex flex-col bg-slate-100">
+    <div class="h-14 bg-white border-b border-slate-200 px-5 flex items-center justify-between shrink-0">
       <div>
-        <div class="font-bold">证据图谱</div>
-        <div class="text-xs text-slate-400">{{ activeCaseId || '未选择案件' }}</div>
+        <div class="font-bold text-slate-900">证据图谱</div>
+        <div class="text-xs text-slate-500">{{ activeCaseId || '未选择案件' }}</div>
       </div>
       <div class="flex items-center gap-2">
-        <button class="toolbar-btn" :disabled="!activeCaseId" @click="runAnalysis">重新分析</button>
-        <button class="toolbar-btn" :disabled="!activeCaseId" @click="loadGraph">刷新图谱</button>
+        <button class="btn" :disabled="!activeCaseId || loading" @click="runAnalysis">重新分析</button>
+        <button class="btn" :disabled="!activeCaseId || loading" @click="loadGraph">刷新</button>
       </div>
     </div>
 
-    <div v-if="error" class="m-4 p-3 bg-rose-950 border border-rose-800 text-rose-100 rounded">{{ error }}</div>
+    <div v-if="error" class="m-4 p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded">{{ error }}</div>
 
     <div v-if="!activeCaseId" class="flex-1 grid place-items-center text-center">
       <div>
-        <Network class="mx-auto text-slate-600 mb-3" :size="50" />
-        <div class="font-bold text-slate-200">还没有选择案件</div>
-        <router-link to="/" class="text-teal-300 text-sm mt-2 inline-block">去案件导入页创建或选择案件</router-link>
+        <Network class="mx-auto text-slate-300 mb-3" :size="54" />
+        <div class="font-bold text-slate-700">还没有选择案件</div>
+        <router-link class="text-teal-700 text-sm mt-2 inline-block" to="/">去白板工作台选择案件</router-link>
       </div>
     </div>
 
-    <div v-else-if="loading" class="flex-1 grid place-items-center text-slate-400">正在读取图谱...</div>
-
     <div v-else class="flex-1 grid grid-cols-[1fr_340px] min-h-0">
-      <section class="relative overflow-hidden">
-        <svg class="w-full h-full" viewBox="0 0 1000 720">
-          <defs>
-            <radialGradient id="nodeGlow">
-              <stop offset="0%" stop-color="#2dd4bf" stop-opacity="0.9" />
-              <stop offset="100%" stop-color="#0f172a" stop-opacity="0.1" />
-            </radialGradient>
-          </defs>
-          <g stroke="#334155" stroke-width="1.2">
-            <line
-              v-for="edge in positionedEdges"
-              :key="edge.edge_id"
-              :x1="edge.source.x"
-              :y1="edge.source.y"
-              :x2="edge.target.x"
-              :y2="edge.target.y"
-            />
-          </g>
-          <g>
-            <g
-              v-for="node in positionedNodes"
-              :key="node.node_id"
-              class="cursor-pointer"
-              @click="selectedNodeId = node.node_id"
-            >
-              <circle :cx="node.x" :cy="node.y" :r="node.type === 'evidence' ? 34 : 24" fill="url(#nodeGlow)" />
-              <circle
-                :cx="node.x"
-                :cy="node.y"
-                :r="node.type === 'evidence' ? 22 : 15"
-                :fill="nodeColor(node.type)"
-                :stroke="selectedNodeId === node.node_id ? '#facc15' : '#94a3b8'"
-                stroke-width="2"
-              />
-              <text :x="node.x" :y="node.y + 42" text-anchor="middle" fill="#cbd5e1" font-size="12">
-                {{ shortLabel(node.label) }}
-              </text>
-            </g>
-          </g>
-        </svg>
-
-        <div v-if="graph.nodes.length === 0" class="absolute inset-0 grid place-items-center text-center">
+      <section class="bg-white min-h-0">
+        <div v-if="loading" class="h-full grid place-items-center text-slate-500">正在加载图谱...</div>
+        <div v-else-if="graph.nodes.length === 0" class="h-full grid place-items-center text-center">
           <div>
-            <Network class="mx-auto text-slate-600 mb-3" :size="54" />
-            <div class="font-bold text-slate-200">图谱还是空的</div>
-            <p class="text-sm text-slate-400 mt-1">先导入证据，然后运行分析。</p>
+            <Network class="mx-auto text-slate-300 mb-3" :size="54" />
+            <div class="font-bold text-slate-700">图谱还是空的</div>
+            <p class="text-sm text-slate-500 mt-1">先导入证据，然后运行分析。</p>
           </div>
         </div>
+        <RelationGraph
+          v-else
+          ref="graphRef"
+          class="h-full w-full"
+          :options="graphOptions"
+          :on-node-click="onNodeClick"
+          :on-line-click="onLineClick"
+        />
       </section>
 
-      <aside class="border-l border-slate-800 bg-slate-900 p-4 overflow-auto">
+      <aside class="bg-slate-950 text-white p-4 overflow-auto border-l border-slate-800">
         <div class="grid grid-cols-3 gap-2 mb-4">
           <div class="stat"><span>节点</span><strong>{{ graph.nodes.length }}</strong></div>
           <div class="stat"><span>关系</span><strong>{{ graph.edges.length }}</strong></div>
           <div class="stat"><span>线索</span><strong>{{ graph.clues.length }}</strong></div>
         </div>
 
-        <section v-if="selectedNode" class="panel">
-          <h3>{{ selectedNode.label }}</h3>
-          <p class="text-xs text-slate-400 font-mono break-all">{{ selectedNode.node_id }}</p>
-          <div class="mt-3 text-sm text-slate-300">类型：{{ selectedNode.type }}</div>
-        </section>
+        <div class="panel">
+          <h3>当前选择</h3>
+          <div v-if="selectedLabel" class="mt-2">
+            <div class="font-bold">{{ selectedLabel }}</div>
+            <div class="text-xs text-slate-400 break-all mt-1">{{ selectedMeta }}</div>
+          </div>
+          <div v-else class="text-sm text-slate-400">点击节点或关系查看详情。</div>
+        </div>
 
-        <section class="panel mt-4">
+        <div class="panel mt-4">
           <h3>风险线索</h3>
           <div v-if="graph.clues.length === 0" class="text-sm text-slate-400">暂无线索。</div>
           <div v-for="clue in graph.clues" :key="clue.clue_id" class="border-t border-slate-800 py-3 first:border-t-0">
             <div class="font-bold text-sm">{{ clue.title }}</div>
             <div class="text-xs text-slate-400 mt-1">{{ clue.description }}</div>
           </div>
-        </section>
+        </div>
 
-        <section class="panel mt-4">
-          <h3>关系样本</h3>
-          <div v-if="graph.edges.length === 0" class="text-sm text-slate-400">暂无关系。</div>
-          <div v-for="edge in graph.edges.slice(0, 12)" :key="edge.edge_id" class="text-xs border-t border-slate-800 py-2 first:border-t-0">
-            <span class="text-teal-300">{{ labelOf(edge.source_id) }}</span>
-            <span class="text-slate-500"> --{{ edge.relation }}-> </span>
-            <span class="text-sky-300">{{ labelOf(edge.target_id) }}</span>
-          </div>
-        </section>
+        <div class="panel mt-4">
+          <h3>聚合说明</h3>
+          <p class="text-sm text-slate-400 leading-6">
+            流水不再逐笔画节点。后端按主体、对象、关系聚合，边上保留 count、amount_total、time_sample。
+          </p>
+        </div>
       </aside>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
+import RelationGraph from 'relation-graph/vue3';
 import { Network } from 'lucide-vue-next';
-import { backendApi, type GraphNode, type InvestigationGraph } from '../api/backend';
-
-type PositionedNode = GraphNode & { x: number; y: number };
+import { backendApi, type GraphEdge, type GraphNode, type InvestigationGraph } from '../api/backend';
 
 const activeCaseId = ref(localStorage.getItem('active_case_id') || '');
 const loading = ref(false);
 const error = ref('');
-const selectedNodeId = ref('');
+const graphRef = ref<any>(null);
+const selectedLabel = ref('');
+const selectedMeta = ref('');
 const graph = ref<InvestigationGraph>({ case_id: activeCaseId.value, nodes: [], edges: [], clues: [] });
 
+const graphOptions = {
+  debug: false,
+  allowSwitchLineShape: true,
+  allowSwitchJunctionPoint: true,
+  defaultNodeShape: 1,
+  defaultLineShape: 6,
+  defaultJunctionPoint: 'border',
+  defaultNodeWidth: 118,
+  defaultNodeHeight: 42,
+  defaultLineColor: '#64748b',
+  defaultLineWidth: 1.5,
+  layouts: [
+    {
+      label: 'center',
+      layoutName: 'force',
+      maxLayoutTimes: 220,
+    },
+  ],
+};
+
+const nodeMap = computed(() => new Map(graph.value.nodes.map((node) => [node.node_id, node])));
+
 onMounted(loadGraph);
-
-const positionedNodes = computed<PositionedNode[]>(() => {
-  const count = Math.max(graph.value.nodes.length, 1);
-  const centerX = 500;
-  const centerY = 350;
-  const radius = count > 12 ? 285 : 230;
-  return graph.value.nodes.map((node, index) => {
-    if (node.type === 'evidence') {
-      return { ...node, x: centerX, y: 110 + index * 58 };
-    }
-    const angle = (Math.PI * 2 * index) / count;
-    return { ...node, x: centerX + Math.cos(angle) * radius, y: centerY + Math.sin(angle) * radius };
-  });
-});
-
-const positionedEdges = computed(() => {
-  const map = new Map(positionedNodes.value.map((node) => [node.node_id, node]));
-  return graph.value.edges
-    .map((edge) => ({ ...edge, source: map.get(edge.source_id), target: map.get(edge.target_id) }))
-    .filter((edge): edge is typeof edge & { source: PositionedNode; target: PositionedNode } => Boolean(edge.source && edge.target));
-});
-
-const selectedNode = computed(() => graph.value.nodes.find((node) => node.node_id === selectedNodeId.value));
 
 async function loadGraph() {
   if (!activeCaseId.value) return;
@@ -154,7 +121,8 @@ async function loadGraph() {
   error.value = '';
   try {
     graph.value = await backendApi.getGraph(activeCaseId.value);
-    selectedNodeId.value = graph.value.nodes[0]?.node_id || '';
+    await nextTick();
+    renderGraph();
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
@@ -164,35 +132,97 @@ async function loadGraph() {
 
 async function runAnalysis() {
   if (!activeCaseId.value) return;
-  await backendApi.runAnalysis(activeCaseId.value);
-  await loadGraph();
+  loading.value = true;
+  error.value = '';
+  try {
+    await backendApi.runAnalysis(activeCaseId.value);
+    graph.value = await backendApi.getGraph(activeCaseId.value);
+    await nextTick();
+    renderGraph();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    loading.value = false;
+  }
+}
+
+function renderGraph() {
+  if (!graphRef.value || graph.value.nodes.length === 0) return;
+  const jsonData = {
+    rootId: graph.value.nodes[0]?.node_id,
+    nodes: graph.value.nodes.map(toRelationNode),
+    lines: graph.value.edges.map(toRelationLine),
+  };
+  graphRef.value.setJsonData(jsonData);
+}
+
+function toRelationNode(node: GraphNode) {
+  return {
+    id: node.node_id,
+    text: trim(node.label, 18),
+    data: node,
+    color: nodeColor(node.type),
+    borderColor: node.type === 'evidence' ? '#0f766e' : '#334155',
+    fontColor: '#0f172a',
+    width: node.type === 'evidence' ? 150 : 118,
+    height: node.type === 'evidence' ? 52 : 42,
+    nodeShape: 1,
+  };
+}
+
+function toRelationLine(edge: GraphEdge) {
+  const count = edge.properties?.count ? ` x${edge.properties.count}` : '';
+  const amount = edge.properties?.amount_total ? ` ¥${edge.properties.amount_total}` : '';
+  return {
+    id: edge.edge_id,
+    from: edge.source_id,
+    to: edge.target_id,
+    text: trim(`${edge.relation}${count}${amount}`, 28),
+    data: edge,
+    color: edgeColor(edge),
+    lineWidth: edge.properties?.count && Number(edge.properties.count) > 1 ? 2.5 : 1.2,
+  };
+}
+
+function onNodeClick(node: { data?: GraphNode }) {
+  if (!node.data) return;
+  selectedLabel.value = node.data.label;
+  selectedMeta.value = `${node.data.type} / ${node.data.node_id}`;
+}
+
+function onLineClick(line: { data?: GraphEdge }) {
+  if (!line.data) return;
+  const source = nodeMap.value.get(line.data.source_id)?.label || line.data.source_id;
+  const target = nodeMap.value.get(line.data.target_id)?.label || line.data.target_id;
+  selectedLabel.value = `${source} -> ${target}`;
+  selectedMeta.value = `${line.data.relation} / ${JSON.stringify(line.data.properties || {})}`;
 }
 
 function nodeColor(type: string) {
-  if (type === 'evidence') return '#0f766e';
-  if (type === 'transaction') return '#2563eb';
-  if (type === 'fact') return '#9333ea';
-  return '#475569';
+  if (type === 'evidence') return '#ccfbf1';
+  if (type === 'transaction') return '#dbeafe';
+  return '#f8fafc';
 }
 
-function shortLabel(label: string) {
-  return label.length > 12 ? `${label.slice(0, 12)}...` : label;
+function edgeColor(edge: GraphEdge) {
+  if (edge.relation.includes('资金') || edge.relation.includes('转账') || edge.relation.includes('交易')) return '#2563eb';
+  return '#64748b';
 }
 
-function labelOf(nodeId: string) {
-  return graph.value.nodes.find((node) => node.node_id === nodeId)?.label || nodeId;
+function trim(text: string, length: number) {
+  return text.length > length ? `${text.slice(0, length)}...` : text;
 }
 </script>
 
 <style scoped>
-.toolbar-btn {
-  border: 1px solid #334155;
-  border-radius: 8px;
+.btn {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
   padding: 7px 11px;
-  color: #cbd5e1;
   font-size: 13px;
+  font-weight: 700;
 }
-.toolbar-btn:disabled {
+.btn:disabled {
   opacity: 0.45;
 }
 .stat {
@@ -218,7 +248,7 @@ function labelOf(nodeId: string) {
   padding: 14px;
 }
 .panel h3 {
-  font-weight: 700;
+  font-weight: 800;
   margin-bottom: 8px;
 }
 </style>

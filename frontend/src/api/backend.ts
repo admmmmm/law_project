@@ -24,6 +24,7 @@ export interface GraphEdge {
   target_id: string;
   relation: string;
   confidence: number;
+  properties: Record<string, string | number | boolean | null>;
   evidence_ids: string[];
   manually_verified: boolean;
 }

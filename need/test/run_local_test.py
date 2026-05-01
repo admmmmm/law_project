@@ -2,6 +2,7 @@ from pathlib import Path
 import contextlib
 import io
 import logging
+import os
 import re
 import sys
 import warnings
@@ -85,7 +86,7 @@ def main():
     config = BaseConfig(
         llm_name="deepseek-chat",
         llm_base_url="https://api.deepseek.com",
-        embedding_model_name="BAAI/bge-m3",
+        embedding_model_name=os.getenv("HIPPORAG_EMBEDDING_MODEL", "BAAI/bge-m3"),
         save_dir="outputs/local_case",
     )
 

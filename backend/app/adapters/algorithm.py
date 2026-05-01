@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import sys
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
 from app.core.config import settings
 from app.schemas.common import new_id
 from app.schemas.graph import GraphEdge, GraphNode, InvestigationGraph, SuspiciousClue
-from app.schemas.ingestion import EvidenceRecord, ExtractionResult
+from app.schemas.ingestion import EvidenceRecord, ExtractionResult, ExtractedTriple
 
 
 class HippoRagBridge:
@@ -57,7 +58,7 @@ class AlgorithmAdapter:
         raw_contents: dict[str, str],
         extractions: dict[str, ExtractionResult] | None = None,
     ) -> InvestigationGraph:
-        graph = self._build_graph_from_extractions(case_id, evidence, raw_contents, extractions or {})
+        graph = self._build_aggregated_graph(case_id, evidence, raw_contents, extractions or {})
         if self.hipporag:
             graph.nodes.append(
                 GraphNode(
@@ -70,7 +71,7 @@ class AlgorithmAdapter:
             )
         return graph
 
-    def _build_graph_from_extractions(
+    def _build_aggregated_graph(
         self,
         case_id: str,
         evidence: list[EvidenceRecord],
@@ -81,14 +82,11 @@ class AlgorithmAdapter:
         edges: list[GraphEdge] = []
         clues: list[SuspiciousClue] = []
         node_ids: set[str] = set()
+        grouped: dict[tuple[str, str, str], dict[str, Any]] = defaultdict(
+            lambda: {"count": 0, "amount_total": 0.0, "times": set(), "evidence_ids": set()}
+        )
 
-        def add_node(
-            node_id: str,
-            label: str,
-            node_type: str,
-            evidence_id: str,
-            properties: dict[str, Any] | None = None,
-        ) -> None:
+        def add_node(node_id: str, label: str, node_type: str, evidence_id: str, properties: dict[str, Any] | None = None) -> None:
             if node_id in node_ids:
                 return
             node_ids.add(node_id)
@@ -97,54 +95,71 @@ class AlgorithmAdapter:
                     node_id=node_id,
                     label=label,
                     type=node_type,
-                    properties={key: value for key, value in (properties or {}).items() if value is not None},
+                    properties={key: value for key, value in (properties or {}).items() if value not in (None, "")},
                     evidence_ids=[evidence_id],
                 )
             )
 
         for item in evidence:
             content = raw_contents.get(item.evidence_id, item.content_preview)
-            doc_node_id = f"doc:{item.evidence_id}"
             add_node(
-                doc_node_id,
+                f"doc:{item.evidence_id}",
                 item.title,
                 "evidence",
                 item.evidence_id,
                 {"source_type": item.source_type, "preview": item.content_preview},
             )
-
             extraction = extractions.get(item.evidence_id)
             if extraction:
-                for index, triple in enumerate(extraction.triples[:240]):
-                    subject_id = f"entity:{triple.subject}"
-                    object_id = f"entity:{triple.object}"
-                    add_node(subject_id, triple.subject, "entity", item.evidence_id)
-                    add_node(object_id, triple.object, _node_type_for(triple.relation), item.evidence_id, triple.properties)
-                    edges.append(
-                        GraphEdge(
-                            edge_id=new_id("edge"),
-                            source_id=subject_id,
-                            target_id=object_id,
-                            relation=triple.relation,
-                            confidence=0.74,
-                            evidence_ids=[item.evidence_id],
-                        )
-                    )
-                    if index < 5:
-                        edges.append(
-                            GraphEdge(
-                                edge_id=new_id("edge"),
-                                source_id=doc_node_id,
-                                target_id=subject_id,
-                                relation="mentions",
-                                confidence=0.62,
-                                evidence_ids=[item.evidence_id],
-                            )
-                        )
-
+                for triple in extraction.triples:
+                    self._collect_triple(grouped, triple, item.evidence_id)
             clues.extend(self._clues_from_content(item, content))
 
+        for (subject, relation, obj), data in grouped.items():
+            subject_id = f"entity:{subject}"
+            object_id = f"entity:{obj}"
+            evidence_ids = sorted(data["evidence_ids"])
+            primary_evidence_id = evidence_ids[0] if evidence_ids else ""
+            add_node(subject_id, subject, "entity", primary_evidence_id)
+            add_node(object_id, obj, _node_type_for(relation), primary_evidence_id)
+            count = int(data["count"])
+            amount_total = float(data["amount_total"])
+            times = sorted(data["times"])
+            edges.append(
+                GraphEdge(
+                    edge_id=new_id("edge"),
+                    source_id=subject_id,
+                    target_id=object_id,
+                    relation=relation,
+                    confidence=0.82 if count > 1 else 0.72,
+                    properties={
+                        "count": count,
+                        "amount_total": round(amount_total, 2) if amount_total else None,
+                        "time_sample": "；".join(times[:3]) if times else None,
+                    },
+                    evidence_ids=evidence_ids,
+                )
+            )
+
         return InvestigationGraph(case_id=case_id, nodes=nodes, edges=edges, clues=clues)
+
+    def _collect_triple(
+        self,
+        grouped: dict[tuple[str, str, str], dict[str, Any]],
+        triple: ExtractedTriple,
+        evidence_id: str,
+    ) -> None:
+        if triple.relation in {"交易金额", "发生时间"}:
+            return
+        key = (triple.subject, triple.relation, triple.object)
+        item = grouped[key]
+        item["count"] += 1
+        item["evidence_ids"].add(evidence_id)
+        amount = _to_float(triple.properties.get("amount"))
+        if amount:
+            item["amount_total"] += amount
+        if triple.properties.get("time"):
+            item["times"].add(str(triple.properties["time"]))
 
     def _clues_from_content(self, item: EvidenceRecord, content: str) -> list[SuspiciousClue]:
         clues: list[SuspiciousClue] = []
@@ -154,7 +169,7 @@ class AlgorithmAdapter:
                     clue_id=new_id("clue"),
                     title="资金往来线索",
                     category="fund_flow",
-                    description=f"证据《{item.title}》包含交易、流水或金额信息，已生成资金关系节点。",
+                    description=f"证据《{item.title}》包含交易、流水或金额信息，已按主体关系聚合入图。",
                     risk_level="medium",
                     evidence_ids=[item.evidence_id],
                 )
@@ -174,11 +189,18 @@ class AlgorithmAdapter:
 
 
 def _node_type_for(relation: str) -> str:
-    if relation in {"交易金额", "发生时间"}:
-        return "fact"
     if any(word in relation for word in ("资金", "交易", "收入", "支出", "转账")):
         return "transaction"
     return "entity"
+
+
+def _to_float(value: Any) -> float:
+    if value in (None, ""):
+        return 0.0
+    try:
+        return float(str(value).replace(",", ""))
+    except ValueError:
+        return 0.0
 
 
 def get_algorithm_adapter() -> AlgorithmAdapter:

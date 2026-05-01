@@ -27,6 +27,7 @@
 4. 图谱
    - 展示后端返回的节点、边、线索
    - 不写死演示数据
+   - 使用 `relation-graph` 展示，不再使用手写 SVG 圆环布局
 
 前端专人后续只需要围绕这些固定动作做精细设计，不需要重新猜业务流程。
 
@@ -92,6 +93,8 @@
 - 可以把文本证据切成 passage，并生成粗粒度三元组
 - 可以把导入结果保存到同一个案件 store
 - 可以运行分析并生成图谱节点、边、线索
+- 图谱边已按主体/对象/关系聚合，流水明细不会逐笔铺成大量节点
+- HippoRAG Python 包已可被后端 import，状态可通过 `GET /api/v1/health/hipporag` 查看
 
 还没做到：
 
@@ -99,7 +102,8 @@
 - 不能处理图片 OCR
 - 不能自动识别所有复杂目录语义，比如“这个文件夹就是证据组 5”
 - 非结构化文本抽取现在是规则/stub，不是最终 LLM 抽取
-- HippoRAG 目前是可选加载桥，尚未真正把 passage 写入 HippoRAG 索引并跑 PPR 检索
+- HippoRAG 的 BGE-M3 模型尚未完整下载到本地；README 测试已进入模型加载阶段，但 Hugging Face 下载超时
+- 尚未真正把案件 passage 写入 HippoRAG 索引并跑 PPR 检索
 - 没有持久化数据库，当前 store 仍是内存态，服务重启数据会丢
 - 没有任务队列，大 zip/大批量文件仍是同步处理
 
@@ -111,7 +115,7 @@
 
 ```powershell
 cd C:\Users\adm14\Desktop\law_project\backend
-python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+C:\Users\adm14\AppData\Local\Programs\Python\Python310\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
 前端：
@@ -162,4 +166,36 @@ zip 链路结果：
 archive 200 2 0
 analysis 200 已完成 full 分析，生成 8 个节点、8 条关系、2 条线索。
 graph 8 8 2
+```
+
+## HippoRAG 当前状态
+
+已完成：
+
+- 安装 `need/requirements_minimal.txt` 到当前后端 Python 3.10 环境
+- `HippoRagBridge().status()` 返回 `available=True`
+- 使用 DeepSeek key 跑 README 测试时，已进入 `BAAI/bge-m3` embedding 模型加载阶段
+
+当前阻塞：
+
+- 已解除。BGE-M3 已可从本地路径加载：
+  `C:\Users\adm14\.cache\huggingface\hub\BAAI\bge-m3`
+- `need/test/run_local_test.py` 已出现 `embedding_shape=(5, 1024)` 和 `index_done=True`
+
+建议：
+
+- 后续运行 HippoRAG 时优先使用本地模型路径，避免联网解析 `BAAI/bge-m3`
+- 不要用 Miniconda base 的 `python` 跑当前后端链路；base 环境当前会在 `transformers -> numpy` 版本检测处报错。当前验证通过的是：
+  `C:\Users\adm14\AppData\Local\Programs\Python\Python310\python.exe`
+- Windows 本地模型路径包含 `C:` 和反斜杠，已修复 HippoRAG 工作目录 label 清洗逻辑
+
+本地测试命令：
+
+```powershell
+$env:DEEPSEEK_API_KEY="你的 DeepSeek key"
+$env:PYTHONIOENCODING="utf-8"
+$env:TRANSFORMERS_OFFLINE="1"
+$env:HF_HUB_OFFLINE="1"
+$env:HIPPORAG_EMBEDDING_MODEL="C:\Users\adm14\.cache\huggingface\hub\BAAI\bge-m3"
+C:\Users\adm14\AppData\Local\Programs\Python\Python310\python.exe need\test\run_local_test.py
 ```

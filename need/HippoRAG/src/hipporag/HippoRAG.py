@@ -113,7 +113,7 @@ class HippoRAG:
 
         #LLM and embedding model specific working directories are created under every specified saving directories
         llm_label = self.global_config.llm_name.replace("/", "_")
-        embedding_label = self.global_config.embedding_model_name.replace("/", "_")
+        embedding_label = self.global_config.embedding_model_name.replace("/", "_").replace("\\", "_").replace(":", "_")
         self.working_dir = os.path.join(self.global_config.save_dir, f"{llm_label}_{embedding_label}")
 
         if not os.path.exists(self.working_dir):
