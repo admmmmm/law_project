@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from collections import defaultdict
+from os import getenv
 from pathlib import Path
 from typing import Any
 
@@ -71,6 +72,8 @@ class AlgorithmAdapter:
     ) -> InvestigationGraph:
         extractions = extractions or {}
         hippo_result = self._run_hipporag(case_id, evidence, raw_contents, extractions) if self.hipporag else None
+        if self.hipporag and hippo_result and hippo_result.get("error") and settings.hipporag_fail_fast:
+            raise RuntimeError(f"HippoRAG analysis failed: {hippo_result['error']}")
         if hippo_result and hippo_result["triples"]:
             extractions = self._merge_hipporag_extractions(extractions, hippo_result)
         graph = self._build_aggregated_graph(case_id, evidence, raw_contents, extractions)
@@ -119,6 +122,9 @@ class AlgorithmAdapter:
         config_class = self.hipporag.load_config_class()
         if klass is None or config_class is None:
             result["error"] = self.hipporag.error or "HippoRAG class is unavailable"
+            return result
+        if not (getenv("DEEPSEEK_API_KEY") or getenv("OPENAI_API_KEY")):
+            result["error"] = "DEEPSEEK_API_KEY is not set, so HippoRAG OpenIE cannot call the LLM"
             return result
 
         docs, doc_evidence = self._build_hipporag_docs(evidence, raw_contents, extractions)

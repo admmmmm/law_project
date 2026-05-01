@@ -239,11 +239,25 @@ def extract_unstructured_triples(content: str, evidence_id: str | None = None) -
         people = re.findall(r"[\u4e00-\u9fa5]{2,4}", sentence)
         subject = people[0] if people else f"文本片段{index}"
         obj = people[1] if len(people) > 1 else sentence[:80]
-        triple = ExtractedTriple(subject=subject, relation=_infer_relation(sentence), object=obj, evidence_id=evidence_id)
+        triple = ExtractedTriple(
+            subject=subject,
+            relation=_infer_relation(sentence),
+            object=obj,
+            evidence_id=evidence_id,
+            properties={"source_dataset": "rule_stub", "graph_eligible": False},
+        )
         triples.append(triple)
         passages.append(PassageRecord(text=sentence, evidence_id=evidence_id, triple_index=index - 1))
     if not triples and content.strip():
-        triples.append(ExtractedTriple(subject="文本证据", relation="包含", object=content[:120], evidence_id=evidence_id))
+        triples.append(
+            ExtractedTriple(
+                subject="文本证据",
+                relation="包含",
+                object=content[:120],
+                evidence_id=evidence_id,
+                properties={"source_dataset": "rule_stub", "graph_eligible": False},
+            )
+        )
         passages.append(PassageRecord(text=content.strip(), evidence_id=evidence_id, triple_index=0))
     return triples, passages
 

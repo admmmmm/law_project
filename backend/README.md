@@ -59,8 +59,9 @@ C:\Users\adm14\AppData\Local\Programs\Python\Python310\python.exe -m uvicorn app
 - `HIPPORAG_EMBEDDING_MODEL=本地 BGE-M3 路径`
 - `HIPPORAG_MAX_DOCS=80`：单次分析最多送入 HippoRAG 的 passage 数，避免联调时过慢。
 - `HIPPORAG_SAVE_DIR=../outputs/hipporag_cases`
+- `HIPPORAG_FAIL_FAST=true`：默认开启。HippoRAG 缺 key、模型或环境不可用时直接让分析失败，避免把规则 stub 图误当成 LLM/OpenIE 结果。
 
-如果没有 key 或模型环境不可用，系统不会中断分析，会回落到现有规则聚合图，并在图谱中 `HippoRAG` 算法节点的属性里显示错误。
+注意：非结构化文本的旧规则抽取只保留为 passage 切分兜底，不再默认入图。图谱里的开放域事实关系应来自 HippoRAG 的 LLM/OpenIE；如果看到大量“提及/职务行为/关联”，说明运行的不是当前 HippoRAG 主链路，或服务没有重启到最新代码。
 
 ## 与外部模块的接入点
 
