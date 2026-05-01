@@ -4,3 +4,7 @@ __pycache__/
 .venv/
 *.log
 outputs/
+.env
+.env.*
+!.env.example
+backend/.env
