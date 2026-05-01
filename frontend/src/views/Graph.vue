@@ -39,6 +39,9 @@
           :on-node-click="onNodeClick"
           :on-line-click="onLineClick"
         />
+        <div v-if="!loading && graph.nodes.length > 0" class="graph-note">
+          当前渲染 {{ renderedNodeCount }} / {{ graph.nodes.length }} 个节点，{{ renderedEdgeCount }} / {{ graph.edges.length }} 条关系
+        </div>
       </section>
 
       <aside class="bg-slate-950 text-white p-4 overflow-auto border-l border-slate-800">
@@ -90,6 +93,10 @@ const graphRef = ref<any>(null);
 const selectedLabel = ref('');
 const selectedMeta = ref('');
 const graph = ref<InvestigationGraph>({ case_id: activeCaseId.value, nodes: [], edges: [], clues: [] });
+const renderedNodeCount = ref(0);
+const renderedEdgeCount = ref(0);
+const MAX_RENDER_NODES = 260;
+const MAX_RENDER_EDGES = 520;
 
 const graphOptions = {
   debug: false,
@@ -123,13 +130,13 @@ async function loadGraph() {
   error.value = '';
   try {
     graph.value = await backendApi.getGraph(activeCaseId.value);
-    await nextTick();
-    renderGraph();
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
     loading.value = false;
   }
+  await nextTick();
+  renderGraph();
 }
 
 async function runAnalysis() {
@@ -139,23 +146,58 @@ async function runAnalysis() {
   try {
     await backendApi.runAnalysis(activeCaseId.value);
     graph.value = await backendApi.getGraph(activeCaseId.value);
-    await nextTick();
-    renderGraph();
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
     loading.value = false;
   }
+  await nextTick();
+  renderGraph();
 }
 
 function renderGraph() {
   if (!graphRef.value || graph.value.nodes.length === 0) return;
+  const visible = buildRenderableGraph();
+  renderedNodeCount.value = visible.nodes.length;
+  renderedEdgeCount.value = visible.edges.length;
   const jsonData = {
-    rootId: graph.value.nodes[0]?.node_id,
-    nodes: graph.value.nodes.map(toRelationNode),
-    lines: graph.value.edges.map(toRelationLine),
+    rootId: visible.nodes[0]?.node_id,
+    nodes: visible.nodes.map(toRelationNode),
+    lines: visible.edges.map(toRelationLine),
   };
   graphRef.value.setJsonData(jsonData);
+}
+
+function buildRenderableGraph() {
+  if (graph.value.nodes.length <= MAX_RENDER_NODES && graph.value.edges.length <= MAX_RENDER_EDGES) {
+    return { nodes: graph.value.nodes, edges: graph.value.edges };
+  }
+
+  const clueEvidenceIds = new Set(graph.value.clues.flatMap((clue) => clue.evidence_ids));
+  const degree = new Map<string, number>();
+  graph.value.edges.forEach((edge) => {
+    degree.set(edge.source_id, (degree.get(edge.source_id) || 0) + 1);
+    degree.set(edge.target_id, (degree.get(edge.target_id) || 0) + 1);
+  });
+
+  const scoredNodes = graph.value.nodes
+    .map((node) => ({
+      node,
+      score:
+        (node.type === 'evidence' ? 0 : 100) +
+        (clueEvidenceIds.has(node.node_id) ? 80 : 0) +
+        (degree.get(node.node_id) || 0),
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  const selectedIds = new Set(scoredNodes.slice(0, MAX_RENDER_NODES).map((item) => item.node.node_id));
+  const nodes = graph.value.nodes.filter((node) => selectedIds.has(node.node_id));
+  const edges = graph.value.edges
+    .filter((edge) => selectedIds.has(edge.source_id) && selectedIds.has(edge.target_id))
+    .sort((a, b) => Number(b.properties?.count || 1) - Number(a.properties?.count || 1))
+    .slice(0, MAX_RENDER_EDGES);
+
+  return { nodes, edges };
 }
 
 function toRelationNode(node: GraphNode) {
@@ -256,6 +298,7 @@ function trim(text: string, length: number) {
   margin-bottom: 8px;
 }
 .graph-stage {
+  position: relative;
   background: #f8fafc;
   color: #0f172a;
 }
@@ -286,5 +329,20 @@ function trim(text: string, length: number) {
   paint-order: stroke;
   stroke: #ffffff;
   stroke-width: 3px;
+}
+.graph-note {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  max-width: 520px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #334155;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  pointer-events: none;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
 }
 </style>
