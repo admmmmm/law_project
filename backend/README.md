@@ -21,35 +21,41 @@
 6. 将侦查员与系统交互中确认的新事实加入记忆，并可写回图谱。
 7. 输出画像报告和参考建议。
 
-## 运行
+## 启动方式
+
+先确认 [backend/.env](./.env) 已经存在，并把里面的 `DEEPSEEK_API_KEY` 改成真实 key。不要提交 `.env`，只提交 `.env.example`。
+
+后端必须用已经验证过的 Python 3.10，不要用 Miniconda base：
 
 ```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+cd C:\Users\adm14\Desktop\law_project\backend
+C:\Users\adm14\AppData\Local\Programs\Python\Python310\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-访问：
+前端：
+
+```powershell
+cd C:\Users\adm14\Desktop\law_project\frontend
+npm run dev
+```
+
+浏览器打开：
+
+```text
+http://127.0.0.1:5173
+```
+
+后端检查地址：
 
 - API 文档：`http://127.0.0.1:8000/docs`
 - 健康检查：`http://127.0.0.1:8000/api/v1/health`
+- HippoRAG 状态：`http://127.0.0.1:8000/api/v1/health/hipporag`
 
 ## HippoRAG 接入
 
 当前默认算法提供方已经切到 `hipporag`。运行分析时，后端会把已导入证据的 passage 写入 HippoRAG，执行 LLM/OpenIE、BGE-M3 embedding、HippoRAG 图构建，再把 OpenIE 抽出的事实三元组合并进业务图谱。
 
-建议使用已经验证过的 Python 3.10 环境，不要用 Miniconda base：
-
-```powershell
-cd C:\Users\adm14\Desktop\law_project\backend
-$env:DEEPSEEK_API_KEY="你的 DeepSeek Key"
-$env:TRANSFORMERS_OFFLINE="1"
-$env:HF_HUB_OFFLINE="1"
-$env:HIPPORAG_EMBEDDING_MODEL="C:\Users\adm14\.cache\huggingface\hub\BAAI\bge-m3"
-C:\Users\adm14\AppData\Local\Programs\Python\Python310\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
+后端启动时会读取 [backend/.env](./.env)，并把变量加载进进程环境，供 HippoRAG / DeepSeek / Transformers 使用。
 
 可调环境变量：
 
@@ -69,13 +75,3 @@ C:\Users\adm14\AppData\Local\Programs\Python\Python310\python.exe -m uvicorn app
 - 人工干预：前端调用 `PATCH /api/v1/cases/{case_id}/graph/interventions`。
 - 记忆功能：前端调用 `POST /api/v1/cases/{case_id}/memories`，确认事实后可触发写回图谱。
 - 前端：所有接口统一挂在 `/api/v1` 下。
-
-
-
-
-cd C:\Users\adm14\Desktop\law_project\backend
-python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
------
-cd C:\Users\adm14\Desktop\law_project\frontend
-npm run dev
-然后打开 http://127.0.0.1:5173。
