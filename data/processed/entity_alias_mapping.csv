@@ -1,0 +1,11 @@
+﻿alias,canonical_name,entity_type,merge_policy,confidence,evidence_or_source,note
+张三,王静,person_account,auto_merge_candidate,high,结构化银行流水/通话记录,行贿方王静的合成账户假名
+张伟,王静,person_alias,high_confidence_suggestion,high,证据5-2,新闻/调查材料中写明“张伟（真实姓名王静）”
+李四,杨周武,person_account,auto_merge_candidate,high,结构化银行流水/通话记录,杨周武的合成账户假名
+杨所长,杨周武,title_alias,auto_merge_candidate,high,证据3-2、证据4-1,职务称呼
+曾黎,何晓初,controlled_account,auto_merge_candidate,high,结构化银行流水/通话记录,何晓初控制账户
+饶蝶,何晓初,controlled_account,high_confidence_suggestion,medium,结构化银行流水,何晓初关联账户，建议人工确认
+周芷,何晓初,controlled_account,high_confidence_suggestion,medium,结构化银行流水,何晓初关联账户，建议人工确认
+老刘,刘力飚,person_account,auto_merge_candidate,high,结构化通话记录,刘力飚的通话假名
+赵五,赵五,registered_operator,do_not_merge,high,证据0-1,营业执照名义经营者，不自动合并到王静
+舞王歌舞厅,舞王俱乐部,organization_alias,high_confidence_suggestion,medium,案情梳理/证据目录,旧称和新经营场所关系需靠工商材料确认
