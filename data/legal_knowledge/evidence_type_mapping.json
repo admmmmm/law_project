@@ -1,0 +1,106 @@
+{
+  "schema_version": "0.1.0",
+  "evidence_types": [
+    {
+      "type": "bank_flow",
+      "name": "银行/微信/支付宝交易流水",
+      "default_elements": [
+        "subjective.private_motive",
+        "objective.interest_transfer",
+        "objective.behavior_chain"
+      ],
+      "signals": [
+        "异常金额",
+        "拆分转账",
+        "过桥账户",
+        "现金取存闭环",
+        "案发节点前后密集往来"
+      ],
+      "recommended_questions": [
+        "资金是否从请托人流向司法工作人员或其控制账户？",
+        "是否存在白手套、马甲账户或备注伪装？",
+        "资金节点与执法处置节点是否前后呼应？"
+      ]
+    },
+    {
+      "type": "call_record",
+      "name": "电话/短信/聊天记录",
+      "default_elements": [
+        "subjective.knowledge",
+        "subjective.private_motive",
+        "objective.behavior_chain"
+      ],
+      "signals": [
+        "关键处置前后通话",
+        "同一联系人反复出现",
+        "通话后立即发生转账或文书变更",
+        "删除、换号、代持设备"
+      ],
+      "recommended_questions": [
+        "关键执法决定前后谁与谁联系？",
+        "联系对象是否与利益输送链条重合？",
+        "是否能支撑明知、授意、协调或掩盖？"
+      ]
+    },
+    {
+      "type": "law_enforcement_document",
+      "name": "执法文书",
+      "default_elements": [
+        "subject.identity",
+        "objective.illegal_disposition",
+        "objective.procedure_violation"
+      ],
+      "signals": [
+        "立案/撤案/拘留/释放节点",
+        "文书时间倒签或缺失",
+        "事实描述前后矛盾",
+        "审批链异常"
+      ],
+      "recommended_questions": [
+        "文书处置是否与事实、伤情、证言相矛盾？",
+        "审批人和经办人职责边界是什么？",
+        "是否存在应立不立、应追不追、违法调解或违法释放？"
+      ]
+    },
+    {
+      "type": "witness_statement",
+      "name": "证人证言/询问笔录",
+      "default_elements": [
+        "objective.behavior_chain",
+        "subjective.knowledge",
+        "result.case_outcome"
+      ],
+      "signals": [
+        "多人陈述互相印证",
+        "证言与文书不一致",
+        "证言与通话/流水节点吻合",
+        "翻供或矛盾陈述"
+      ],
+      "recommended_questions": [
+        "证言能否补强主观明知或徇私动机？",
+        "证言中的时间、地点、人物是否能被客观数据印证？",
+        "是否存在利害关系导致可信度风险？"
+      ]
+    },
+    {
+      "type": "medical_or_expert_opinion",
+      "name": "鉴定意见/伤情材料",
+      "default_elements": [
+        "objective.case_facts",
+        "result.serious_consequence",
+        "objective.illegal_disposition"
+      ],
+      "signals": [
+        "伤情等级",
+        "鉴定委托时间",
+        "鉴定结论被忽视或篡改",
+        "处置结果与鉴定结果冲突"
+      ],
+      "recommended_questions": [
+        "鉴定结果是否足以触发刑事处置？",
+        "司法工作人员是否在作出处置前已经知悉？",
+        "文书结论为何与鉴定材料不一致？"
+      ]
+    }
+  ]
+}

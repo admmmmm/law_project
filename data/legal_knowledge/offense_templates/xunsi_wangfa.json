@@ -1,0 +1,217 @@
+{
+  "schema_version": "0.1.0",
+  "offense_id": "xunsi_wangfa",
+  "name": "徇私枉法罪",
+  "category": "司法枉法类",
+  "legal_sources": [
+    "spp_2006_malfeasance_filing_standard",
+    "spp_2013_malfeasance_interpretation_1",
+    "spp_2016_public_prosecution_evidence_standard"
+  ],
+  "statutory_elements": {
+    "subject": {
+      "label": "主体要件",
+      "description": "司法工作人员，重点核查职务、职责范围、经办权限、审批权限。",
+      "check_items": [
+        "目标人员是否属于司法工作人员",
+        "其是否实际参与或控制刑事案件办理",
+        "其职权是否覆盖立案、侦查、强制措施、调解、撤案、释放等处置"
+      ]
+    },
+    "objective": {
+      "label": "客观方面",
+      "description": "对明知有罪的人故意包庇不使其受追诉，或在刑事审判活动中故意违背事实和法律作枉法裁判等。",
+      "check_items": [
+        "是否存在应立案、应追诉、应采取强制措施而未依法处理",
+        "是否存在违法调解、撤案、释放、降低处理强度等异常处置",
+        "异常处置是否与案件事实、伤情鉴定、证言、文书材料相冲突",
+        "处置链条中是否存在倒签、补录、删改、隐瞒、审批绕行"
+      ]
+    },
+    "subjective": {
+      "label": "主观方面",
+      "description": "故意，并通常需要证明徇私动机、明知状态和对枉法结果的认识。",
+      "check_items": [
+        "目标人员是否明知案件事实或法律后果",
+        "是否存在请托、人情、利益输送、亲友关系、上下级压力等徇私动机",
+        "是否在关键节点有异常联系、异常收付款或规避留痕行为",
+        "是否有证据排除单纯认识错误、业务能力不足或程序瑕疵"
+      ]
+    },
+    "result": {
+      "label": "结果与危害",
+      "description": "重点核查有罪人员被放纵、案件被错误处置、司法公正受损及相关后果。",
+      "check_items": [
+        "被放纵人员是否逃避追诉或获得明显不当处理",
+        "受害人权益是否受损",
+        "是否造成恶劣社会影响或其他严重后果",
+        "枉法处置与结果之间是否存在因果关系"
+      ]
+    }
+  },
+  "case_creation_checklist": [
+    {
+      "id": "subject.identity_and_power",
+      "title": "确认主体身份和职权",
+      "required_evidence_types": [
+        "law_enforcement_document",
+        "appointment_or_duty_record"
+      ]
+    },
+    {
+      "id": "objective.case_disposition_chain",
+      "title": "还原刑事案件办理链条",
+      "required_evidence_types": [
+        "law_enforcement_document",
+        "witness_statement",
+        "medical_or_expert_opinion"
+      ]
+    },
+    {
+      "id": "subjective.private_motive",
+      "title": "核查徇私动机和利益输送",
+      "required_evidence_types": [
+        "bank_flow",
+        "call_record",
+        "chat_record",
+        "witness_statement"
+      ]
+    },
+    {
+      "id": "subjective.knowledge",
+      "title": "核查明知状态",
+      "required_evidence_types": [
+        "law_enforcement_document",
+        "call_record",
+        "witness_statement",
+        "medical_or_expert_opinion"
+      ]
+    },
+    {
+      "id": "result.causal_chain",
+      "title": "核查枉法处置与结果的因果关系",
+      "required_evidence_types": [
+        "law_enforcement_document",
+        "victim_statement",
+        "case_outcome_record"
+      ]
+    }
+  ],
+  "evidence_mapping_rules": [
+    {
+      "evidence_type": "bank_flow",
+      "map_to": [
+        "subjective.private_motive",
+        "objective.interest_transfer"
+      ],
+      "logic": "若资金链条连接请托人、白手套、司法工作人员或其控制账户，优先归入徇私动机；若发生在关键处置节点前后，提升风险等级。",
+      "examples": [
+        "请托人账户 -> 过桥账户 -> 司法工作人员亲属账户",
+        "ATM取现后数日内，目标人员控制账户出现现金存入"
+      ]
+    },
+    {
+      "evidence_type": "call_record",
+      "map_to": [
+        "subjective.knowledge",
+        "objective.behavior_chain"
+      ],
+      "logic": "关键处置前后的密集通话用于推荐联系路径；若通话对象与资金链重合，生成交叉验证线索。"
+    },
+    {
+      "evidence_type": "law_enforcement_document",
+      "map_to": [
+        "subject.identity",
+        "objective.illegal_disposition",
+        "result.case_outcome"
+      ],
+      "logic": "执法文书用于固定职权、经办节点、审批节点和异常处置。"
+    },
+    {
+      "evidence_type": "medical_or_expert_opinion",
+      "map_to": [
+        "objective.case_facts",
+        "subjective.knowledge",
+        "result.serious_consequence"
+      ],
+      "logic": "伤情或鉴定材料与处置结果冲突时，提示是否存在明知仍违法处理。"
+    }
+  ],
+  "path_recommendation_rules": [
+    {
+      "path_id": "money_to_disposition",
+      "title": "资金流与执法处置交叉路径",
+      "pattern": "请托人/经营者 -> 过桥账户 -> 司法工作人员/控制账户 -> 关键执法文书",
+      "why": "用于观察利益输送是否与撤案、释放、调解等处置节点相互印证。"
+    },
+    {
+      "path_id": "call_to_document",
+      "title": "通话联系与文书变更路径",
+      "pattern": "请托人/中间人 -> 司法工作人员 -> 文书经办/审批节点",
+      "why": "用于判断是否存在授意、协调、提前沟通或规避程序。"
+    },
+    {
+      "path_id": "alias_to_real_person",
+      "title": "马甲账户合并路径",
+      "pattern": "假名账户/手机号 -> 共同设备/共同联系人/资金闭环 -> 真实控制人",
+      "why": "用于提示别名和真人合并建议，必须保留人工确认。"
+    }
+  ],
+  "alias_resolution_focus": [
+    "司法工作人员亲属账户",
+    "请托人控制账户",
+    "过桥账户",
+    "现金取存账户",
+    "同一手机号或设备关联的多个账户"
+  ],
+  "report_outline": [
+    {
+      "section": "基础信息聚合",
+      "must_include": [
+        "人员身份",
+        "职务权限",
+        "案件职责",
+        "关系网络"
+      ]
+    },
+    {
+      "section": "行为事实还原",
+      "must_include": [
+        "原刑事案件事实",
+        "办理节点",
+        "异常处置",
+        "证据冲突",
+        "资金/通话交叉印证"
+      ]
+    },
+    {
+      "section": "主观方面推理",
+      "must_include": [
+        "明知依据",
+        "徇私动机依据",
+        "反证与合理解释",
+        "尚缺证据"
+      ]
+    },
+    {
+      "section": "要件核查结论",
+      "must_include": [
+        "各要件是否已有证据支撑",
+        "每项结论对应证据 ID",
+        "法律来源",
+        "下一步取证建议"
+      ]
+    }
+  ],
+  "customization": {
+    "allow_case_local_copy": true,
+    "allow_prosecutor_notes": true,
+    "allow_ai_refinement": true,
+    "ai_refinement_guardrails": [
+      "不得删除法律来源",
+      "不得把线索改写为确定事实",
+      "每个结论必须保留证据引用",
+      "身份合并只能输出建议和置信度"
+    ]
+  }
+}

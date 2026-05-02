@@ -1,0 +1,38 @@
+{
+  "schema_version": "0.1.0",
+  "purpose": "分罪名预制模板。案件创建、证据接入、智能分析、画像报告共用同一套字段。",
+  "template_fields": {
+    "offense_id": "稳定英文/拼音 ID",
+    "name": "罪名",
+    "category": "罪名类别",
+    "legal_sources": "引用 sources.json 中的 source_id",
+    "elements": "构成要件分层，至少包含主体、客观行为、主观方面、客体/结果",
+    "case_creation_checklist": "案件创建后立即展示的核查项",
+    "evidence_mapping_rules": "证据接入时的自动归类规则",
+    "path_recommendation_rules": "图谱里推荐看的关联路径",
+    "alias_resolution_focus": "本罪名中身份合并、假名洞察的重点",
+    "report_outline": "画像报告/审查报告章节骨架",
+    "customization": "检察官可调整字段和 AI 优化约束"
+  },
+  "customization_policy": {
+    "editable_by_prosecutor": [
+      "case_creation_checklist",
+      "evidence_mapping_rules",
+      "path_recommendation_rules",
+      "report_outline",
+      "local_notes"
+    ],
+    "ai_can_optimize": [
+      "核查项措辞",
+      "证据类型关键词",
+      "推荐问题",
+      "报告章节草稿"
+    ],
+    "ai_must_not_overwrite": [
+      "legal_sources",
+      "statutory_elements",
+      "official_thresholds"
+    ],
+    "versioning": "案件内复制模板后再修改，保留 base_template_id 和 modified_by。"
+  }
+}

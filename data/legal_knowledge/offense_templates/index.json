@@ -1,0 +1,185 @@
+[
+  {
+    "offense_id": "feifa_juliu",
+    "name": "非法拘禁罪",
+    "category": "侵犯人身权利类",
+    "status": "skeleton",
+    "article_hint": "刑法第二百三十八条",
+    "priority_elements": [
+      "主体身份",
+      "非法剥夺人身自由",
+      "拘禁时长",
+      "伤害后果"
+    ]
+  },
+  {
+    "offense_id": "feifa_soucha",
+    "name": "非法搜查罪",
+    "category": "侵犯人身权利类",
+    "status": "skeleton",
+    "article_hint": "刑法第二百四十五条",
+    "priority_elements": [
+      "搜查主体",
+      "搜查对象",
+      "手续合法性",
+      "暴力或严重后果"
+    ]
+  },
+  {
+    "offense_id": "xingxun_bigong",
+    "name": "刑讯逼供罪",
+    "category": "侵犯人身权利类",
+    "status": "skeleton",
+    "article_hint": "刑法第二百四十七条",
+    "priority_elements": [
+      "司法工作人员身份",
+      "犯罪嫌疑人/被告人对象",
+      "肉刑或变相肉刑",
+      "口供取得关联"
+    ]
+  },
+  {
+    "offense_id": "baoli_quzheng",
+    "name": "暴力取证罪",
+    "category": "侵犯人身权利类",
+    "status": "skeleton",
+    "article_hint": "刑法第二百四十七条",
+    "priority_elements": [
+      "司法工作人员身份",
+      "证人对象",
+      "暴力取证行为",
+      "伤害或证言变化"
+    ]
+  },
+  {
+    "offense_id": "nuedai_beijianguanren",
+    "name": "虐待被监管人罪",
+    "category": "监管失职类",
+    "status": "skeleton",
+    "article_hint": "刑法第二百四十八条",
+    "priority_elements": [
+      "监管人员身份",
+      "被监管人对象",
+      "殴打体罚虐待",
+      "伤害或恶劣影响"
+    ]
+  },
+  {
+    "offense_id": "lanyong_zhiquan",
+    "name": "滥用职权罪",
+    "category": "渎职类",
+    "status": "skeleton",
+    "article_hint": "刑法第三百九十七条",
+    "priority_elements": [
+      "国家机关工作人员身份",
+      "超越或违法行使职权",
+      "重大损失",
+      "因果关系"
+    ]
+  },
+  {
+    "offense_id": "wanhu_zhishou",
+    "name": "玩忽职守罪",
+    "category": "渎职类",
+    "status": "skeleton",
+    "article_hint": "刑法第三百九十七条",
+    "priority_elements": [
+      "国家机关工作人员身份",
+      "严重不负责任",
+      "应作为而不作为",
+      "重大损失与因果关系"
+    ]
+  },
+  {
+    "offense_id": "xunsi_wangfa",
+    "name": "徇私枉法罪",
+    "category": "司法枉法类",
+    "status": "ready",
+    "article_hint": "刑法第三百九十九条第一款",
+    "template_file": "xunsi_wangfa.json",
+    "priority_elements": [
+      "司法工作人员身份",
+      "明知状态",
+      "徇私动机",
+      "枉法追诉/包庇/裁判"
+    ]
+  },
+  {
+    "offense_id": "minxingzheng_wangfa_caipan",
+    "name": "民事、行政枉法裁判罪",
+    "category": "司法枉法类",
+    "status": "skeleton",
+    "article_hint": "刑法第三百九十九条第二款",
+    "priority_elements": [
+      "审判人员身份",
+      "民事/行政审判活动",
+      "故意违背事实和法律",
+      "枉法裁判后果"
+    ]
+  },
+  {
+    "offense_id": "zhixing_panji_caiding_shizhi",
+    "name": "执行判决、裁定失职罪",
+    "category": "执行渎职类",
+    "status": "skeleton",
+    "article_hint": "刑法第三百九十九条第三款",
+    "priority_elements": [
+      "执行人员身份",
+      "严重不负责任",
+      "不依法采取执行措施",
+      "严重后果"
+    ]
+  },
+  {
+    "offense_id": "zhixing_panji_caiding_lanyong_zhiquan",
+    "name": "执行判决、裁定滥用职权罪",
+    "category": "执行渎职类",
+    "status": "skeleton",
+    "article_hint": "刑法第三百九十九条第三款",
+    "priority_elements": [
+      "执行人员身份",
+      "违法采取执行措施",
+      "主观故意",
+      "严重后果"
+    ]
+  },
+  {
+    "offense_id": "sifang_zaiya_renyuan",
+    "name": "私放在押人员罪",
+    "category": "监管失职类",
+    "status": "skeleton",
+    "article_hint": "刑法第四百条第一款",
+    "priority_elements": [
+      "司法工作人员身份",
+      "在押人员对象",
+      "私自放走或帮助脱逃",
+      "故意"
+    ]
+  },
+  {
+    "offense_id": "shizhi_zhi_zaiya_renyuan_tuotao",
+    "name": "失职致使在押人员脱逃罪",
+    "category": "监管失职类",
+    "status": "skeleton",
+    "article_hint": "刑法第四百条第二款",
+    "priority_elements": [
+      "司法工作人员身份",
+      "严重不负责任",
+      "在押人员脱逃",
+      "严重后果"
+    ]
+  },
+  {
+    "offense_id": "xunsi_wubi_jianxing_jiashi_zanjianwai",
+    "name": "徇私舞弊减刑、假释、暂予监外执行罪",
+    "category": "刑罚执行枉法类",
+    "status": "skeleton",
+    "article_hint": "刑法第四百零一条",
+    "priority_elements": [
+      "司法工作人员身份",
+      "徇私动机",
+      "不符合条件",
+      "违法减刑/假释/暂予监外执行"
+    ]
+  }
+]

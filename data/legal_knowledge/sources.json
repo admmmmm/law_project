@@ -1,0 +1,47 @@
+[
+  {
+    "source_id": "spp_2006_malfeasance_filing_standard",
+    "title": "最高人民检察院关于渎职侵权犯罪案件立案标准的规定",
+    "issuer": "最高人民检察院",
+    "published_date": "2006-07-27",
+    "url": "https://www.spp.gov.cn/tzgg1/200607/t20060727_21620.shtml",
+    "source_type": "立案标准",
+    "use_in_system": [
+      "分罪名立案阈值",
+      "构成要件核查",
+      "报告中的法律依据引用"
+    ],
+    "summary": "用于给渎职侵权类犯罪建立立案标准和证据核查方向。系统应把具体标准拆到各罪名模板中，而不是只做全文检索。",
+    "storage_policy": "canonical_url_with_structured_summary"
+  },
+  {
+    "source_id": "spp_2013_malfeasance_interpretation_1",
+    "title": "关于办理渎职刑事案件适用法律若干问题的解释（一）",
+    "issuer": "最高人民法院、最高人民检察院",
+    "published_date": "2013-01-09",
+    "url": "https://www.spp.gov.cn/spp/zdgz/201301/t20130109_52494.shtml",
+    "source_type": "司法解释",
+    "use_in_system": [
+      "严重后果认定",
+      "因果关系核查",
+      "滥用职权、玩忽职守等渎职案件适用法律"
+    ],
+    "summary": "用于补充渎职刑事案件中结果、损失、因果关系和法律适用的判断维度。",
+    "storage_policy": "canonical_url_with_structured_summary"
+  },
+  {
+    "source_id": "spp_2016_public_prosecution_evidence_standard",
+    "title": "公诉环节应严格把握渎职案件证据标准",
+    "issuer": "最高人民检察院",
+    "published_date": "2016-04-01",
+    "url": "https://www.spp.gov.cn/spp/ztk/dfld/2016dfld/dfld98_3027/ywtt/201604/t20160401_115427.shtml",
+    "source_type": "办案方法/证据标准",
+    "use_in_system": [
+      "证据链完整性检查",
+      "主观方面证明",
+      "报告中的证据缺口提示"
+    ],
+    "summary": "用于提醒系统在公诉环节关注证据标准、证明体系和薄弱环节，不把单个线索直接当作结论。",
+    "storage_policy": "canonical_url_with_structured_summary"
+  }
+]

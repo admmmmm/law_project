@@ -1,0 +1,46 @@
+{
+  "schema_version": "0.1.0",
+  "purpose": "为别名、假名、马甲账户和真人身份合并提供建议，不直接替代人工确认。",
+  "confidence_levels": [
+    {
+      "level": "auto_merge_candidate",
+      "description": "可自动生成强合并建议，进入人工确认队列。",
+      "rules": [
+        "同一身份证号或统一社会信用代码",
+        "同一实名银行卡、实名手机号、实名微信/支付宝账户",
+        "同一官方文书中明确写明曾用名、化名、控制账户",
+        "同一账户在多个证据中被不同姓名指代但账号完全一致"
+      ]
+    },
+    {
+      "level": "high_confidence_suggestion",
+      "description": "高置信建议，默认不自动合并。",
+      "rules": [
+        "同一手机号与同一银行卡长期绑定出现",
+        "交易、通话、地点、时间四类特征中至少三类重合",
+        "证人证言明确称某账户由特定人员实际控制，且流水行为吻合",
+        "关键案发节点前后，一个假名账户只与同一真实人物关系网互动"
+      ]
+    },
+    {
+      "level": "low_confidence_suggestion",
+      "description": "仅作为线索提示。",
+      "rules": [
+        "姓名近似、简称、同音字",
+        "同地址或同设备短期出现",
+        "相似交易备注或金额习惯",
+        "共同联系人较多但缺少实名锚点"
+      ]
+    }
+  ],
+  "merge_review_fields": [
+    "suggested_canonical_person",
+    "alias_or_account",
+    "confidence_level",
+    "supporting_evidence_ids",
+    "supporting_paths",
+    "counter_evidence",
+    "review_status",
+    "reviewer_note"
+  ]
+}
