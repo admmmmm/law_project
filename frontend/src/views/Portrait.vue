@@ -36,7 +36,9 @@
                 v-for="sentence in sourceableSentences(item)"
                 :key="sentence"
                 class="claim-sentence"
-                :class="{ active: traceText === sentence }"
+                :class="{ hover: hoveredClaim === sentence, active: traceText === sentence }"
+                @mouseenter="hoveredClaim = sentence"
+                @mouseleave="hoveredClaim = ''"
                 @click="openTrace(section.title, sentence)"
               >
                 <span v-html="renderMarkdown(sentence)" />
@@ -52,7 +54,9 @@
               v-for="sentence in sourceableSentences(item)"
               :key="sentence"
               class="claim-sentence"
-              :class="{ active: traceText === sentence }"
+              :class="{ hover: hoveredClaim === sentence, active: traceText === sentence }"
+              @mouseenter="hoveredClaim = sentence"
+              @mouseleave="hoveredClaim = ''"
               @click="openTrace('参考建议', sentence)"
             >
               <span v-html="renderMarkdown(sentence)" />
@@ -110,6 +114,7 @@ const traceOpen = ref(false);
 const traceLoading = ref(false);
 const traceLabel = ref('');
 const traceText = ref('');
+const hoveredClaim = ref('');
 const traceResult = ref<TraceResult | null>(null);
 const traceEvidence = ref<EvidenceDetail[]>([]);
 
@@ -293,9 +298,14 @@ function escapeHtml(value: string) {
   text-align: left;
 }
 .claim-sentence:hover,
-.claim-sentence.active {
+.claim-sentence.hover {
   border-color: #0f766e;
   background: #f0fdfa;
+}
+.claim-sentence.active {
+  border-color: #0f766e;
+  background: #ccfbf1;
+  box-shadow: inset 3px 0 0 #0f766e;
 }
 .suggestions {
   margin-top: 22px;

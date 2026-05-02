@@ -37,11 +37,23 @@
           <p>身份、职务、权限、关系网络。每个字段都能回到证据原文和路径候选。</p>
         </div>
         <div class="field-grid">
-          <button v-for="field in basicFields" :key="field.key" class="field-card" @click="openTrace(field)">
+          <article v-for="field in basicFields" :key="field.key" class="field-card">
             <span>{{ field.label }}</span>
-            <strong>{{ field.value }}</strong>
+            <div class="sentence-stack">
+              <button
+                v-for="sentence in traceSentences(field)"
+                :key="sentenceKey(field, sentence)"
+                class="claim-chip"
+                :class="{ hover: hoveredSentenceKey === sentenceKey(field, sentence), active: traceKey === sentenceKey(field, sentence) }"
+                @mouseenter="hoveredSentenceKey = sentenceKey(field, sentence)"
+                @mouseleave="hoveredSentenceKey = ''"
+                @click="openTraceSentenceForField(field, sentence)"
+              >
+                <span v-html="renderMarkdown(sentence)" />
+              </button>
+            </div>
             <small>{{ field.evidenceIds.length ? `${field.evidenceIds.length} 份证据` : '暂无直接证据' }}</small>
-          </button>
+          </article>
         </div>
       </section>
 
@@ -52,13 +64,25 @@
           <p>更细地还原资金、通话、文书处置和行为方式，特别关注隐瞒、规避留痕和反侦察动作。</p>
         </div>
         <div class="timeline-list">
-          <button v-for="field in behaviorFields" :key="field.key" class="fact-row" @click="openTrace(field)">
+          <article v-for="field in behaviorFields" :key="field.key" class="fact-row">
             <div>
               <strong>{{ field.label }}</strong>
-              <div class="markdown" v-html="renderMarkdown(field.value)" />
+              <div class="sentence-stack">
+                <button
+                  v-for="sentence in traceSentences(field)"
+                  :key="sentenceKey(field, sentence)"
+                  class="claim-chip"
+                  :class="{ hover: hoveredSentenceKey === sentenceKey(field, sentence), active: traceKey === sentenceKey(field, sentence) }"
+                  @mouseenter="hoveredSentenceKey = sentenceKey(field, sentence)"
+                  @mouseleave="hoveredSentenceKey = ''"
+                  @click="openTraceSentenceForField(field, sentence)"
+                >
+                  <span v-html="renderMarkdown(sentence)" />
+                </button>
+              </div>
             </div>
             <span>{{ field.evidenceIds.length }} 证据</span>
-          </button>
+          </article>
         </div>
       </section>
 
@@ -69,20 +93,44 @@
           <p>这里不只列线索，而是看每个要件现在有没有证据支撑，缺什么，对方可能怎么辩。</p>
         </div>
         <div class="element-grid">
-          <button v-for="item in elementFields" :key="item.key" class="element-card" :class="{ gap: item.status === 'gap' }" @click="openTrace(item)">
+          <article v-for="item in elementFields" :key="item.key" class="element-card" :class="{ gap: item.status === 'gap' }">
             <div>
               <strong>{{ item.label }}</strong>
               <span>{{ item.status === 'ok' ? '已有支撑' : '缺口待补强' }}</span>
             </div>
-            <p>{{ item.value }}</p>
-          </button>
+            <div class="sentence-stack compact">
+              <button
+                v-for="sentence in traceSentences(item)"
+                :key="sentenceKey(item, sentence)"
+                class="claim-chip"
+                :class="{ hover: hoveredSentenceKey === sentenceKey(item, sentence), active: traceKey === sentenceKey(item, sentence) }"
+                @mouseenter="hoveredSentenceKey = sentenceKey(item, sentence)"
+                @mouseleave="hoveredSentenceKey = ''"
+                @click="openTraceSentenceForField(item, sentence)"
+              >
+                <span v-html="renderMarkdown(sentence)" />
+              </button>
+            </div>
+          </article>
         </div>
         <div class="defense-box">
           <h3>抗辩预判</h3>
-          <button v-for="item in defenseFields" :key="item.key" class="defense-item" @click="openTrace(item)">
+          <article v-for="item in defenseFields" :key="item.key" class="defense-item">
             <span>{{ item.label }}</span>
-            <p>{{ item.value }}</p>
-          </button>
+            <div class="sentence-stack compact">
+              <button
+                v-for="sentence in traceSentences(item)"
+                :key="sentenceKey(item, sentence)"
+                class="claim-chip"
+                :class="{ hover: hoveredSentenceKey === sentenceKey(item, sentence), active: traceKey === sentenceKey(item, sentence) }"
+                @mouseenter="hoveredSentenceKey = sentenceKey(item, sentence)"
+                @mouseleave="hoveredSentenceKey = ''"
+                @click="openTraceSentenceForField(item, sentence)"
+              >
+                <span v-html="renderMarkdown(sentence)" />
+              </button>
+            </div>
+          </article>
         </div>
       </section>
 
@@ -183,6 +231,8 @@ const traceEvidence = ref<EvidenceDetail[]>([]);
 const traceResult = ref<TraceResult | null>(null);
 const evidenceLoading = ref(false);
 const traceQueryText = ref('');
+const traceKey = ref('');
+const hoveredSentenceKey = ref('');
 
 const analysisSummary = computed(() => {
   if (result.value?.summary) return `**${result.value.summary}**`;
@@ -266,12 +316,21 @@ async function openTrace(field: TraceField) {
   traceField.value = field;
   traceOpen.value = true;
   const firstSentence = traceSentences(field)[0] || field.value;
+  traceKey.value = sentenceKey(field, firstSentence);
   await runTraceForText(field, firstSentence);
 }
 
 async function openTraceSentence(sentence: string) {
   if (!traceField.value) return;
+  traceKey.value = sentenceKey(traceField.value, sentence);
   await runTraceForText(traceField.value, sentence);
+}
+
+async function openTraceSentenceForField(field: TraceField, sentence: string) {
+  traceField.value = field;
+  traceOpen.value = true;
+  traceKey.value = sentenceKey(field, sentence);
+  await runTraceForText(field, sentence);
 }
 
 async function runTraceForText(field: TraceField, queryText: string) {
@@ -301,6 +360,10 @@ function traceSentences(field: TraceField) {
     .filter((line) => line.length >= 6);
   const unique = Array.from(new Set(chunks));
   return unique.length ? unique : [field.value || field.label];
+}
+
+function sentenceKey(field: TraceField, sentence: string) {
+  return `${field.key}::${sentence}`;
 }
 
 function makeField(key: string, label: string, value: string, keywords: string[] = []): TraceField {
@@ -542,10 +605,6 @@ function escapeHtml(value: string) {
   background: #f8fafc;
   padding: 13px;
 }
-.field-card:hover,
-.fact-row:hover,
-.element-card:hover,
-.defense-item:hover,
 .clue:hover {
   border-color: #0f766e;
   background: #f0fdfa;
@@ -555,12 +614,6 @@ function escapeHtml(value: string) {
   display: block;
   color: #64748b;
   font-size: 12px;
-}
-.field-card strong {
-  display: block;
-  margin: 8px 0;
-  font-size: 16px;
-  line-height: 1.4;
 }
 .timeline-list {
   display: grid;
@@ -612,6 +665,41 @@ function escapeHtml(value: string) {
   color: #475569;
   font-size: 13px;
   line-height: 1.6;
+}
+.sentence-stack {
+  display: grid;
+  gap: 7px;
+  margin: 8px 0;
+}
+.sentence-stack.compact {
+  margin-bottom: 0;
+}
+.claim-chip {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #334155;
+  padding: 7px 8px;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.65;
+}
+.claim-chip:hover,
+.claim-chip.hover {
+  border-color: #5eead4;
+  background: #ecfeff;
+}
+.claim-chip.active {
+  border-color: #0f766e;
+  background: #ccfbf1;
+  box-shadow: inset 3px 0 0 #0f766e;
+}
+.field-card:has(.claim-chip.hover),
+.fact-row:has(.claim-chip.hover),
+.element-card:has(.claim-chip.hover),
+.defense-item:has(.claim-chip.hover) {
+  border-color: #99f6e4;
 }
 .defense-box {
   margin-top: 16px;
