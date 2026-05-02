@@ -1,0 +1,20 @@
+﻿http://adm143.xyz {
+    bind ::
+
+    handle /jcmx/api/* {
+        uri strip_prefix /jcmx
+        reverse_proxy 127.0.0.1:8000
+    }
+
+    handle /jcmx {
+        redir /jcmx/ 308
+    }
+
+    handle_path /jcmx/* {
+        root * C:\Users\adm14\Desktop\law_project\frontend\dist
+        try_files {path} /index.html
+        file_server
+    }
+
+    respond "not found" 404
+}

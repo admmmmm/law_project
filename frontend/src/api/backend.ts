@@ -1,4 +1,4 @@
-const API_PREFIX = '/api/v1';
+const API_PREFIX = `${import.meta.env.BASE_URL}api/v1`.replace(/\/+/g, '/');
 
 export interface CaseSummary {
   case_id: string;
