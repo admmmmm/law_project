@@ -111,6 +111,9 @@ const runStatus = computed(() => {
 const portraitLayers = computed(() => {
   const currentGraph = graph.value;
   const clues = currentGraph?.clues || [];
+  const basicQa = clues.filter((clue) => clue.category === 'basic_profile').map((clue) => clue.description);
+  const behaviorQa = clues.filter((clue) => clue.category === 'behavior_reconstruction').map((clue) => clue.description);
+  const subjectiveQa = clues.filter((clue) => clue.category === 'subjective_reasoning').map((clue) => clue.description);
   const fund = clues.filter((clue) => clue.category === 'fund_flow').map((clue) => clue.description);
   const duty = clues.filter((clue) => clue.category === 'duty_behavior').map((clue) => clue.description);
   const subjective = clues.filter((clue) => clue.category === 'subjective_state').map((clue) => clue.description);
@@ -121,6 +124,7 @@ const portraitLayers = computed(() => {
       title: '第一层：基础信息聚合',
       subtitle: '这个人是谁、在哪工作、有什么职权、和谁有关。',
       items: [
+        ...basicQa,
         `图谱规模：${currentGraph?.nodes.length || 0} 个节点、${currentGraph?.edges.length || 0} 条关系。`,
         `重点主体/对象：${topEntities.length ? topEntities.join('、') : '待识别'}`,
       ],
@@ -128,12 +132,13 @@ const portraitLayers = computed(() => {
     {
       title: '第二层：行为事实还原',
       subtitle: '做了什么、和谁有关、资金怎么流、处置如何变化。',
-      items: [...(fund.length ? fund : ['暂无明确资金链条。']), ...(duty.length ? duty : ['暂无明确职务处置链条。'])],
+      items: [...behaviorQa, ...(fund.length ? fund : ['暂无明确资金链条。']), ...(duty.length ? duty : ['暂无明确职务处置链条。'])],
     },
     {
       title: '第三层：主观方面推理',
       subtitle: '知不知道、是否故意、是否徇私、对结果是什么态度。',
       items: [
+        ...subjectiveQa,
         ...(subjective.length ? subjective : ['暂未形成足够主观状态线索。']),
         ...(gaps.length ? gaps : ['需要补强能证明明知、请托、利益输送和处置结果之间关系的材料。']),
       ],

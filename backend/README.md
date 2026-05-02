@@ -66,8 +66,10 @@ http://127.0.0.1:5173
 - `HIPPORAG_MAX_DOCS=80`：单次分析最多送入 HippoRAG 的 passage 数，避免联调时过慢。
 - `HIPPORAG_SAVE_DIR=../outputs/hipporag_cases`
 - `HIPPORAG_FAIL_FAST=true`：默认开启。HippoRAG 缺 key、模型或环境不可用时直接让分析失败，避免把规则 stub 图误当成 LLM/OpenIE 结果。
+- `HIPPORAG_ENABLE_QA=true`：默认开启。分析阶段会调用 HippoRAG `rag_qa()`，围绕基础信息、行为事实和主观方面生成问答式研判。
+- `HIPPORAG_QA_TOP_K=5`：每个问题喂给 LLM 阅读的召回片段数量。
 
-注意：非结构化文本的旧规则抽取只保留为 passage 切分兜底，不再默认入图。图谱里的开放域事实关系应来自 HippoRAG 的 LLM/OpenIE；如果看到大量“提及/职务行为/关联”，说明运行的不是当前 HippoRAG 主链路，或服务没有重启到最新代码。
+注意：非结构化文本的旧规则抽取只保留为 passage 切分兜底，不再默认入图。图谱里的开放域事实关系应来自 HippoRAG 的 LLM/OpenIE；智能分析和画像报告里的自然语言研判应来自 HippoRAG `rag_qa()`。如果看到大量“提及/职务行为/关联”，说明运行的不是当前 HippoRAG 主链路，或服务没有重启到最新代码。
 
 ## 与外部模块的接入点
 

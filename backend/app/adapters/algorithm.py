@@ -87,6 +87,7 @@ class AlgorithmAdapter:
                         "openie_entities": len(hippo_result.get("entities", [])),
                         "graph_nodes": hippo_result.get("graph_nodes"),
                         "graph_edges": hippo_result.get("graph_edges"),
+                        "qa_answers": len(hippo_result.get("qa", [])),
                         "retrieve_ready": hippo_result.get("retrieve_ready", False),
                         "error": hippo_result.get("error"),
                     }
@@ -100,7 +101,32 @@ class AlgorithmAdapter:
                     manually_verified=not bool(properties.get("error")),
                 )
             )
+            if hippo_result and hippo_result.get("qa"):
+                graph.clues.extend(self._clues_from_hipporag_qa(hippo_result["qa"]))
         return graph
+
+    def _clues_from_hipporag_qa(self, qa_results: list[dict[str, Any]]) -> list[SuspiciousClue]:
+        clues: list[SuspiciousClue] = []
+        risk_by_category = {
+            "basic_profile": "medium",
+            "behavior_reconstruction": "high",
+            "subjective_reasoning": "high",
+        }
+        for item in qa_results:
+            answer = str(item.get("answer") or "").strip()
+            if not answer:
+                continue
+            clues.append(
+                SuspiciousClue(
+                    clue_id=new_id("clue"),
+                    title=f"HippoRAG问答：{item.get('title', '案件分析')}",
+                    category=str(item.get("category") or "hipporag_qa"),
+                    description=answer,
+                    risk_level=risk_by_category.get(str(item.get("category")), "medium"),
+                    evidence_ids=[],
+                )
+            )
+        return clues
 
     def _run_hipporag(
         self,
@@ -143,10 +169,13 @@ class AlgorithmAdapter:
                 embedding_model_name=settings.hipporag_embedding_model,
                 save_dir=str(save_dir),
                 retrieval_top_k=settings.hipporag_retrieval_top_k,
+                qa_top_k=settings.hipporag_qa_top_k,
             )
             hipporag = klass(global_config=config)
             hipporag.index(docs)
             result.update(self._read_hipporag_openie(hipporag, result["doc_evidence"]))
+            if settings.hipporag_enable_qa:
+                result["qa"] = self._run_hipporag_case_qa(hipporag)
             graph = getattr(hipporag, "graph", None)
             if graph is not None:
                 result["graph_nodes"] = graph.vcount()
@@ -220,6 +249,38 @@ class AlgorithmAdapter:
                     )
                 )
         return {"triples": triples, "entities": sorted(entities)}
+
+    def _run_hipporag_case_qa(self, hipporag: Any) -> list[dict[str, Any]]:
+        questions = [
+            {
+                "category": "basic_profile",
+                "title": "第一层：基础信息聚合",
+                "question": "基于证据材料，杨周武是谁、在哪里任职、具有什么职权？同时列出与其有关的关键人员关系。",
+            },
+            {
+                "category": "behavior_reconstruction",
+                "title": "第二层：行为事实还原",
+                "question": "基于证据材料，还原杨周武、王静、何晓初、刘力飚等人的关键行为链条，包括资金往来、调解安排、案件处置结果。",
+            },
+            {
+                "category": "subjective_reasoning",
+                "title": "第三层：主观方面推理",
+                "question": "基于证据材料，分析杨周武是否可能明知、是否存在徇私动机、是否故意使相关人员逃避刑事追究。请指出支持和仍需补强的证据。",
+            },
+        ]
+        solutions, _, _ = hipporag.rag_qa([item["question"] for item in questions])
+        answers: list[dict[str, Any]] = []
+        for item, solution in zip(questions, solutions):
+            answers.append(
+                {
+                    "category": item["category"],
+                    "title": item["title"],
+                    "question": item["question"],
+                    "answer": solution.answer or "",
+                    "docs": list(solution.docs[: settings.hipporag_qa_top_k]),
+                }
+            )
+        return answers
 
     def _merge_hipporag_extractions(
         self,

@@ -19,6 +19,9 @@ class ReportService:
             clues = graph.clues if graph else []
             evidence = self.store.evidence.get(case_id, [])
 
+            basic_qa = [clue.description for clue in clues if clue.category == "basic_profile"]
+            behavior_qa = [clue.description for clue in clues if clue.category == "behavior_reconstruction"]
+            subjective_qa = [clue.description for clue in clues if clue.category == "subjective_reasoning"]
             fund_clues = [clue.description for clue in clues if clue.category == "fund_flow"]
             duty_clues = [clue.description for clue in clues if clue.category == "duty_behavior"]
             subjective_clues = [clue.description for clue in clues if clue.category == "subjective_state"]
@@ -33,11 +36,13 @@ class ReportService:
                         f"证据材料数量：{len(evidence)}",
                         f"当前图谱规模：{len(graph.nodes) if graph else 0} 个节点、{len(graph.edges) if graph else 0} 条关系",
                         f"高频主体/对象：{', '.join(main_subjects) if main_subjects else '待识别'}",
+                        *basic_qa,
                     ],
                 ),
                 PortraitSection(
                     title="行为事实还原",
                     items=[
+                        *behavior_qa,
                         *(fund_clues or ["暂无明确资金链条，需要补充或重新导入流水材料。"]),
                         *(duty_clues or ["暂无明确职务处置链条，需要补充立案、拘留、调解、释放等程序材料。"]),
                     ],
@@ -45,6 +50,7 @@ class ReportService:
                 PortraitSection(
                     title="主观方面推理",
                     items=subjective_clues
+                    + subjective_qa
                     or [
                         "暂未形成足够主观状态线索。应重点补强请托、明知、徇私动机、收受利益后处置方向变化等证据。"
                     ],
