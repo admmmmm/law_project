@@ -278,7 +278,6 @@ class AlgorithmAdapter:
             if extraction:
                 for triple in extraction.triples:
                     self._collect_triple(grouped, triple, item.evidence_id)
-            clues.extend(self._clues_from_content(item, content))
 
         for (subject, relation, obj), data in grouped.items():
             subject_id = f"entity:{subject}"
@@ -306,6 +305,7 @@ class AlgorithmAdapter:
                 )
             )
 
+        clues.extend(self._clues_from_graph(edges, evidence, raw_contents))
         return InvestigationGraph(case_id=case_id, nodes=nodes, edges=edges, clues=clues)
 
     def _collect_triple(
@@ -327,6 +327,90 @@ class AlgorithmAdapter:
             item["amount_total"] += amount
         if triple.properties.get("time"):
             item["times"].add(str(triple.properties["time"]))
+
+    def _clues_from_graph(
+        self,
+        edges: list[GraphEdge],
+        evidence: list[EvidenceRecord],
+        raw_contents: dict[str, str],
+    ) -> list[SuspiciousClue]:
+        clues: list[SuspiciousClue] = []
+        evidence_ids = [item.evidence_id for item in evidence]
+        titles = "；".join(item.title for item in evidence)
+        corpus = "\n".join(raw_contents.get(item.evidence_id, item.content_preview) for item in evidence)
+
+        fund_edges = [edge for edge in edges if edge.properties.get("amount_total") or _contains_any(edge.relation, ("转账", "资金", "交易", "收款", "付款", "赔偿"))]
+        fund_total = sum(_to_float(edge.properties.get("amount_total")) for edge in fund_edges)
+        if fund_edges:
+            clues.append(
+                SuspiciousClue(
+                    clue_id=new_id("clue"),
+                    title="资金链条需要重点核验",
+                    category="fund_flow",
+                    description=(
+                        f"已从结构化流水中聚合出 {len(fund_edges)} 条资金相关关系"
+                        f"{f'，涉及金额约 {fund_total:.2f} 元' if fund_total else ''}。"
+                        "应优先核查行贿款、现金取存、赔偿款是否与请托和调解节点前后呼应。"
+                    ),
+                    risk_level="high" if fund_total >= 100000 else "medium",
+                    evidence_ids=_edge_evidence_ids(fund_edges) or evidence_ids,
+                )
+            )
+
+        duty_hits = [word for word in ("立案", "拘留", "释放", "调解", "撤销", "履职", "报告", "决定") if word in corpus or word in titles]
+        if duty_hits:
+            clues.append(
+                SuspiciousClue(
+                    clue_id=new_id("clue"),
+                    title="职务处置链条已形成",
+                    category="duty_behavior",
+                    description=(
+                        f"证据中出现 {', '.join(duty_hits[:6])} 等执法处置节点。"
+                        "分析重点不应停留在是否办过案，而应核查处置方向是否受到请托、收钱、调解结果影响。"
+                    ),
+                    risk_level="high",
+                    evidence_ids=_evidence_ids_by_keywords(evidence, raw_contents, duty_hits) or evidence_ids,
+                )
+            )
+
+        subjective_hits = [word for word in ("明知", "故意", "徇私", "隐瞒", "请托", "好处", "短信", "宴请", "安排") if word in corpus or word in titles]
+        if subjective_hits:
+            clues.append(
+                SuspiciousClue(
+                    clue_id=new_id("clue"),
+                    title="主观明知与徇私动机存在证明入口",
+                    category="subjective_state",
+                    description=(
+                        f"材料中出现 {', '.join(subjective_hits[:6])} 等主观状态或请托利益词。"
+                        "下一步应把短信、询问笔录、证人证言、资金流时间点放在同一时间轴上，判断是否能推出明知和徇私动机。"
+                    ),
+                    risk_level="high",
+                    evidence_ids=_evidence_ids_by_keywords(evidence, raw_contents, subjective_hits) or evidence_ids,
+                )
+            )
+
+        if "现金" in corpus or "ATM" in corpus or "柜台" in corpus:
+            clues.append(
+                SuspiciousClue(
+                    clue_id=new_id("clue"),
+                    title="现金链条需要补强原始凭证",
+                    category="evidence_gap",
+                    description="材料中出现现金取现、柜台存款或 ATM 线索。现金链证明力依赖取现凭证、存现凭证、监控、证人证言之间的闭合。",
+                    risk_level="medium",
+                    evidence_ids=_evidence_ids_by_keywords(evidence, raw_contents, ("现金", "ATM", "柜台")),
+                )
+            )
+
+        return clues or [
+            SuspiciousClue(
+                clue_id=new_id("clue"),
+                title="材料已入库，待形成案件级碰撞",
+                category="analysis_pending",
+                description="当前证据已经生成图谱，但尚未识别出明确的资金链、职务处置链或主观状态线索。建议补充结构化流水、通话记录或关键笔录。",
+                risk_level="low",
+                evidence_ids=evidence_ids,
+            )
+        ]
 
     def _clues_from_content(self, item: EvidenceRecord, content: str) -> list[SuspiciousClue]:
         clues: list[SuspiciousClue] = []
@@ -359,6 +443,30 @@ def _node_type_for(relation: str) -> str:
     if any(word in relation for word in ("资金", "交易", "收入", "支出", "转账")):
         return "transaction"
     return "entity"
+
+
+def _contains_any(text: str, words: tuple[str, ...]) -> bool:
+    return any(word in text for word in words)
+
+
+def _edge_evidence_ids(edges: list[GraphEdge]) -> list[str]:
+    ids: set[str] = set()
+    for edge in edges:
+        ids.update(edge.evidence_ids)
+    return sorted(ids)
+
+
+def _evidence_ids_by_keywords(
+    evidence: list[EvidenceRecord],
+    raw_contents: dict[str, str],
+    keywords: tuple[str, ...] | list[str],
+) -> list[str]:
+    ids: list[str] = []
+    for item in evidence:
+        text = f"{item.title}\n{raw_contents.get(item.evidence_id, item.content_preview)}"
+        if any(keyword in text for keyword in keywords):
+            ids.append(item.evidence_id)
+    return ids
 
 
 def _to_float(value: Any) -> float:
