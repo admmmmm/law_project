@@ -1,55 +1,44 @@
 <template>
-  <div class="h-full overflow-auto bg-slate-100 p-6 text-slate-900">
-    <section class="mx-auto max-w-5xl space-y-4">
-      <div class="rounded-lg border border-slate-200 bg-white p-5">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 class="text-xl font-bold">画像报告</h1>
-            <p class="mt-1 text-sm text-slate-500">白板页：调用后端报告接口，直接展示当前报告内容。</p>
-          </div>
-          <button class="btn-primary" :disabled="!activeCaseId || loading" @click="generateReport">
-            {{ loading ? '生成中...' : '生成画像报告' }}
-          </button>
+  <div class="portrait-page">
+    <section class="shell">
+      <header class="hero">
+        <div>
+          <h1>画像报告</h1>
+          <p>白板页：调用后端报告接口，以 Markdown 渲染当前报告内容，缺口会高亮。</p>
         </div>
-        <div class="mt-4 text-sm">
-          <span class="text-slate-500">当前案件：</span>
-          <span class="font-mono">{{ activeCaseId || '未选择案件' }}</span>
-        </div>
-        <p v-if="!activeCaseId" class="mt-3 rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          请先到“案件导入”页新建或选择案件。
-        </p>
-        <p v-if="error" class="mt-3 rounded border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{{ error }}</p>
-      </div>
+        <button class="primary-btn" :disabled="!activeCaseId || loading" @click="generateReport">
+          {{ loading ? '生成中...' : '生成画像报告' }}
+        </button>
+      </header>
 
-      <section v-if="!report" class="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+      <div class="case-line">
+        <span>当前案件：</span>
+        <code>{{ activeCaseId || '未选择案件' }}</code>
+      </div>
+      <p v-if="!activeCaseId" class="warn">请先到“案件导入”页新建或选择案件。</p>
+      <p v-if="error" class="error">{{ error }}</p>
+
+      <section v-if="!report" class="empty-report">
         暂无报告。运行智能分析后，再生成画像报告效果更完整。
       </section>
 
-      <section v-else class="rounded-lg border border-slate-200 bg-white p-6">
-        <div class="border-b border-slate-200 pb-4">
-          <h2 class="text-lg font-bold">{{ report.title }}</h2>
-          <p class="mt-1 text-xs text-slate-500">
-            报告 ID：{{ report.report_id }} / 生成时间：{{ formatTime(report.generated_at) }}
-          </p>
+      <section v-else class="report-card">
+        <div class="report-head">
+          <h2>{{ report.title }}</h2>
+          <p>报告 ID：{{ report.report_id }} / 生成时间：{{ formatTime(report.generated_at) }}</p>
         </div>
 
-        <div class="mt-5 space-y-5">
-          <article v-for="section in report.sections" :key="section.title">
-            <h3 class="font-bold">{{ section.title }}</h3>
-            <ul class="mt-2 space-y-2 text-sm leading-6 text-slate-700">
-              <li v-for="item in section.items" :key="item" class="rounded border border-slate-100 bg-slate-50 p-3">
-                {{ item }}
-              </li>
-            </ul>
-          </article>
-        </div>
+        <article v-for="section in report.sections" :key="section.title" class="report-section">
+          <h3>{{ section.title }}</h3>
+          <div class="items">
+            <div v-for="item in section.items" :key="item" class="markdown-item" v-html="renderMarkdown(item)" />
+          </div>
+        </article>
 
-        <div class="mt-6 rounded-lg border border-teal-100 bg-teal-50 p-4">
-          <h3 class="font-bold text-teal-900">参考建议</h3>
-          <ul class="mt-2 space-y-2 text-sm leading-6 text-teal-900">
-            <li v-for="item in report.suggestions" :key="item">{{ item }}</li>
-          </ul>
-        </div>
+        <section class="suggestions">
+          <h3>参考建议</h3>
+          <div v-for="item in report.suggestions" :key="item" class="markdown-item" v-html="renderMarkdown(item)" />
+        </section>
       </section>
     </section>
   </div>
@@ -80,19 +69,152 @@ async function generateReport() {
 function formatTime(value: string) {
   return new Date(value).toLocaleString();
 }
+
+function renderMarkdown(value: string) {
+  const escaped = escapeHtml(value || '');
+  return escaped
+    .replace(/^### (.*)$/gm, '<h4>$1</h4>')
+    .replace(/^## (.*)$/gm, '<h3>$1</h3>')
+    .replace(/^# (.*)$/gm, '<h2>$1</h2>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/==(.+?)==/g, '<mark>$1</mark>')
+    .replace(/^- (.*)$/gm, '<div class="md-list">• $1</div>')
+    .replace(/\n/g, '<br />');
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 </script>
 
 <style scoped>
-.btn-primary {
-  border-radius: 6px;
-  background: #0f766e;
-  color: white;
-  padding: 9px 14px;
-  font-size: 14px;
-  font-weight: 800;
+.portrait-page {
+  height: 100%;
+  overflow: auto;
+  background: #eef3f7;
+  color: #0f172a;
+  padding: 24px;
 }
-.btn-primary:disabled {
-  cursor: not-allowed;
+.shell {
+  max-width: 980px;
+  margin: 0 auto;
+}
+.hero,
+.report-card,
+.empty-report {
+  border: 1px solid #d8e1ea;
+  border-radius: 10px;
+  background: #ffffff;
+}
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+}
+.hero h1 {
+  font-size: 22px;
+  font-weight: 900;
+}
+.hero p,
+.case-line,
+.report-head p,
+.empty-report {
+  color: #64748b;
+  font-size: 14px;
+}
+.primary-btn {
+  border-radius: 8px;
+  background: #0f766e;
+  color: #ffffff;
+  padding: 10px 16px;
+  font-weight: 900;
+}
+.primary-btn:disabled {
   opacity: 0.5;
+}
+.case-line {
+  margin: 14px 0;
+}
+.warn,
+.error {
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+.warn {
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+.error {
+  border: 1px solid #fecdd3;
+  background: #fff1f2;
+  color: #be123c;
+}
+.empty-report {
+  padding: 36px;
+  text-align: center;
+  border-style: dashed;
+}
+.report-card {
+  padding: 22px;
+}
+.report-head {
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+}
+.report-head h2 {
+  font-size: 20px;
+  font-weight: 900;
+}
+.report-section {
+  margin-top: 20px;
+}
+.report-section h3,
+.suggestions h3 {
+  font-size: 17px;
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+.items {
+  display: grid;
+  gap: 9px;
+}
+.markdown-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #f8fafc;
+  padding: 12px;
+  color: #334155;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.suggestions {
+  margin-top: 22px;
+  border: 1px solid #99f6e4;
+  border-radius: 10px;
+  background: #f0fdfa;
+  padding: 16px;
+}
+.suggestions .markdown-item {
+  border-color: #ccfbf1;
+  background: #ffffff;
+}
+.markdown-item :deep(strong) {
+  color: #0f172a;
+  font-weight: 900;
+}
+.markdown-item :deep(mark) {
+  border-radius: 4px;
+  background: #fed7aa;
+  color: #9a3412;
+  padding: 0 3px;
+}
+.markdown-item :deep(.md-list) {
+  margin: 2px 0;
 }
 </style>

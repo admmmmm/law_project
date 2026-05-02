@@ -4,7 +4,7 @@ import zipfile
 from io import BytesIO
 from pathlib import Path
 
-from app.schemas.ingestion import BatchIngestionResult, EvidenceRecord, IngestionResult, TextIngestionRequest
+from app.schemas.ingestion import BatchIngestionResult, EvidenceDetail, EvidenceRecord, IngestionResult, TextIngestionRequest
 from app.services.information_extraction import extract_content, resolve_source_type, route_extraction
 from app.storage.memory_store import MemoryStore
 
@@ -73,6 +73,18 @@ class IngestionService:
                     continue
                 files.append((name, archive.read(info)))
         return self.ingest_many_files(case_id=case_id, files=files)
+
+    def get_evidence_detail(self, case_id: str, evidence_id: str) -> EvidenceDetail:
+        with self.store.lock:
+            if case_id not in self.store.cases:
+                raise not_found("case not found")
+            for evidence in self.store.evidence.get(case_id, []):
+                if evidence.evidence_id == evidence_id:
+                    return EvidenceDetail(
+                        **evidence.model_dump(),
+                        content=self.store.raw_contents.get(evidence_id, evidence.content_preview),
+                    )
+            raise not_found("evidence not found")
 
     def _should_skip(self, filename: str) -> bool:
         suffix = Path(filename).suffix.lower()

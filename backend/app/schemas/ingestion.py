@@ -20,6 +20,10 @@ class EvidenceRecord(BaseModel):
     created_at: datetime
 
 
+class EvidenceDetail(EvidenceRecord):
+    content: str
+
+
 class ExtractedTriple(BaseModel):
     subject: str
     relation: str

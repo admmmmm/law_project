@@ -85,6 +85,17 @@ export interface IngestionResult {
   next_step: string;
 }
 
+export interface EvidenceDetail {
+  evidence_id: string;
+  case_id: string;
+  title: string;
+  source_type: string;
+  source_ref?: string | null;
+  content_preview: string;
+  content: string;
+  created_at: string;
+}
+
 export interface BatchIngestionResult {
   case_id: string;
   accepted: boolean;
@@ -155,6 +166,7 @@ export const backendApi = {
       body,
     });
   },
+  getEvidenceDetail: (caseId: string, evidenceId: string) => request<EvidenceDetail>(`/cases/${caseId}/evidence/${evidenceId}`),
   runAnalysis: (caseId: string) =>
     request<AnalysisRunResult>(`/cases/${caseId}/analysis/run`, {
       method: 'POST',
