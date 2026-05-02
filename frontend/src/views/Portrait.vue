@@ -31,27 +31,66 @@
         <article v-for="section in report.sections" :key="section.title" class="report-section">
           <h3>{{ section.title }}</h3>
           <div class="items">
-            <div v-for="item in section.items" :key="item" class="markdown-item" v-html="renderMarkdown(item)" />
+            <button v-for="item in section.items" :key="item" class="markdown-item" @click="openTrace(section.title, item)" v-html="renderMarkdown(item)" />
           </div>
         </article>
 
         <section class="suggestions">
           <h3>参考建议</h3>
-          <div v-for="item in report.suggestions" :key="item" class="markdown-item" v-html="renderMarkdown(item)" />
+          <button v-for="item in report.suggestions" :key="item" class="markdown-item" @click="openTrace('参考建议', item)" v-html="renderMarkdown(item)" />
         </section>
       </section>
     </section>
+    <aside v-if="traceOpen" class="trace-panel">
+      <div class="trace-head">
+        <div>
+          <h2>{{ traceLabel }}</h2>
+          <p>模型报告句子的证据原文与 HippoRAG PPR 溯源。</p>
+        </div>
+        <button @click="traceOpen = false">关闭</button>
+      </div>
+      <div class="trace-section">
+        <h3>当前结论句</h3>
+        <div class="markdown" v-html="renderMarkdown(traceText)" />
+      </div>
+      <div class="trace-section">
+        <h3>HippoRAG PPR 检索结果</h3>
+        <div v-if="traceLoading" class="muted">正在检索证据...</div>
+        <div v-if="traceResult?.error" class="trace-error">{{ traceResult.error }}</div>
+        <div v-if="!traceLoading && !traceResult?.passages.length" class="muted">暂无 PPR passage 结果。</div>
+        <article v-for="item in traceResult?.passages || []" :key="`${item.rank}-${item.evidence_id}-${item.score}`" class="ppr-card">
+          <div>
+            <strong>#{{ item.rank }} / score {{ item.score.toFixed(4) }}</strong>
+            <span>{{ item.evidence_title || item.evidence_id || '未映射证据' }}</span>
+          </div>
+          <p>{{ item.passage }}</p>
+        </article>
+      </div>
+      <div class="trace-section">
+        <h3>证据原文</h3>
+        <article v-for="item in traceEvidence" :key="item.evidence_id" class="evidence-doc">
+          <strong>{{ item.title }}</strong>
+          <pre>{{ item.content }}</pre>
+        </article>
+      </div>
+    </aside>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { backendApi, type PortraitReport } from '../api/backend';
+import { backendApi, type EvidenceDetail, type PortraitReport, type TraceResult } from '../api/backend';
 
 const activeCaseId = ref(localStorage.getItem('active_case_id') || '');
 const loading = ref(false);
 const error = ref('');
 const report = ref<PortraitReport | null>(null);
+const traceOpen = ref(false);
+const traceLoading = ref(false);
+const traceLabel = ref('');
+const traceText = ref('');
+const traceResult = ref<TraceResult | null>(null);
+const traceEvidence = ref<EvidenceDetail[]>([]);
 
 async function generateReport() {
   if (!activeCaseId.value) return;
@@ -63,6 +102,28 @@ async function generateReport() {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
     loading.value = false;
+  }
+}
+
+async function openTrace(label: string, text: string) {
+  if (!activeCaseId.value) return;
+  traceOpen.value = true;
+  traceLoading.value = true;
+  traceLabel.value = label;
+  traceText.value = text;
+  traceResult.value = null;
+  traceEvidence.value = [];
+  try {
+    traceResult.value = await backendApi.traceAnalysis(activeCaseId.value, `${label}\n${text}`, [], 8);
+    const ids = new Set<string>();
+    traceResult.value.passages.forEach((item) => {
+      if (item.evidence_id && ids.size < 5) ids.add(item.evidence_id);
+    });
+    traceEvidence.value = await Promise.all([...ids].map((id) => backendApi.getEvidenceDetail(activeCaseId.value, id)));
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    traceLoading.value = false;
   }
 }
 
@@ -185,6 +246,8 @@ function escapeHtml(value: string) {
   gap: 9px;
 }
 .markdown-item {
+  display: block;
+  width: 100%;
   border: 1px solid #e2e8f0;
   border-radius: 9px;
   background: #f8fafc;
@@ -192,6 +255,11 @@ function escapeHtml(value: string) {
   color: #334155;
   font-size: 14px;
   line-height: 1.7;
+  text-align: left;
+}
+.markdown-item:hover {
+  border-color: #0f766e;
+  background: #f0fdfa;
 }
 .suggestions {
   margin-top: 22px;
@@ -216,5 +284,96 @@ function escapeHtml(value: string) {
 }
 .markdown-item :deep(.md-list) {
   margin: 2px 0;
+}
+.trace-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  width: min(460px, 92vw);
+  overflow: auto;
+  border-left: 1px solid #23324b;
+  background: #0f172a;
+  color: #ffffff;
+  padding: 16px;
+  box-shadow: -16px 0 40px rgba(15, 23, 42, 0.22);
+}
+.trace-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.trace-head h2 {
+  font-size: 18px;
+  font-weight: 900;
+}
+.trace-head p,
+.muted {
+  color: #94a3b8;
+  font-size: 13px;
+}
+.trace-head button {
+  align-self: start;
+  border: 1px solid #334155;
+  border-radius: 7px;
+  padding: 6px 10px;
+}
+.trace-section {
+  border: 1px solid #23324b;
+  border-radius: 9px;
+  background: #111c31;
+  padding: 13px;
+  margin-bottom: 12px;
+}
+.trace-section h3 {
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+.trace-error {
+  border: 1px solid #7f1d1d;
+  border-radius: 7px;
+  background: #450a0a;
+  color: #fecaca;
+  padding: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.ppr-card,
+.evidence-doc {
+  border-top: 1px solid #23324b;
+  padding-top: 10px;
+  margin-top: 10px;
+}
+.ppr-card div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #ffffff;
+  font-size: 13px;
+}
+.ppr-card span {
+  color: #7dd3fc;
+  font-size: 12px;
+  text-align: right;
+}
+.ppr-card p,
+.evidence-doc pre {
+  margin-top: 6px;
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.evidence-doc pre {
+  max-height: 360px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+.markdown {
+  color: inherit;
+  font-size: 14px;
+  line-height: 1.7;
 }
 </style>

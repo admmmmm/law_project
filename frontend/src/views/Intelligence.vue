@@ -115,6 +115,18 @@
       </div>
       <div class="trace-section">
         <h3>字段内容</h3>
+        <p class="trace-query">当前溯源句：{{ traceQueryText || '尚未选择' }}</p>
+        <div v-if="traceField" class="sentence-list">
+          <button
+            v-for="sentence in traceSentences(traceField)"
+            :key="sentence"
+            class="sentence-button"
+            :class="{ active: sentence === traceQueryText }"
+            @click="openTraceSentence(sentence)"
+          >
+            {{ sentence }}
+          </button>
+        </div>
         <div class="markdown" v-html="renderMarkdown(traceField?.value || '')" />
       </div>
       <div class="trace-section">
@@ -170,6 +182,7 @@ const traceField = ref<TraceField | null>(null);
 const traceEvidence = ref<EvidenceDetail[]>([]);
 const traceResult = ref<TraceResult | null>(null);
 const evidenceLoading = ref(false);
+const traceQueryText = ref('');
 
 const analysisSummary = computed(() => {
   if (result.value?.summary) return `**${result.value.summary}**`;
@@ -252,11 +265,22 @@ async function runAnalysis() {
 async function openTrace(field: TraceField) {
   traceField.value = field;
   traceOpen.value = true;
+  const firstSentence = traceSentences(field)[0] || field.value;
+  await runTraceForText(field, firstSentence);
+}
+
+async function openTraceSentence(sentence: string) {
+  if (!traceField.value) return;
+  await runTraceForText(traceField.value, sentence);
+}
+
+async function runTraceForText(field: TraceField, queryText: string) {
+  traceQueryText.value = queryText;
   traceEvidence.value = [];
   traceResult.value = null;
   evidenceLoading.value = true;
   try {
-    traceResult.value = await backendApi.traceAnalysis(activeCaseId.value, `${field.label}\n${field.value}`, field.evidenceIds, 8);
+    traceResult.value = await backendApi.traceAnalysis(activeCaseId.value, `${field.label}\n${queryText}`, field.evidenceIds, 8);
     const ids = new Set<string>(field.evidenceIds.slice(0, 5));
     traceResult.value.passages.forEach((item) => {
       if (item.evidence_id && ids.size < 5) ids.add(item.evidence_id);
@@ -267,6 +291,16 @@ async function openTrace(field: TraceField) {
   } finally {
     evidenceLoading.value = false;
   }
+}
+
+function traceSentences(field: TraceField) {
+  const chunks = (field.value || '')
+    .split(/\n+/)
+    .flatMap((line) => line.split(/(?<=[。！？；;])/))
+    .map((line) => line.replace(/^[-*]\s*/, '').replace(/^\d+[.、]\s*/, '').trim())
+    .filter((line) => line.length >= 6);
+  const unique = Array.from(new Set(chunks));
+  return unique.length ? unique : [field.value || field.label];
 }
 
 function makeField(key: string, label: string, value: string, keywords: string[] = []): TraceField {
@@ -648,6 +682,34 @@ function escapeHtml(value: string) {
 .trace-section h3 {
   font-weight: 900;
   margin-bottom: 8px;
+}
+.trace-query {
+  color: #bae6fd;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.sentence-list {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 10px;
+}
+.sentence-button {
+  width: 100%;
+  border: 1px solid #334155;
+  border-radius: 7px;
+  background: #0f172a;
+  color: #cbd5e1;
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.sentence-button:hover,
+.sentence-button.active {
+  border-color: #14b8a6;
+  background: #123b3c;
+  color: #ffffff;
 }
 .evidence-doc {
   border-top: 1px solid #23324b;

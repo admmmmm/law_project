@@ -144,14 +144,15 @@ class AlgorithmAdapter:
             )
             hipporag = klass(global_config=config)
             hipporag.index(docs)
-            results = hipporag.retrieve([query], num_to_retrieve=top_k)
+            results = _safe_sequence(hipporag.retrieve([query], num_to_retrieve=top_k))
             solution = results[0] if results else None
             if solution is None:
                 return [], None
 
             passages: list[TracePassage] = []
-            scores = list(getattr(solution, "doc_scores", []) or [])
-            for idx, doc in enumerate(getattr(solution, "docs", [])[:top_k]):
+            scores = _safe_sequence(getattr(solution, "doc_scores", []))
+            docs_out = _safe_sequence(getattr(solution, "docs", []))
+            for idx, doc in enumerate(docs_out[:top_k]):
                 normalized = " ".join(str(doc).split())
                 evidence_id = normalized_doc_evidence.get(normalized)
                 score = float(scores[idx]) if idx < len(scores) else 0.0
@@ -572,6 +573,27 @@ def _node_type_for(relation: str) -> str:
 
 def _contains_any(text: str, words: tuple[str, ...]) -> bool:
     return any(word in text for word in words)
+
+
+def _safe_sequence(value: Any) -> list[Any]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    tolist = getattr(value, "tolist", None)
+    if callable(tolist):
+        converted = tolist()
+        if isinstance(converted, list):
+            return converted
+        if isinstance(converted, tuple):
+            return list(converted)
+        return [converted]
+    try:
+        return list(value)
+    except TypeError:
+        return [value]
 
 
 def _edge_evidence_ids(edges: list[GraphEdge]) -> list[str]:
