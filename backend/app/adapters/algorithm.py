@@ -251,21 +251,22 @@ class AlgorithmAdapter:
         return {"triples": triples, "entities": sorted(entities)}
 
     def _run_hipporag_case_qa(self, hipporag: Any) -> list[dict[str, Any]]:
+        language_guard = "请只使用简体中文回答，不要混用英文、乱码或其他语言；结论必须标注支持证据与仍需补强之处。"
         questions = [
             {
                 "category": "basic_profile",
                 "title": "第一层：基础信息聚合",
-                "question": "基于证据材料，杨周武是谁、在哪里任职、具有什么职权？同时列出与其有关的关键人员关系。",
+                "question": f"{language_guard} 基于证据材料，杨周武是谁、在哪里任职、具有什么职权？同时列出与其有关的关键人员关系。",
             },
             {
                 "category": "behavior_reconstruction",
                 "title": "第二层：行为事实还原",
-                "question": "基于证据材料，还原杨周武、王静、何晓初、刘力飚等人的关键行为链条，包括资金往来、调解安排、案件处置结果。",
+                "question": f"{language_guard} 基于证据材料，还原杨周武、王静、何晓初、刘力飚等人的关键行为链条，包括资金往来、调解安排、案件处置结果。",
             },
             {
                 "category": "subjective_reasoning",
                 "title": "第三层：主观方面推理",
-                "question": "基于证据材料，分析杨周武是否可能明知、是否存在徇私动机、是否故意使相关人员逃避刑事追究。请指出支持和仍需补强的证据。",
+                "question": f"{language_guard} 基于证据材料，分析杨周武是否可能明知、是否存在徇私动机、是否故意使相关人员逃避刑事追究。请指出支持和仍需补强的证据。",
             },
         ]
         solutions, _, _ = hipporag.rag_qa([item["question"] for item in questions])

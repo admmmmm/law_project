@@ -45,6 +45,16 @@ export interface InvestigationGraph {
   clues: SuspiciousClue[];
 }
 
+export type GraphInterventionAction = 'upsert_node' | 'upsert_edge' | 'delete_node' | 'delete_edge' | 'verify_node' | 'verify_edge';
+
+export interface GraphInterventionRequest {
+  action: GraphInterventionAction;
+  node?: GraphNode;
+  edge?: GraphEdge;
+  target_id?: string;
+  reason?: string;
+}
+
 export interface PortraitReport {
   report_id: string;
   case_id: string;
@@ -151,6 +161,11 @@ export const backendApi = {
       body: JSON.stringify({ scopes: ['full'] }),
     }),
   getGraph: (caseId: string) => request<InvestigationGraph>(`/cases/${caseId}/graph`),
+  applyGraphIntervention: (caseId: string, payload: GraphInterventionRequest) =>
+    request<InvestigationGraph>(`/cases/${caseId}/graph/interventions`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
   generatePortrait: (caseId: string) =>
     request<PortraitReport>(`/cases/${caseId}/reports/portrait`, {
       method: 'POST',
