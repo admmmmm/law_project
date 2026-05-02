@@ -360,12 +360,21 @@ class AlgorithmAdapter:
         for row in all_openie_info:
             passage = " ".join(str(row.get("passage", "")).split())
             evidence_id = doc_evidence.get(passage)
-            entities.update(str(entity) for entity in row.get("extracted_entities", []) if entity)
+            if not evidence_id:
+                continue
+            row_entities = [str(entity).strip() for entity in row.get("extracted_entities", []) if str(entity).strip()]
+            if _looks_like_prompt_example_leak(passage, row_entities, row.get("extracted_triples", [])):
+                continue
+            entities.update(entity for entity in row_entities if _entity_grounded_in_passage(entity, passage))
             for item in row.get("extracted_triples", []):
                 if not isinstance(item, (list, tuple)) or len(item) < 3:
                     continue
                 subject, relation, obj = (str(item[0]).strip(), str(item[1]).strip(), str(item[2]).strip())
                 if not subject or not relation or not obj:
+                    continue
+                if _looks_like_prompt_example_leak(passage, [subject, obj], [item]):
+                    continue
+                if not (_entity_grounded_in_passage(subject, passage) or _entity_grounded_in_passage(obj, passage)):
                     continue
                 triples.append(
                     ExtractedTriple(
@@ -637,6 +646,40 @@ def _node_type_for(relation: str) -> str:
     if any(word in relation for word in ("资金", "交易", "收入", "支出", "转账")):
         return "transaction"
     return "entity"
+
+
+def _entity_grounded_in_passage(entity: str, passage: str) -> bool:
+    normalized_entity = " ".join(str(entity or "").split()).strip("：:，,。.;；、()（）[]【】")
+    normalized_passage = " ".join(str(passage or "").split())
+    if not normalized_entity or not normalized_passage:
+        return False
+    if normalized_entity in normalized_passage:
+        return True
+    # Allow common file/document labels that may be partly normalized by OpenIE.
+    if len(normalized_entity) >= 4 and normalized_entity.replace("《", "").replace("》", "") in normalized_passage.replace("《", "").replace("》", ""):
+        return True
+    return False
+
+
+def _looks_like_prompt_example_leak(passage: str, entities: list[str], triples: Any) -> bool:
+    """HippoRAG's bundled few-shot prompt mentions Radio City; discard it if it appears without source support."""
+
+    prompt_example_terms = {
+        "Radio City",
+        "PlanetRadiocity.com",
+        "Hindi",
+        "English",
+        "New Media",
+        "regional songs",
+        "music portal",
+        "India",
+        "3 July 2001",
+        "May 2008",
+    }
+    haystack = " ".join([*entities, str(triples)])
+    if not any(term in haystack for term in prompt_example_terms):
+        return False
+    return not any(term in passage for term in prompt_example_terms)
 
 
 def _contains_any(text: str, words: tuple[str, ...]) -> bool:
