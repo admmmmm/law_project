@@ -45,3 +45,19 @@ class TraceResult(BaseModel):
     passages: list[TracePassage] = Field(default_factory=list)
     paths: list[TracePath] = Field(default_factory=list)
     error: str | None = None
+
+
+class ChatRequest(BaseModel):
+    question: str = Field(min_length=1)
+    evidence_ids: list[str] = Field(default_factory=list)
+    top_k: int = Field(default=8, ge=1, le=30)
+
+
+class ChatResult(BaseModel):
+    case_id: str
+    question: str
+    answer: str
+    provider: str
+    passages: list[TracePassage] = Field(default_factory=list)
+    paths: list[TracePath] = Field(default_factory=list)
+    error: str | None = None

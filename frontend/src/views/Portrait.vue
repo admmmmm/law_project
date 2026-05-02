@@ -4,7 +4,7 @@
       <header class="hero">
         <div>
           <h1>画像报告</h1>
-          <p>白板页：调用后端报告接口，以 Markdown 渲染当前报告内容，缺口会高亮。</p>
+          <p>报告中的每一句结论都可以单独点击，查看证据原文与 HippoRAG PPR 溯源。</p>
         </div>
         <button class="primary-btn" :disabled="!activeCaseId || loading" @click="generateReport">
           {{ loading ? '生成中...' : '生成画像报告' }}
@@ -31,21 +31,42 @@
         <article v-for="section in report.sections" :key="section.title" class="report-section">
           <h3>{{ section.title }}</h3>
           <div class="items">
-            <button v-for="item in section.items" :key="item" class="markdown-item" @click="openTrace(section.title, item)" v-html="renderMarkdown(item)" />
+            <div v-for="item in section.items" :key="item" class="claim-group">
+              <button
+                v-for="sentence in sourceableSentences(item)"
+                :key="sentence"
+                class="claim-sentence"
+                :class="{ active: traceText === sentence }"
+                @click="openTrace(section.title, sentence)"
+              >
+                <span v-html="renderMarkdown(sentence)" />
+              </button>
+            </div>
           </div>
         </article>
 
         <section class="suggestions">
           <h3>参考建议</h3>
-          <button v-for="item in report.suggestions" :key="item" class="markdown-item" @click="openTrace('参考建议', item)" v-html="renderMarkdown(item)" />
+          <div v-for="item in report.suggestions" :key="item" class="claim-group">
+            <button
+              v-for="sentence in sourceableSentences(item)"
+              :key="sentence"
+              class="claim-sentence"
+              :class="{ active: traceText === sentence }"
+              @click="openTrace('参考建议', sentence)"
+            >
+              <span v-html="renderMarkdown(sentence)" />
+            </button>
+          </div>
         </section>
       </section>
     </section>
+
     <aside v-if="traceOpen" class="trace-panel">
       <div class="trace-head">
         <div>
           <h2>{{ traceLabel }}</h2>
-          <p>模型报告句子的证据原文与 HippoRAG PPR 溯源。</p>
+          <p>当前结论句的证据原文与 HippoRAG PPR 溯源。</p>
         </div>
         <button @click="traceOpen = false">关闭</button>
       </div>
@@ -127,6 +148,17 @@ async function openTrace(label: string, text: string) {
   }
 }
 
+function sourceableSentences(value: string) {
+  const normalized = value.replace(/\r/g, '\n');
+  const chunks = normalized
+    .split(/\n+/)
+    .flatMap((line) => line.split(/(?<=[。！？；;])/))
+    .map((line) => line.replace(/^[-*]\s*/, '').replace(/^\d+[.、]\s*/, '').trim())
+    .filter((line) => line.length >= 3);
+  const unique = Array.from(new Set(chunks));
+  return unique.length ? unique : [value];
+}
+
 function formatTime(value: string) {
   return new Date(value).toLocaleString();
 }
@@ -139,7 +171,7 @@ function renderMarkdown(value: string) {
     .replace(/^# (.*)$/gm, '<h2>$1</h2>')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/==(.+?)==/g, '<mark>$1</mark>')
-    .replace(/^- (.*)$/gm, '<div class="md-list">• $1</div>')
+    .replace(/^- (.*)$/gm, '<div class="md-list">- $1</div>')
     .replace(/\n/g, '<br />');
 }
 
@@ -245,19 +277,23 @@ function escapeHtml(value: string) {
   display: grid;
   gap: 9px;
 }
-.markdown-item {
-  display: block;
+.claim-group {
+  display: grid;
+  gap: 7px;
+}
+.claim-sentence {
   width: 100%;
   border: 1px solid #e2e8f0;
   border-radius: 9px;
   background: #f8fafc;
-  padding: 12px;
+  padding: 11px 12px;
   color: #334155;
   font-size: 14px;
   line-height: 1.7;
   text-align: left;
 }
-.markdown-item:hover {
+.claim-sentence:hover,
+.claim-sentence.active {
   border-color: #0f766e;
   background: #f0fdfa;
 }
@@ -268,22 +304,9 @@ function escapeHtml(value: string) {
   background: #f0fdfa;
   padding: 16px;
 }
-.suggestions .markdown-item {
+.suggestions .claim-sentence {
   border-color: #ccfbf1;
   background: #ffffff;
-}
-.markdown-item :deep(strong) {
-  color: #0f172a;
-  font-weight: 900;
-}
-.markdown-item :deep(mark) {
-  border-radius: 4px;
-  background: #fed7aa;
-  color: #9a3412;
-  padding: 0 3px;
-}
-.markdown-item :deep(.md-list) {
-  margin: 2px 0;
 }
 .trace-panel {
   position: fixed;
@@ -375,5 +398,17 @@ function escapeHtml(value: string) {
   color: inherit;
   font-size: 14px;
   line-height: 1.7;
+}
+.markdown :deep(strong),
+.claim-sentence :deep(strong) {
+  color: #0f172a;
+  font-weight: 900;
+}
+.markdown :deep(mark),
+.claim-sentence :deep(mark) {
+  border-radius: 4px;
+  background: #fed7aa;
+  color: #9a3412;
+  padding: 0 3px;
 }
 </style>

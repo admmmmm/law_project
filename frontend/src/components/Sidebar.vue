@@ -5,6 +5,7 @@
       <router-link class="nav-link" active-class="nav-active" to="/">案件导入</router-link>
       <router-link class="nav-link" active-class="nav-active" to="/graph">证据图谱</router-link>
       <router-link class="nav-link" active-class="nav-active" to="/intelligence">智能分析</router-link>
+      <router-link class="nav-link" active-class="nav-active" to="/chat">RAG 对话</router-link>
       <router-link class="nav-link" active-class="nav-active" to="/portrait">画像报告</router-link>
     </nav>
     <div class="mt-auto p-4 text-xs text-slate-400 border-t border-slate-800">

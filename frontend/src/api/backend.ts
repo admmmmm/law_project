@@ -135,6 +135,16 @@ export interface TraceResult {
   error?: string | null;
 }
 
+export interface ChatResult {
+  case_id: string;
+  question: string;
+  answer: string;
+  provider: string;
+  passages: TraceResult['passages'];
+  paths: TraceResult['paths'];
+  error?: string | null;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = init?.body instanceof FormData ? init.headers : { 'Content-Type': 'application/json', ...(init?.headers ?? {}) };
   const response = await fetch(`${API_PREFIX}${path}`, { headers, ...init });
@@ -197,6 +207,11 @@ export const backendApi = {
     request<TraceResult>(`/cases/${caseId}/analysis/trace`, {
       method: 'POST',
       body: JSON.stringify({ query, evidence_ids: evidenceIds, top_k: topK }),
+    }),
+  chatAnalysis: (caseId: string, question: string, evidenceIds: string[] = [], topK = 8) =>
+    request<ChatResult>(`/cases/${caseId}/analysis/chat`, {
+      method: 'POST',
+      body: JSON.stringify({ question, evidence_ids: evidenceIds, top_k: topK }),
     }),
   getGraph: (caseId: string) => request<InvestigationGraph>(`/cases/${caseId}/graph`),
   applyGraphIntervention: (caseId: string, payload: GraphInterventionRequest) =>

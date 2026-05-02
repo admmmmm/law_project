@@ -1,6 +1,6 @@
 from app.adapters.algorithm import AlgorithmAdapter
 from app.core.errors import not_found
-from app.schemas.analysis import AnalysisRunRequest, AnalysisRunResult, TracePath, TraceRequest, TraceResult
+from app.schemas.analysis import AnalysisRunRequest, AnalysisRunResult, ChatRequest, ChatResult, TracePath, TraceRequest, TraceResult
 from app.storage.memory_store import MemoryStore
 
 
@@ -48,6 +48,34 @@ class AnalysisService:
             provider=self.algorithm.provider,
             passages=passages,
             paths=_rank_graph_paths(payload.query, graph, payload.evidence_ids),
+            error=error,
+        )
+
+    def chat(self, case_id: str, payload: ChatRequest) -> ChatResult:
+        with self.store.lock:
+            case = self.store.cases.get(case_id)
+            if not case:
+                raise not_found("case not found")
+            evidence = list(self.store.evidence.get(case_id, []))
+            raw_contents = dict(self.store.raw_contents)
+            extractions = dict(self.store.extractions)
+            graph = self.store.graphs.get(case_id)
+
+        answer, passages, error = self.algorithm.answer_question(
+            case_id=case_id,
+            question=payload.question,
+            evidence=evidence,
+            raw_contents=raw_contents,
+            extractions=extractions,
+            top_k=payload.top_k,
+        )
+        return ChatResult(
+            case_id=case_id,
+            question=payload.question,
+            answer=answer,
+            provider=self.algorithm.provider,
+            passages=passages,
+            paths=_rank_graph_paths(payload.question, graph, payload.evidence_ids),
             error=error,
         )
 
