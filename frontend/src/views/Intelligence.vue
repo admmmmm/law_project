@@ -119,7 +119,7 @@
       </div>
       <div class="trace-section">
         <h3>证据原文</h3>
-        <div v-if="evidenceLoading" class="muted">正在读取证据...</div>
+        <div v-if="evidenceLoading" class="muted">正在读取证据和 HippoRAG PPR 排序...</div>
         <div v-else-if="traceEvidence.length === 0" class="muted">暂无直接证据 ID。可以到图谱页按主体和路径继续追。</div>
         <article v-for="item in traceEvidence" :key="item.evidence_id" class="evidence-doc">
           <strong>{{ item.title }}</strong>
@@ -127,7 +127,19 @@
         </article>
       </div>
       <div class="trace-section">
-        <h3>溯源路径 PPR 候选</h3>
+        <h3>HippoRAG PPR 检索结果</h3>
+        <div v-if="traceResult?.error" class="trace-error">{{ traceResult.error }}</div>
+        <div v-if="!traceResult?.passages.length" class="muted">暂无 PPR passage 结果。</div>
+        <article v-for="item in traceResult?.passages || []" :key="`${item.rank}-${item.evidence_id}-${item.score}`" class="ppr-card">
+          <div>
+            <strong>#{{ item.rank }} / score {{ item.score.toFixed(4) }}</strong>
+            <span>{{ item.evidence_title || item.evidence_id || '未映射证据' }}</span>
+          </div>
+          <p>{{ item.passage }}</p>
+        </article>
+      </div>
+      <div class="trace-section">
+        <h3>图谱溯源路径候选</h3>
         <div v-if="tracePaths.length === 0" class="muted">暂无路径候选。</div>
         <div v-for="path in tracePaths" :key="path" class="path-line">{{ path }}</div>
       </div>
@@ -137,7 +149,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { backendApi, type AnalysisRunResult, type EvidenceDetail, type InvestigationGraph, type SuspiciousClue } from '../api/backend';
+import { backendApi, type AnalysisRunResult, type EvidenceDetail, type InvestigationGraph, type SuspiciousClue, type TraceResult } from '../api/backend';
 
 interface TraceField {
   key: string;
@@ -156,6 +168,7 @@ const graph = ref<InvestigationGraph | null>(null);
 const traceOpen = ref(false);
 const traceField = ref<TraceField | null>(null);
 const traceEvidence = ref<EvidenceDetail[]>([]);
+const traceResult = ref<TraceResult | null>(null);
 const evidenceLoading = ref(false);
 
 const analysisSummary = computed(() => {
@@ -209,20 +222,7 @@ const defenseFields = computed<TraceField[]>(() => [
   makeField('defense.power', '职责边界抗辩', '可能主张没有决定权或只是执行上级意见。需要还原经办、审批、授意、协调、签批链条。', ['审批', '经办', '决定', '上级']),
 ]);
 
-const tracePaths = computed(() => {
-  if (!traceField.value || !graph.value) return [];
-  const keywords = traceField.value.keywords || [];
-  const paths: string[] = [];
-  graph.value.edges.forEach((edge) => {
-    const source = graph.value?.nodes.find((node) => node.node_id === edge.source_id)?.label || edge.source_id;
-    const target = graph.value?.nodes.find((node) => node.node_id === edge.target_id)?.label || edge.target_id;
-    const text = `${source} ${edge.relation} ${target} ${JSON.stringify(edge.properties || {})}`;
-    if (keywords.length === 0 || keywords.some((word) => text.includes(word))) {
-      paths.push(`${source} --${edge.relation}--> ${target}`);
-    }
-  });
-  return paths.slice(0, 12);
-});
+const tracePaths = computed(() => (traceResult.value?.paths || []).map((path) => `${path.source} --${path.relation}--> ${path.target}  score ${path.score.toFixed(2)}`));
 
 onMounted(loadGraph);
 
@@ -253,10 +253,15 @@ async function openTrace(field: TraceField) {
   traceField.value = field;
   traceOpen.value = true;
   traceEvidence.value = [];
+  traceResult.value = null;
   evidenceLoading.value = true;
   try {
-    const ids = field.evidenceIds.slice(0, 5);
-    traceEvidence.value = await Promise.all(ids.map((id) => backendApi.getEvidenceDetail(activeCaseId.value, id)));
+    traceResult.value = await backendApi.traceAnalysis(activeCaseId.value, `${field.label}\n${field.value}`, field.evidenceIds, 8);
+    const ids = new Set<string>(field.evidenceIds.slice(0, 5));
+    traceResult.value.passages.forEach((item) => {
+      if (item.evidence_id && ids.size < 5) ids.add(item.evidence_id);
+    });
+    traceEvidence.value = await Promise.all([...ids].map((id) => backendApi.getEvidenceDetail(activeCaseId.value, id)));
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
@@ -666,6 +671,38 @@ function escapeHtml(value: string) {
   padding: 8px 0;
   color: #bae6fd;
   font-size: 13px;
+}
+.trace-error {
+  border: 1px solid #7f1d1d;
+  border-radius: 7px;
+  background: #450a0a;
+  color: #fecaca;
+  padding: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.ppr-card {
+  border-top: 1px solid #23324b;
+  padding: 10px 0;
+}
+.ppr-card div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #ffffff;
+  font-size: 13px;
+}
+.ppr-card span {
+  color: #7dd3fc;
+  font-size: 12px;
+  text-align: right;
+}
+.ppr-card p {
+  margin-top: 6px;
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.6;
 }
 .markdown {
   color: inherit;

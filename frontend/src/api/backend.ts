@@ -114,6 +114,27 @@ export interface AnalysisRunResult {
   graph: InvestigationGraph;
 }
 
+export interface TraceResult {
+  case_id: string;
+  query: string;
+  provider: string;
+  passages: Array<{
+    rank: number;
+    score: number;
+    passage: string;
+    evidence_id?: string | null;
+    evidence_title?: string | null;
+  }>;
+  paths: Array<{
+    source: string;
+    relation: string;
+    target: string;
+    score: number;
+    evidence_ids: string[];
+  }>;
+  error?: string | null;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = init?.body instanceof FormData ? init.headers : { 'Content-Type': 'application/json', ...(init?.headers ?? {}) };
   const response = await fetch(`${API_PREFIX}${path}`, { headers, ...init });
@@ -171,6 +192,11 @@ export const backendApi = {
     request<AnalysisRunResult>(`/cases/${caseId}/analysis/run`, {
       method: 'POST',
       body: JSON.stringify({ scopes: ['full'] }),
+    }),
+  traceAnalysis: (caseId: string, query: string, evidenceIds: string[] = [], topK = 8) =>
+    request<TraceResult>(`/cases/${caseId}/analysis/trace`, {
+      method: 'POST',
+      body: JSON.stringify({ query, evidence_ids: evidenceIds, top_k: topK }),
     }),
   getGraph: (caseId: string) => request<InvestigationGraph>(`/cases/${caseId}/graph`),
   applyGraphIntervention: (caseId: string, payload: GraphInterventionRequest) =>

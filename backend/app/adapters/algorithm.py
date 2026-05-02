@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from app.core.config import settings
+from app.schemas.analysis import TracePassage
 from app.schemas.common import new_id
 from app.schemas.graph import GraphEdge, GraphNode, InvestigationGraph, SuspiciousClue
 from app.schemas.ingestion import EvidenceRecord, ExtractionResult, ExtractedTriple
@@ -104,6 +105,68 @@ class AlgorithmAdapter:
             if hippo_result and hippo_result.get("qa"):
                 graph.clues.extend(self._clues_from_hipporag_qa(hippo_result["qa"]))
         return graph
+
+    def retrieve_trace(
+        self,
+        case_id: str,
+        query: str,
+        evidence: list[EvidenceRecord],
+        raw_contents: dict[str, str],
+        extractions: dict[str, ExtractionResult] | None = None,
+        top_k: int = 8,
+    ) -> tuple[list[TracePassage], str | None]:
+        if not self.hipporag:
+            return [], "当前 ALGORITHM_PROVIDER 不是 hipporag，无法返回 PPR 检索结果。"
+
+        klass = self.hipporag.load_class()
+        config_class = self.hipporag.load_config_class()
+        if klass is None or config_class is None:
+            return [], self.hipporag.error or "HippoRAG class is unavailable"
+        if not (getenv("DEEPSEEK_API_KEY") or getenv("OPENAI_API_KEY")):
+            return [], "DEEPSEEK_API_KEY is not set, so HippoRAG retrieval/rerank cannot call the LLM"
+
+        docs, doc_evidence = self._build_hipporag_docs(evidence, raw_contents, extractions or {})
+        if not docs:
+            return [], "no passages available for HippoRAG retrieval"
+        docs = docs[: max(settings.hipporag_max_docs, 1)]
+        normalized_doc_evidence = {" ".join(doc.split()): doc_evidence.get(doc) for doc in docs}
+        titles = {item.evidence_id: item.title for item in evidence}
+
+        try:
+            save_dir = self._case_hipporag_save_dir(case_id)
+            config = config_class(
+                llm_name=settings.hipporag_llm_name,
+                llm_base_url=settings.hipporag_llm_base_url,
+                embedding_model_name=settings.hipporag_embedding_model,
+                save_dir=str(save_dir),
+                retrieval_top_k=max(top_k, settings.hipporag_retrieval_top_k),
+                qa_top_k=settings.hipporag_qa_top_k,
+            )
+            hipporag = klass(global_config=config)
+            hipporag.index(docs)
+            results = hipporag.retrieve([query], num_to_retrieve=top_k)
+            solution = results[0] if results else None
+            if solution is None:
+                return [], None
+
+            passages: list[TracePassage] = []
+            scores = list(getattr(solution, "doc_scores", []) or [])
+            for idx, doc in enumerate(getattr(solution, "docs", [])[:top_k]):
+                normalized = " ".join(str(doc).split())
+                evidence_id = normalized_doc_evidence.get(normalized)
+                score = float(scores[idx]) if idx < len(scores) else 0.0
+                passages.append(
+                    TracePassage(
+                        rank=idx + 1,
+                        score=score,
+                        passage=str(doc),
+                        evidence_id=evidence_id,
+                        evidence_title=titles.get(evidence_id or ""),
+                    )
+                )
+            return passages, None
+        except Exception as exc:  # pragma: no cover - requires external model/API
+            return [], str(exc)
 
     def _clues_from_hipporag_qa(self, qa_results: list[dict[str, Any]]) -> list[SuspiciousClue]:
         clues: list[SuspiciousClue] = []
