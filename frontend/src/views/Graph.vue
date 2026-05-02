@@ -944,8 +944,8 @@ function makeCheck(title: string, description: string, passed: boolean) {
 .render-note {
   position: absolute;
   left: 16px;
-  top: 224px;
-  max-width: 520px;
+  bottom: 16px;
+  max-width: 420px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.94);

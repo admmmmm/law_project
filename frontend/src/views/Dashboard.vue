@@ -1,6 +1,6 @@
 <template>
-  <div class="whiteboard-page h-full overflow-auto bg-slate-100 p-5">
-    <div class="mx-auto max-w-5xl space-y-4">
+  <div class="whiteboard-page">
+    <div class="shell">
       <section class="board">
         <div>
           <h1>白板工作台</h1>
@@ -9,7 +9,7 @@
         <button class="primary" @click="createCase">新建默认案件</button>
       </section>
 
-      <section class="grid gap-4 md:grid-cols-3">
+      <section class="grid">
         <div class="card">
           <h2>1. 案件</h2>
           <select v-model="selectedCaseId" class="field" @change="persistCase">
@@ -23,10 +23,10 @@
 
         <div class="card">
           <h2>2. 导入</h2>
-          <input ref="folderInput" class="hidden" type="file" multiple webkitdirectory @change="onFolderChange" />
-          <input ref="zipInput" class="hidden" type="file" accept=".zip" @change="onZipChange" />
+          <input ref="folderInput" class="hidden-input" type="file" multiple webkitdirectory @change="onFolderChange" />
+          <input ref="zipInput" class="hidden-input" type="file" accept=".zip" @change="onZipChange" />
           <button class="secondary" :disabled="!selectedCaseId" @click="folderInput?.click()">选择文件夹</button>
-          <button class="secondary mt-2" :disabled="!selectedCaseId" @click="zipInput?.click()">选择压缩包</button>
+          <button class="secondary" :disabled="!selectedCaseId" @click="zipInput?.click()">选择压缩包</button>
           <p class="hint">支持 txt/md/csv/xlsx/json/pdf/docx/zip；旧 xls 先转 CSV/XLSX。</p>
         </div>
 
@@ -40,13 +40,14 @@
       <section class="card">
         <h2>导入状态</h2>
         <div v-if="loading" class="hint">处理中...</div>
-        <div v-else-if="batchResult">
+        <div v-else-if="batchResult || currentEvidenceCount > 0">
           <div class="stats">
-            <div><b>{{ batchResult.imported_count }}</b><span>已导入</span></div>
-            <div><b>{{ batchResult.skipped_count }}</b><span>已跳过</span></div>
-            <div><b>{{ totalTriples }}</b><span>三元组</span></div>
+            <div><b>{{ currentImportedCount }}</b><span>已导入</span></div>
+            <div><b>{{ currentSkippedCount }}</b><span>已跳过</span></div>
+            <div><b>{{ currentTripleCount }}</b><span>三元组</span></div>
           </div>
-          <div v-if="batchResult.skipped.length" class="mt-3 text-sm text-slate-600">
+          <p v-if="!batchResult" class="hint status-note">这是后端案件列表返回的已导入证据数量，不展示任何演示数据。</p>
+          <div v-if="batchResult?.skipped.length" class="skipped">
             <div class="font-bold">跳过文件</div>
             <div v-for="item in batchResult.skipped.slice(0, 8)" :key="item.filename">
               {{ item.filename }}：{{ item.reason }}
@@ -75,7 +76,12 @@ const error = ref('');
 const folderInput = ref<HTMLInputElement | null>(null);
 const zipInput = ref<HTMLInputElement | null>(null);
 
+const selectedCase = computed(() => cases.value.find((item) => item.case_id === selectedCaseId.value));
+const currentEvidenceCount = computed(() => selectedCase.value?.evidence_count || 0);
 const totalTriples = computed(() => batchResult.value?.results.reduce((sum, item) => sum + (item.extraction?.triples.length || 0), 0) || 0);
+const currentImportedCount = computed(() => batchResult.value?.imported_count ?? currentEvidenceCount.value);
+const currentSkippedCount = computed(() => batchResult.value?.skipped_count ?? 0);
+const currentTripleCount = computed(() => (batchResult.value ? totalTriples.value : '-'));
 
 onMounted(loadCases);
 
@@ -96,6 +102,8 @@ async function createCase() {
 
 function persistCase() {
   localStorage.setItem('active_case_id', selectedCaseId.value);
+  batchResult.value = null;
+  analysisSummary.value = '';
 }
 
 async function onFolderChange(event: Event) {
@@ -139,16 +147,25 @@ async function withLoading(task: () => Promise<void>) {
 </script>
 
 <style scoped>
+.whiteboard-page {
+  height: 100%;
+  overflow: auto;
+  background: #f1f5f9;
+  color: #0f172a;
+  padding: 20px;
+}
+.shell {
+  max-width: 1024px;
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+}
 .board,
 .card {
   border: 1px solid #cbd5e1;
-  background: white;
-  color: #0f172a;
+  background: #ffffff;
   border-radius: 8px;
   padding: 18px;
-}
-.whiteboard-page {
-  color: #0f172a;
 }
 .board {
   display: flex;
@@ -156,15 +173,18 @@ async function withLoading(task: () => Promise<void>) {
   justify-content: space-between;
   gap: 16px;
 }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
 h1 {
-  color: #0f172a;
   font-size: 24px;
-  font-weight: 800;
+  font-weight: 900;
 }
 h2 {
-  color: #0f172a;
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 900;
   margin-bottom: 12px;
 }
 p,
@@ -181,9 +201,8 @@ p,
   padding: 8px;
   font-size: 13px;
 }
-.field option {
-  background: #ffffff;
-  color: #0f172a;
+.hidden-input {
+  display: none;
 }
 .primary,
 .secondary {
@@ -191,16 +210,17 @@ p,
   border-radius: 6px;
   padding: 9px 12px;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 900;
 }
 .primary {
   background: #0f766e;
-  color: white;
+  color: #ffffff;
 }
 .secondary {
   border: 1px solid #94a3b8;
   background: #ffffff;
   color: #0f172a;
+  margin-bottom: 8px;
 }
 button:disabled {
   opacity: 0.45;
@@ -224,6 +244,17 @@ button:disabled {
   color: #64748b;
   font-size: 12px;
 }
+.status-note,
+.skipped {
+  margin-top: 12px;
+}
+.skipped {
+  color: #475569;
+  font-size: 13px;
+}
+.font-bold {
+  font-weight: 900;
+}
 .error {
   margin-top: 12px;
   color: #be123c;
@@ -232,5 +263,12 @@ button:disabled {
   border-radius: 6px;
   padding: 10px;
   font-size: 13px;
+}
+@media (max-width: 900px) {
+  .board,
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
 }
 </style>
