@@ -699,15 +699,15 @@ function toRelationNode(node: GraphNode) {
   const isImportant = itemTags(node).some((tag) => ['person', 'account', 'alias_candidate'].includes(tag));
   return {
     id: node.node_id,
-    text: trim(node.label, isEvidence ? 16 : 10),
+    text: isEvidence ? evidenceNodeText(node) : trim(node.label, 10),
     data: node,
     type: node.type,
     color: nodeColor(node),
     borderColor: nodeBorderColor(node),
     borderWidth: isImportant ? 3 : 2,
     fontColor: '#0f172a',
-    width: isEvidence ? 116 : 82,
-    height: isEvidence ? 62 : 82,
+    width: isEvidence ? 138 : 82,
+    height: isEvidence ? 70 : 82,
     nodeShape: isEvidence ? 1 : 0,
     x: typeof node.properties?.x === 'number' ? node.properties.x : undefined,
     y: typeof node.properties?.y === 'number' ? node.properties.y : undefined,
@@ -734,6 +734,29 @@ function onNodeClick(node: { data?: GraphNode }) {
   selectedKind.value = 'node';
   selectedNode.value = node.data;
   selectedEdge.value = null;
+}
+
+function evidenceNodeText(node: GraphNode) {
+  const code = evidenceCode(node.label) || evidenceCode(node.node_id) || '证据';
+  const title = evidenceShortTitle(node.label, node.properties?.preview);
+  return title ? `${code}\n${title}` : code;
+}
+
+function evidenceCode(value: unknown) {
+  const match = String(value || '').match(/证据\s*\d+(?:-\d+)?/);
+  return match ? match[0].replace(/\s+/g, '') : '';
+}
+
+function evidenceShortTitle(label: string, preview: unknown) {
+  const source = `${label}\n${String(preview || '')}`;
+  const withoutExt = source.replace(/\.(md|docx?|pdf|txt)$/i, '');
+  const title = withoutExt
+    .replace(/^证据\s*\d+(?:-\d+)?[_\s-]*/, '')
+    .split(/\n|：|:/)
+    .map((item) => item.trim())
+    .find((item) => item && !/^证据\s*\d+(?:-\d+)?$/.test(item));
+  if (!title) return '';
+  return trim(title.replace(/[《》（）()]/g, ''), 12);
 }
 
 function onLineClick(line: { data?: GraphEdge }) {
