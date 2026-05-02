@@ -199,7 +199,206 @@ evidence_title
 GET /api/v1/cases/{case_id}/evidence/{evidence_id}
 ```
 
-## 6. 前端字段溯源
+## 6. 分析阶段的数据流
+
+前端点击“运行分析并进图谱”后，调用：
+
+```text
+POST /api/v1/cases/{case_id}/analysis/run
+```
+
+后端进入：
+
+```text
+AnalysisService.run
+  -> 读取 case
+  -> 读取 evidence
+  -> 读取 raw_contents
+  -> 读取 extractions
+  -> AlgorithmAdapter.build_graph
+```
+
+如果当前配置是：
+
+```text
+ALGORITHM_PROVIDER=hipporag
+HIPPORAG_LLM_NAME=deepseek-chat
+HIPPORAG_LLM_BASE_URL=https://api.deepseek.com
+DEEPSEEK_API_KEY=...
+```
+
+那么分析阶段会触发 HippoRAG 主链路：
+
+```text
+已导入证据
+  -> _build_hipporag_docs
+  -> docs/passages
+  -> HippoRAG.index(docs)
+  -> HippoRAG LLM/OpenIE
+  -> OpenIE entities/triples
+  -> _read_hipporag_openie
+  -> _merge_hipporag_extractions
+  -> _build_aggregated_graph
+  -> InvestigationGraph
+```
+
+同时，如果：
+
+```text
+HIPPORAG_ENABLE_QA=true
+```
+
+还会执行：
+
+```text
+_run_hipporag_case_qa
+  -> hipporag.rag_qa([
+       第一层：基础信息聚合问题,
+       第二层：行为事实还原问题,
+       第三层：主观方面推理问题
+     ])
+  -> qa answers
+  -> _clues_from_hipporag_qa
+  -> graph.clues
+```
+
+这一步生成的 `clues` 会进入图谱和画像报告。也就是说，当前系统里比较像“模型分析”的自然语言内容，主要来自分析阶段的 HippoRAG `rag_qa()`。
+
+分析结束后保存：
+
+```text
+store.graphs[case_id] = InvestigationGraph
+store.cases[case_id].status = analyzed
+```
+
+返回前端：
+
+```json
+{
+  "case_id": "case_xxx",
+  "status": "completed",
+  "summary": "已完成 ... 分析，生成 ... 个节点、... 条关系、... 条线索。",
+  "graph": {
+    "nodes": [],
+    "edges": [],
+    "clues": []
+  }
+}
+```
+
+注意：这里的 `summary` 是后端规则拼接的统计句，不是 DeepSeek 生成的。
+
+## 7. 画像报告生成的数据流
+
+前端画像报告页点击“生成画像报告”后，调用：
+
+```text
+POST /api/v1/cases/{case_id}/reports/portrait
+```
+
+后端进入：
+
+```text
+ReportService.generate_portrait
+```
+
+当前报告生成不是直接调用 DeepSeek，而是读取分析阶段已经生成好的数据，再按报告结构组装：
+
+```text
+store.cases[case_id]
+store.graphs[case_id]
+store.memories[case_id]
+store.evidence[case_id]
+  -> ReportService.generate_portrait
+  -> PortraitReport
+```
+
+报告里每个部分的数据来源如下：
+
+```text
+基础信息聚合
+  -> case.title
+  -> evidence 数量
+  -> graph.nodes / graph.edges 规模
+  -> _top_entity_labels(graph)
+  -> graph.clues 中 category=basic_profile 的 HippoRAG QA 结果
+
+行为事实还原
+  -> graph.clues 中 category=behavior_reconstruction 的 HippoRAG QA 结果
+  -> category=fund_flow 的资金线索
+  -> category=duty_behavior 的职务处置线索
+
+行为方式与反侦察迹象
+  -> _behavior_mode_notes(graph)
+  -> 从图谱关系文本中查找现金、取现、代持、马甲、隐瞒、撤销、释放等关键词
+
+要件拆解与证据归类
+  -> graph/clues 是否存在对应线索
+  -> _element_line(...) 生成“已有支撑 / 待补强”
+
+主观方面推理
+  -> category=subjective_state 的规则线索
+  -> category=subjective_reasoning 的 HippoRAG QA 结果
+
+缺口标红与补强方向
+  -> category=evidence_gap 的线索
+  -> 没有线索时使用固定模板提醒
+
+抗辩预判
+  -> _defense_predictions(graph, clues)
+  -> 当前是固定模板 + 图谱是否为空的简单判断
+
+人工确认记忆
+  -> store.memories[case_id] 中 confirmed=true 的内容
+```
+
+因此要特别区分：
+
+```text
+画像报告接口本身：目前不直接调用 DeepSeek。
+画像报告里的部分内容：可能来自之前分析阶段 DeepSeek/HippoRAG rag_qa() 的回答。
+画像报告里的模板项：由后端规则和模板拼接生成。
+```
+
+这也是为什么当前画像报告有时会显得“模板味”比较重：它不是每次生成报告时重新让 DeepSeek 面向全案写一篇报告，而是把图谱、线索、QA 和模板合并成结构化报告。
+
+## 8. DeepSeek 使用位置
+
+当前配置中，DeepSeek 通过 HippoRAG 使用：
+
+```text
+HIPPORAG_LLM_NAME=deepseek-chat
+HIPPORAG_LLM_BASE_URL=https://api.deepseek.com
+DEEPSEEK_API_KEY=...
+```
+
+代码位置主要在：
+
+```text
+backend/app/adapters/algorithm.py
+```
+
+具体使用点：
+
+| 阶段 | 是否调用 DeepSeek | 代码位置 | 作用 |
+| --- | --- | --- | --- |
+| 导入文件 | 否 | `IngestionService._save_evidence` | 保存证据、解析文本、生成本地抽取结果 |
+| 非结构化 passage 切分 | 否 | `extract_unstructured_triples` | 当前是本地规则切句和兜底三元组 |
+| 结构化流水解析 | 否 | `parse_structured_content` / `map_rows_to_triples` | 本地解析 xlsx/csv 行数据 |
+| HippoRAG index/OpenIE | 是 | `AlgorithmAdapter._run_hipporag` -> `hipporag.index(docs)` | 用 LLM/OpenIE 从 passage 中抽实体和事实关系 |
+| HippoRAG 案件问答 | 是 | `_run_hipporag_case_qa` -> `hipporag.rag_qa(...)` | 围绕基础信息、行为事实、主观方面生成分析回答 |
+| PPR 溯源检索 | 可能会调用 | `retrieve_trace` -> `hipporag.retrieve(...)` | 取回与字段/句子相关的 passage；具体是否调用 LLM 取决于 HippoRAG 内部检索/rerank 配置 |
+| 业务图谱聚合 | 否 | `_build_aggregated_graph` | 把三元组和证据关系聚合成 nodes/edges/clues |
+| 画像报告接口 | 否 | `ReportService.generate_portrait` | 读取 graph/clues/memories/evidence 后模板化组装报告 |
+
+一句话总结：
+
+```text
+DeepSeek 当前主要用于 HippoRAG 的 OpenIE、RAG QA 和可能的检索/rerank；
+不直接用于文件导入、结构化流水解析、业务图谱聚合、画像报告最终组装。
+```
+
+## 9. 前端字段溯源
 
 当前字段溯源主要在两个页面：
 
@@ -234,11 +433,11 @@ GET /api/v1/cases/{case_id}/evidence/{evidence_id}
 
 点击后系统用该条结论作为 query，走同样的 PPR 溯源接口。
 
-## 7. 贯穿实例：证据6-1
+## 10. 贯穿实例：证据6-1
 
 以 `data/realtest/evidence_docs/证据6-1_深圳市人民检察院立案决定书.md` 为例。
 
-### 7.1 原始文件
+### 10.1 原始文件
 
 文件名：
 
@@ -255,7 +454,7 @@ GET /api/v1/cases/{case_id}/evidence/{evidence_id}
 并将案件作调解结案处理。
 ```
 
-### 7.2 导入后生成 EvidenceRecord
+### 10.2 导入后生成 EvidenceRecord
 
 导入后会生成类似：
 
@@ -276,7 +475,7 @@ GET /api/v1/cases/{case_id}/evidence/{evidence_id}
 store.raw_contents["evd_xxx"] = 该 md 文件全文
 ```
 
-### 7.3 抽取结果
+### 10.3 抽取结果
 
 因为这是 `.md`，会走非结构化路线。
 
@@ -294,7 +493,7 @@ store.raw_contents["evd_xxx"] = 该 md 文件全文
 
 这些 passage 会带着同一个 `evidence_id=evd_xxx`。
 
-### 7.4 建图表现
+### 10.4 建图表现
 
 业务图谱里会出现一个证据节点：
 
@@ -314,7 +513,7 @@ evidence_ids: ["evd_xxx"]
 
 完整标题、原文和属性放到右侧详情里。
 
-### 7.5 点击字段后的溯源
+### 10.5 点击字段后的溯源
 
 假设画像报告生成一句：
 
@@ -354,9 +553,9 @@ score = PPR/检索相关分
 
 前端再用 `evidence_id` 取原文，展示在右侧抽屉。
 
-## 8. 当前系统的几个边界
+## 11. 当前系统的几个边界
 
-### 8.1 图谱不是最终答案
+### 11.1 图谱不是最终答案
 
 图谱当前主要承担：
 
@@ -369,7 +568,7 @@ score = PPR/检索相关分
 
 它不应该被理解为完整事实真相。真正的结论仍需要回到证据原文和 PPR passage。
 
-### 8.2 字段级溯源本质上是“句子级 query”
+### 11.2 字段级溯源本质上是“句子级 query”
 
 当前前端已经把字段拆成句子，点击每一句单独检索。
 
@@ -386,7 +585,7 @@ score = PPR/检索相关分
 
 也就是说，现在是“生成后追溯”；更理想的是“生成时带引用”。
 
-### 8.3 结构化数据需要控制入图
+### 11.3 结构化数据需要控制入图
 
 银行流水和电话流水如果全部展开，会导致图谱混乱。
 
@@ -407,7 +606,7 @@ case_relevant_call_records.xlsx
 
 用于避免重复导入 `cleaned_*` 和 `case_relevant_*` 两套数据造成图谱重复。
 
-## 9. 推荐的后续优化
+## 12. 推荐的后续优化
 
 为了真正做到“所有字段均可点击 -> 查看证据原文 + 溯源路径 PPR”，建议下一步做三件事：
 
