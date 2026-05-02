@@ -4,8 +4,10 @@ import csv
 import io
 import json
 import re
+import zipfile
 from pathlib import Path
 from typing import Any
+from xml.etree import ElementTree
 
 from app.schemas.ingestion import ExtractedTriple, ExtractionResult, PassageRecord
 
@@ -46,7 +48,7 @@ def extract_content(source_type: str, raw_bytes: bytes | None = None, content: s
         try:
             from docx import Document
         except Exception as exc:
-            raise ValueError("解析 DOCX 需要安装 python-docx。") from exc
+            return extract_docx_text(raw_bytes)
         doc = Document(io.BytesIO(raw_bytes))
         return "\n".join(p.text for p in doc.paragraphs).strip()
     if normalized == "pdf":
@@ -57,6 +59,23 @@ def extract_content(source_type: str, raw_bytes: bytes | None = None, content: s
         reader = PdfReader(io.BytesIO(raw_bytes))
         return "\n".join(page.extract_text() or "" for page in reader.pages).strip()
     return decode_text(raw_bytes)
+
+
+def extract_docx_text(raw_bytes: bytes) -> str:
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw_bytes)) as archive:
+            document_xml = archive.read("word/document.xml")
+    except Exception as exc:
+        raise ValueError("无法解析 DOCX 文档正文。") from exc
+
+    namespace = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
+    root = ElementTree.fromstring(document_xml)
+    paragraphs: list[str] = []
+    for paragraph in root.findall(".//w:p", namespace):
+        text = "".join(node.text or "" for node in paragraph.findall(".//w:t", namespace)).strip()
+        if text:
+            paragraphs.append(text)
+    return "\n".join(paragraphs)
 
 
 def route_extraction(
