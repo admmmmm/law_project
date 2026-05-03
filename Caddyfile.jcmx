@@ -1,20 +1,31 @@
-﻿http://adm143.xyz {
-    bind ::
+{
+	email adm143@adm143.xyz
+}
 
-    handle /jcmx/api/* {
-        uri strip_prefix /jcmx
-        reverse_proxy 127.0.0.1:8000
-    }
+adm143.xyz, www.adm143.xyz {
+	encode zstd gzip
 
-    handle /jcmx {
-        redir /jcmx/ 308
-    }
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "same-origin"
+	}
 
-    handle_path /jcmx/* {
-        root * C:\Users\adm14\Desktop\law_project\frontend\dist
-        try_files {path} /index.html
-        file_server
-    }
+	handle /jcmx/api/* {
+		uri strip_prefix /jcmx
+		reverse_proxy 127.0.0.1:8000
+	}
 
-    respond "not found" 404
+	handle /jcmx {
+		redir /jcmx/ 308
+	}
+
+	handle_path /jcmx/* {
+		root * C:\Users\adm14\Desktop\law_project\frontend\dist
+		try_files {path} /index.html
+		file_server
+	}
+
+	respond "not found" 404
 }
