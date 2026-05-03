@@ -205,7 +205,8 @@ class AlgorithmAdapter:
         titles = {item.evidence_id: item.title for item in evidence}
         guarded_question = (
             "请只使用简体中文回答。请基于当前案件证据回答，不能脱离证据自由发挥；"
-            "结论后请说明主要依据和仍需补强之处。\n"
+            "结论后请说明主要依据和仍需补强之处。最后必须另起一行写：Answer: <中文答案>，"
+            "以便系统解析答案。\n"
             f"问题：{question}"
         )
 
@@ -409,7 +410,10 @@ class AlgorithmAdapter:
         return {"triples": triples, "entities": sorted(entities)}
 
     def _run_hipporag_case_qa(self, hipporag: Any) -> list[dict[str, Any]]:
-        language_guard = "请只使用简体中文回答，不要混用英文、乱码或其他语言；结论必须标注支持证据与仍需补强之处。"
+        language_guard = (
+            "请只使用简体中文回答，不要混用英文、乱码或其他语言；"
+            "结论必须标注支持证据与仍需补强之处。最后必须另起一行写：Answer: <中文答案>，以便系统解析答案。"
+        )
         questions = [
             {
                 "category": "basic_profile",
