@@ -100,7 +100,15 @@
           <div v-if="selectedKind" class="selected-box">
             <strong>{{ selectedTitle }}</strong>
             <p>{{ selectedSubtitle }}</p>
-            <pre>{{ selectedJson }}</pre>
+            <div class="selected-summary">
+              <span v-for="tag in selectedTagsDisplay" :key="tag">{{ tag }}</span>
+              <p>{{ selectedSummary }}</p>
+              <small v-if="selectedEvidenceText">证据：{{ selectedEvidenceText }}</small>
+            </div>
+            <details>
+              <summary>查看原始 JSON</summary>
+              <pre>{{ selectedJson }}</pre>
+            </details>
             <div class="row-actions">
               <button class="small-btn" @click="fillEditForm">载入编辑</button>
               <button class="small-btn danger" @click="deleteSelected">删除</button>
@@ -279,6 +287,32 @@ const selectedSubtitle = computed(() => {
   return `${source} -> ${target}`;
 });
 const selectedJson = computed(() => JSON.stringify(selectedNode.value || selectedEdge.value || {}, null, 2));
+const selectedTagsDisplay = computed(() => {
+  const item = selectedNode.value || selectedEdge.value;
+  if (!item) return [];
+  return itemTags(item).map((tag) => FILTER_TAGS.find((entry) => entry.key === tag)?.label || tag);
+});
+const selectedEvidenceText = computed(() => {
+  const ids = (selectedNode.value || selectedEdge.value)?.evidence_ids || [];
+  return ids.slice(0, 4).join('，');
+});
+const selectedSummary = computed(() => {
+  if (selectedNode.value) {
+    const node = selectedNode.value;
+    const props = node.properties || {};
+    const preview = String(props.preview || props.passage || '').trim();
+    return preview || `节点类型：${node.type}。关联证据 ${node.evidence_ids.length} 份。`;
+  }
+  if (selectedEdge.value) {
+    const edge = selectedEdge.value;
+    const source = nodeMap.value.get(edge.source_id)?.label || edge.source_id;
+    const target = nodeMap.value.get(edge.target_id)?.label || edge.target_id;
+    const count = edge.properties?.count ? `，出现 ${edge.properties.count} 次` : '';
+    const amount = edge.properties?.amount_total ? `，金额合计 ${edge.properties.amount_total}` : '';
+    return `${source} -> ${edge.relation} -> ${target}${count}${amount}。关联证据 ${edge.evidence_ids.length} 份。`;
+  }
+  return '';
+});
 
 const availableCategories = computed(() => {
   const counts = new Map<string, number>();
@@ -392,10 +426,23 @@ function buildRenderableGraph() {
   const cutoff = timelinePoints.value[timelineIndex.value] || '';
   const hasCutoff = Boolean(cutoff && cutoff !== '全部时间');
   const allowedByTime = (value: string | null) => !hasCutoff || !value || value <= cutoff;
-  const filteredNodes = graph.value.nodes.filter((node) => allowedByTime(itemDate(node)) && selectedByTags(node, categorySet));
-  const nodeIds = new Set(filteredNodes.map((node) => node.node_id));
-  let filteredEdges = graph.value.edges.filter(
-    (edge) => selectedByTags(edge, categorySet) && allowedByTime(itemDate(edge)) && nodeIds.has(edge.source_id) && nodeIds.has(edge.target_id),
+  const timeNodes = graph.value.nodes.filter((node) => allowedByTime(itemDate(node)));
+  const timeNodeIds = new Set(timeNodes.map((node) => node.node_id));
+  const timeEdges = graph.value.edges.filter((edge) => allowedByTime(itemDate(edge)) && timeNodeIds.has(edge.source_id) && timeNodeIds.has(edge.target_id));
+  const directNodeIds = new Set(timeNodes.filter((node) => selectedByTags(node, categorySet)).map((node) => node.node_id));
+  const directEdgeIds = new Set(timeEdges.filter((edge) => selectedByTags(edge, categorySet)).map((edge) => edge.edge_id));
+  const includedNodeIds = new Set(directNodeIds);
+  timeEdges.forEach((edge) => {
+    if (directEdgeIds.has(edge.edge_id)) {
+      includedNodeIds.add(edge.source_id);
+      includedNodeIds.add(edge.target_id);
+    }
+  });
+  const filteredNodes = timeNodes.filter((node) => includedNodeIds.has(node.node_id));
+  let filteredEdges = timeEdges.filter(
+    (edge) =>
+      directEdgeIds.has(edge.edge_id) ||
+      (includedNodeIds.has(edge.source_id) && includedNodeIds.has(edge.target_id) && (directNodeIds.has(edge.source_id) || directNodeIds.has(edge.target_id))),
   );
 
   const modeIds = modeNodeIds(filteredNodes, filteredEdges);
@@ -1050,6 +1097,39 @@ function makeCheck(title: string, description: string, passed: boolean) {
   color: #cbd5e1;
   font-size: 11px;
   white-space: pre-wrap;
+}
+.selected-box details {
+  margin: 8px 0;
+}
+.selected-box summary {
+  cursor: pointer;
+  color: #7dd3fc;
+  font-size: 12px;
+  font-weight: 800;
+}
+.selected-summary {
+  margin-top: 8px;
+  border: 1px solid #23324b;
+  border-radius: 8px;
+  background: #0b1220;
+  padding: 8px;
+}
+.selected-summary span {
+  display: inline-block;
+  margin: 0 5px 5px 0;
+  border-radius: 999px;
+  background: #134e4a;
+  color: #99f6e4;
+  padding: 3px 7px;
+  font-size: 11px;
+  font-weight: 900;
+}
+.selected-summary small {
+  display: block;
+  margin-top: 6px;
+  color: #7dd3fc;
+  font-size: 11px;
+  line-height: 1.5;
 }
 .row-actions {
   display: flex;

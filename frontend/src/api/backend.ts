@@ -60,8 +60,27 @@ export interface PortraitReport {
   case_id: string;
   generated_at: string;
   title: string;
-  sections: Array<{ title: string; items: string[] }>;
+  sections: Array<{
+    title: string;
+    items: string[];
+    claims?: Array<{
+      claim_id: string;
+      text: string;
+      section: string;
+      element?: string | null;
+      status: string;
+      confidence: number;
+      supporting_passages: Array<{
+        evidence_id: string;
+        evidence_title?: string | null;
+        passage: string;
+        score: number;
+      }>;
+      verification_notes: string;
+    }>;
+  }>;
   suggestions: string[];
+  generation_method?: string;
 }
 
 export interface IngestionResult {

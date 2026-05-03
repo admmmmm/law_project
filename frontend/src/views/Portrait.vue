@@ -30,7 +30,21 @@
 
         <article v-for="section in report.sections" :key="section.title" class="report-section">
           <h3>{{ section.title }}</h3>
-          <div class="items">
+          <div v-if="section.claims?.length" class="items">
+            <button
+              v-for="claim in section.claims"
+              :key="claim.claim_id"
+              class="claim-sentence"
+              :class="[claim.status, { hover: hoveredClaim === claim.claim_id, active: traceText === claim.text }]"
+              @mouseenter="hoveredClaim = claim.claim_id"
+              @mouseleave="hoveredClaim = ''"
+              @click="openClaimTrace(section.title, claim)"
+            >
+              <span v-html="renderMarkdown(claim.text)" />
+              <small>{{ claimStatusLabel(claim.status) }} / {{ Math.round((claim.confidence || 0) * 100) }}%</small>
+            </button>
+          </div>
+          <div v-else class="items">
             <div v-for="item in section.items" :key="item" class="claim-group">
               <button
                 v-for="sentence in sourceableSentences(item)"
@@ -117,6 +131,7 @@ const traceText = ref('');
 const hoveredClaim = ref('');
 const traceResult = ref<TraceResult | null>(null);
 const traceEvidence = ref<EvidenceDetail[]>([]);
+type PortraitClaim = NonNullable<NonNullable<PortraitReport['sections'][number]['claims']>[number]>;
 
 async function generateReport() {
   if (!activeCaseId.value) return;
@@ -153,6 +168,35 @@ async function openTrace(label: string, text: string) {
   }
 }
 
+async function openClaimTrace(label: string, claim: PortraitClaim) {
+  if (!activeCaseId.value) return;
+  traceOpen.value = true;
+  traceLoading.value = true;
+  traceLabel.value = `${label}${claim.element ? ` / ${claim.element}` : ''}`;
+  traceText.value = `${claim.text}\n\n校验状态：${claim.status}\n置信度：${Math.round((claim.confidence || 0) * 100)}%\n${claim.verification_notes || ''}`;
+  traceResult.value = {
+    case_id: activeCaseId.value,
+    query: claim.text,
+    provider: 'claim_verifier',
+    passages: claim.supporting_passages.map((item, index) => ({
+      rank: index + 1,
+      score: item.score,
+      passage: item.passage,
+      evidence_id: item.evidence_id,
+      evidence_title: item.evidence_title,
+    })),
+    paths: [],
+  };
+  try {
+    const ids = Array.from(new Set(claim.supporting_passages.map((item) => item.evidence_id).filter(Boolean))).slice(0, 5);
+    traceEvidence.value = await Promise.all(ids.map((id) => backendApi.getEvidenceDetail(activeCaseId.value, id)));
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    traceLoading.value = false;
+  }
+}
+
 function sourceableSentences(value: string) {
   const normalized = value.replace(/\r/g, '\n');
   const chunks = normalized
@@ -166,6 +210,14 @@ function sourceableSentences(value: string) {
 
 function formatTime(value: string) {
   return new Date(value).toLocaleString();
+}
+
+function claimStatusLabel(status: string) {
+  if (status === 'supported') return '证据支撑';
+  if (status === 'weak') return '需复核';
+  if (status === 'unsupported') return '未证实';
+  if (status === 'conflict') return '证据冲突';
+  return status;
 }
 
 function renderMarkdown(value: string) {
@@ -297,10 +349,27 @@ function escapeHtml(value: string) {
   line-height: 1.7;
   text-align: left;
 }
+.claim-sentence small {
+  display: block;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
 .claim-sentence:hover,
 .claim-sentence.hover {
   border-color: #0f766e;
   background: #f0fdfa;
+}
+.claim-sentence.supported {
+  border-left: 4px solid #0f766e;
+}
+.claim-sentence.weak {
+  border-left: 4px solid #f59e0b;
+}
+.claim-sentence.unsupported {
+  border-left: 4px solid #dc2626;
+  background: #fff7f7;
 }
 .claim-sentence.active {
   border-color: #0f766e;

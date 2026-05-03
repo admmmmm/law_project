@@ -1,6 +1,17 @@
+from __future__ import annotations
+
+import json
+import re
+import urllib.error
+import urllib.request
+from os import getenv
+from pathlib import Path
+from typing import Any
+
+from app.core.config import settings
 from app.core.errors import not_found
 from app.schemas.common import new_id, now_utc
-from app.schemas.report import PortraitReport, PortraitSection
+from app.schemas.report import ClaimPassage, PortraitClaim, PortraitReport, PortraitSection
 from app.storage.memory_store import MemoryStore
 
 
@@ -18,6 +29,7 @@ class ReportService:
             memories = self.store.memories.get(case_id, [])
             clues = graph.clues if graph else []
             evidence = self.store.evidence.get(case_id, [])
+            raw_contents = dict(self.store.raw_contents)
 
             basic_qa = [clue.description for clue in clues if clue.category == "basic_profile"]
             behavior_qa = [clue.description for clue in clues if clue.category == "behavior_reconstruction"]
@@ -96,15 +108,204 @@ class ReportService:
                 "对别名、假名、马甲账户只输出合并建议和置信度，最终合并必须人工确认。",
                 "当前报告是侦查参考，不替代人工审查、证据合法性判断和法律定性。",
             ]
+            claim_sections, generation_method = _generate_grounded_claim_sections(
+                case_title=case.title,
+                sections=sections,
+                evidence=evidence,
+                raw_contents=raw_contents,
+                graph=graph,
+            )
 
             return PortraitReport(
                 report_id=new_id("rpt"),
                 case_id=case_id,
                 generated_at=now_utc(),
                 title=f"{case.title} 信息画像报告",
-                sections=sections,
+                sections=claim_sections,
                 suggestions=suggestions,
+                generation_method=generation_method,
             )
+
+
+def _generate_grounded_claim_sections(
+    *,
+    case_title: str,
+    sections: list[PortraitSection],
+    evidence,
+    raw_contents: dict[str, str],
+    graph,
+) -> tuple[list[PortraitSection], str]:
+    passages = _build_evidence_passages(evidence, raw_contents)
+    if settings.deepseek_analysis_enabled and getenv("DEEPSEEK_API_KEY") and passages:
+        llm_claims = _try_deepseek_claims(case_title, sections, passages, graph)
+        if llm_claims:
+            return _attach_claims_to_sections(sections, llm_claims, passages), f"deepseek:{settings.deepseek_analysis_model}"
+    fallback_claims = []
+    for section in sections:
+        for item in section.items:
+            for sentence in _split_claim_sentences(item):
+                fallback_claims.append({"section": section.title, "text": sentence, "element": section.title})
+    return _attach_claims_to_sections(sections, fallback_claims, passages), "template_fallback_verified"
+
+
+def _try_deepseek_claims(case_title: str, sections: list[PortraitSection], passages: list[dict[str, Any]], graph) -> list[dict[str, Any]]:
+    selected_passages = passages[:80]
+    legal_context = _legal_context()
+    graph_summary = {
+        "nodes": len(graph.nodes) if graph else 0,
+        "edges": len(graph.edges) if graph else 0,
+        "clues": [clue.model_dump() for clue in (graph.clues[:8] if graph else [])],
+    }
+    prompt = {
+        "case_title": case_title,
+        "task": "请基于证据片段、法律知识和办案模板，输出逐句可验证的画像分析 claim。只能输出 JSON。",
+        "rules": [
+            "必须使用简体中文。",
+            "每条 claim 只表达一个事实、判断或证据缺口。",
+            "不能编造证据。证据不足时写成待核查或需补证。",
+            "重点覆盖主体要件、客观行为、主观方面、结果因果、反侦察行为、抗辩预判。",
+            "每条 claim 必须给出 section、element、text、evidence_ids。",
+        ],
+        "legal_context": legal_context[:6000],
+        "current_template_sections": [section.model_dump(exclude={"claims"}) for section in sections],
+        "graph_summary": graph_summary,
+        "passages": selected_passages,
+        "output_schema": {
+            "claims": [
+                {"section": "主体要件", "element": "司法工作人员身份", "text": "一句结论", "evidence_ids": ["evd_xxx"]}
+            ]
+        },
+    }
+    body = {
+        "model": settings.deepseek_analysis_model,
+        "messages": [
+            {"role": "system", "content": "你是检察侦查案件画像分析助手。你必须严守证据，不得输出无依据结论。"},
+            {"role": "user", "content": json.dumps(prompt, ensure_ascii=False)},
+        ],
+        "temperature": 0.1,
+        "response_format": {"type": "json_object"},
+    }
+    request = urllib.request.Request(
+        f"{settings.hipporag_llm_base_url.rstrip('/')}/chat/completions",
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {getenv('DEEPSEEK_API_KEY')}"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=settings.deepseek_analysis_timeout) as response:
+            data = json.loads(response.read().decode("utf-8"))
+        content = data["choices"][0]["message"]["content"]
+        parsed = json.loads(content)
+        claims = parsed.get("claims", [])
+        return claims if isinstance(claims, list) else []
+    except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, TypeError, ValueError):
+        return []
+
+
+def _attach_claims_to_sections(
+    sections: list[PortraitSection],
+    raw_claims: list[dict[str, Any]],
+    passages: list[dict[str, Any]],
+) -> list[PortraitSection]:
+    grouped: dict[str, list[PortraitClaim]] = {section.title: [] for section in sections}
+    for raw in raw_claims:
+        text = str(raw.get("text") or "").strip()
+        if not text:
+            continue
+        section_title = _match_section_title(str(raw.get("section") or ""), sections)
+        claim = _verify_claim(text, section_title, str(raw.get("element") or ""), raw.get("evidence_ids") or [], passages)
+        grouped.setdefault(section_title, []).append(claim)
+    return [
+        section.model_copy(update={"claims": grouped.get(section.title, []), "items": [claim.text for claim in grouped.get(section.title, [])] or section.items})
+        for section in sections
+    ]
+
+
+def _verify_claim(text: str, section: str, element: str, evidence_ids: list[str], passages: list[dict[str, Any]]) -> PortraitClaim:
+    candidates = [p for p in passages if not evidence_ids or p["evidence_id"] in evidence_ids]
+    scored = sorted((_score_passage(text, p), p) for p in candidates)
+    top = [(score, p) for score, p in reversed(scored) if score > 0][:5]
+    support = [
+        ClaimPassage(
+            evidence_id=p["evidence_id"],
+            evidence_title=p.get("evidence_title"),
+            passage=p["passage"],
+            score=round(score, 4),
+        )
+        for score, p in top
+    ]
+    best = support[0].score if support else 0.0
+    status = "supported" if best >= 0.42 else "weak" if best >= 0.2 else "unsupported"
+    note = "已找到可对应证据片段。" if status == "supported" else "证据关联较弱，需人工复核。" if status == "weak" else "未找到可靠证据片段，不能作为正式结论。"
+    return PortraitClaim(
+        claim_id=new_id("claim"),
+        text=text,
+        section=section,
+        element=element or section,
+        status=status,
+        confidence=min(best, 0.99),
+        supporting_passages=support,
+        verification_notes=note,
+    )
+
+
+def _score_passage(claim: str, passage: dict[str, Any]) -> float:
+    claim_terms = _claim_terms(claim)
+    passage_text = passage["passage"]
+    if not claim_terms:
+        return 0.0
+    hits = sum(1 for term in claim_terms if term in passage_text)
+    coverage = hits / max(len(claim_terms), 1)
+    important_hits = sum(1 for term in claim_terms if len(term) >= 3 and term in passage_text)
+    return coverage * 0.75 + min(important_hits, 4) * 0.06
+
+
+def _claim_terms(text: str) -> list[str]:
+    words = re.findall(r"[\u4e00-\u9fa5]{2,}|[A-Za-z0-9_.-]{2,}", text)
+    stop = {"当前", "已经", "可能", "需要", "证据", "材料", "关系", "情况", "分析", "显示", "应当"}
+    return [word for word in words if word not in stop][:16]
+
+
+def _build_evidence_passages(evidence, raw_contents: dict[str, str]) -> list[dict[str, Any]]:
+    titles = {item.evidence_id: item.title for item in evidence}
+    rows: list[dict[str, Any]] = []
+    for item in evidence:
+        content = raw_contents.get(item.evidence_id, item.content_preview)
+        for passage in _split_evidence_text(content):
+            rows.append({"evidence_id": item.evidence_id, "evidence_title": titles[item.evidence_id], "passage": passage})
+    return rows
+
+
+def _split_evidence_text(content: str, limit: int = 220) -> list[str]:
+    parts = [part.strip() for part in re.split(r"(?<=[。！？!?；;])\s*|\n+", content or "") if part.strip()]
+    chunks: list[str] = []
+    for part in parts:
+        if len(part) <= limit:
+            chunks.append(part)
+        else:
+            chunks.extend(part[start : start + limit] for start in range(0, len(part), limit))
+    return chunks
+
+
+def _split_claim_sentences(value: str) -> list[str]:
+    text = re.sub(r"\*\*(.*?)\*\*", r"\1", value or "").replace("==", "")
+    return [part.strip("- *\t ") for part in re.split(r"(?<=[。！？!?；;])\s*|\n+", text) if len(part.strip()) >= 4]
+
+
+def _match_section_title(value: str, sections: list[PortraitSection]) -> str:
+    for section in sections:
+        if value and (value in section.title or section.title in value):
+            return section.title
+    return sections[0].title if sections else "画像分析"
+
+
+def _legal_context() -> str:
+    root = Path(__file__).resolve().parents[3] / "data" / "legal_knowledge"
+    pieces: list[str] = []
+    for path in [root / "README.md", root / "evidence_type_mapping.json", root / "offense_templates" / "xunsi_wangfa.json"]:
+        if path.exists():
+            pieces.append(path.read_text(encoding="utf-8", errors="ignore")[:5000])
+    return "\n\n".join(pieces)
 
 
 def _top_entity_labels(graph, limit: int = 8) -> list[str]:
