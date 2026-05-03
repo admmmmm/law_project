@@ -1,12 +1,22 @@
 from .ner import one_shot_ner_paragraph, one_shot_ner_output
 from ...utils.llm_utils import convert_format_to_template
 
-ner_conditioned_re_system = """Your task is to construct an RDF (Resource Description Framework) graph from the given passages and named entity lists. 
-Respond with a JSON list of triples, with each triple representing a relationship in the RDF graph. 
+ner_conditioned_re_system = """你的任务是根据段落和命名实体列表抽取中文事实三元组。
+请重点抽取侦查、司法、资金和人员关系，不要抽取空泛关系。
 
-Pay attention to the following requirements:
-- Each triple should contain at least one, but preferably two, of the named entities in the list for each passage.
-- Clearly resolve pronouns to their specific names to maintain clarity.
+优先使用以下关系类型：
+- 任职于、职务为、负责、批准、指派、安排、介入；
+- 请托、收受、行贿、转账、取现、存入、赔偿；
+- 立案、拘留、释放、调解、撤案、结案、侦查；
+- 亲属、同事、上下级、经营、控制账户；
+- 明知、隐瞒、规避、倒签、补录。
+
+要求：
+- 每个三元组至少包含一个命名实体，最好包含两个命名实体。
+- 代词必须还原为具体人名或机构名。
+- 关系必须用中文短语。
+- 只能依据当前段落，不得把示例中的实体或关系带入新段落。
+- 只返回 JSON，格式为 {"triples": [[subject, relation, object], ...]}。
 
 """
 
@@ -25,18 +35,14 @@ ner_conditioned_re_input = ner_conditioned_re_frame.format(passage=one_shot_ner_
 
 
 ner_conditioned_re_output = """{"triples": [
-            ["Radio City", "located in", "India"],
-            ["Radio City", "is", "private FM radio station"],
-            ["Radio City", "started on", "3 July 2001"],
-            ["Radio City", "plays songs in", "Hindi"],
-            ["Radio City", "plays songs in", "English"],
-            ["Radio City", "forayed into", "New Media"],
-            ["Radio City", "launched", "PlanetRadiocity.com"],
-            ["PlanetRadiocity.com", "launched in", "May 2008"],
-            ["PlanetRadiocity.com", "is", "music portal"],
-            ["PlanetRadiocity.com", "offers", "news"],
-            ["PlanetRadiocity.com", "offers", "videos"],
-            ["PlanetRadiocity.com", "offers", "songs"]
+            ["杨周武", "职务为", "同乐派出所副所长"],
+            ["王静", "请托", "杨周武"],
+            ["杨周武", "安排介入调解", "刘力飚"],
+            ["刘力飚", "身份为", "非办案民警"],
+            ["王静", "通过", "何晓初"],
+            ["何晓初", "收受", "3万元"],
+            ["刘力飚", "促成和解", "2008年9月6日"],
+            ["和解", "赔偿金额", "11万元"]
     ]
 }
 """

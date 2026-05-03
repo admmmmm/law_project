@@ -209,6 +209,7 @@ interface TraceField {
   evidenceIds: string[];
   status?: 'ok' | 'gap';
   keywords?: string[];
+  sourcePassages?: NonNullable<SuspiciousClue['source_passages']>;
 }
 
 const activeCaseId = ref(localStorage.getItem('active_case_id') || '');
@@ -358,7 +359,23 @@ async function runTraceForText(field: TraceField, queryText: string) {
   traceResult.value = null;
   evidenceLoading.value = true;
   try {
-    traceResult.value = await backendApi.traceAnalysis(activeCaseId.value, `${field.label}\n${queryText}`, field.evidenceIds, 8);
+    if (field.sourcePassages?.length) {
+      traceResult.value = {
+        case_id: activeCaseId.value,
+        query: `${field.label}\n${queryText}`,
+        provider: 'hipporag_qa_bound_sources',
+        passages: field.sourcePassages.map((item, index) => ({
+          rank: item.rank || index + 1,
+          score: item.score || 0,
+          passage: item.passage,
+          evidence_id: item.evidence_id || null,
+          evidence_title: item.evidence_title || null,
+        })),
+        paths: [],
+      };
+    } else {
+      traceResult.value = await backendApi.traceAnalysis(activeCaseId.value, `${field.label}\n${queryText}`, field.evidenceIds, 8);
+    }
     const ids = new Set<string>(field.evidenceIds.slice(0, 5));
     traceResult.value.passages.forEach((item) => {
       if (item.evidence_id && ids.size < 5) ids.add(item.evidence_id);
@@ -417,6 +434,7 @@ function fieldFromClue(clue: SuspiciousClue): TraceField {
     evidenceIds: clue.evidence_ids,
     keywords: [clue.title, clue.category],
     status: clue.risk_level === 'high' ? 'gap' : 'ok',
+    sourcePassages: clue.source_passages || [],
   };
 }
 

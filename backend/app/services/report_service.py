@@ -10,6 +10,7 @@ from typing import Any
 
 from app.core.config import settings
 from app.core.errors import not_found
+from app.adapters.algorithm import get_algorithm_adapter
 from app.schemas.common import new_id, now_utc
 from app.schemas.report import ClaimPassage, PortraitClaim, PortraitReport, PortraitSection
 from app.services.llm_context_debug import log_llm_context
@@ -31,6 +32,7 @@ class ReportService:
             clues = graph.clues if graph else []
             evidence = self.store.evidence.get(case_id, [])
             raw_contents = dict(self.store.raw_contents)
+            extractions = {item.evidence_id: self.store.extractions[item.evidence_id] for item in evidence if item.evidence_id in self.store.extractions}
 
             basic_qa = [clue.description for clue in clues if clue.category == "basic_profile"]
             behavior_qa = [clue.description for clue in clues if clue.category == "behavior_reconstruction"]
@@ -111,10 +113,12 @@ class ReportService:
                 "当前报告是侦查参考，不替代人工审查、证据合法性判断和法律定性。",
             ]
             claim_sections, generation_method = _generate_grounded_claim_sections(
+                case_id=case_id,
                 case_title=case.title,
                 sections=sections,
                 evidence=evidence,
                 raw_contents=raw_contents,
+                extractions=extractions,
                 graph=graph,
             )
 
@@ -270,27 +274,32 @@ def _support_line(item: dict[str, Any]) -> str:
 
 def _generate_grounded_claim_sections(
     *,
+    case_id: str,
     case_title: str,
     sections: list[PortraitSection],
     evidence,
     raw_contents: dict[str, str],
+    extractions: dict[str, Any],
     graph,
 ) -> tuple[list[PortraitSection], str]:
-    passages = _build_evidence_passages(evidence, raw_contents)
+    passages, source = _select_report_passages_with_hipporag(case_id, case_title, evidence, raw_contents, extractions)
+    if not passages:
+        passages = _build_evidence_passages(evidence, raw_contents)
+        source = "keyword_fallback"
     if settings.deepseek_analysis_enabled and getenv("DEEPSEEK_API_KEY") and passages:
         llm_claims = _try_deepseek_claims(case_title, sections, passages, graph)
         if llm_claims:
-            return _attach_claims_to_sections(sections, llm_claims, passages), f"deepseek:{settings.deepseek_analysis_model}"
+            return _attach_claims_to_sections(sections, llm_claims, passages), f"deepseek:{settings.deepseek_analysis_model}:{source}"
     fallback_claims = []
     for section in sections:
         for item in section.items:
             for sentence in _split_claim_sentences(item):
                 fallback_claims.append({"section": section.title, "text": sentence, "element": section.title})
-    return _attach_claims_to_sections(sections, fallback_claims, passages), "template_fallback_verified"
+    return _attach_claims_to_sections(sections, fallback_claims, passages), f"template_fallback_verified:{source}"
 
 
 def _try_deepseek_claims(case_title: str, sections: list[PortraitSection], passages: list[dict[str, Any]], graph) -> list[dict[str, Any]]:
-    selected_passages = _select_report_passages(passages, limit=80)
+    selected_passages = passages[:80]
     log_llm_context(
         "portrait_deepseek_claims",
         question=f"{case_title} 信息画像报告与要件核查",
@@ -347,6 +356,75 @@ def _try_deepseek_claims(case_title: str, sections: list[PortraitSection], passa
         return claims if isinstance(claims, list) else []
     except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, TypeError, ValueError):
         return []
+
+
+def _select_report_passages_with_hipporag(
+    case_id: str,
+    case_title: str,
+    evidence,
+    raw_contents: dict[str, str],
+    extractions: dict[str, Any],
+    limit: int = 80,
+) -> tuple[list[dict[str, Any]], str]:
+    suspect = _guess_suspect(case_title, raw_contents)
+    queries = [
+        f"{suspect}的身份职务和任职单位",
+        f"{suspect}与哪些人有利益往来或请托关系",
+        f"{suspect}在案件中做了什么违规行为",
+        f"{suspect}是否接受贿赂或好处",
+        f"{suspect}是否明知应追究刑事责任而不追究",
+        f"{suspect}的行为导致了什么后果",
+        "案件中是否存在隐瞒规避、白手套、现金取存、倒签补录或反侦察行为",
+    ]
+    adapter = get_algorithm_adapter()
+    selected: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    errors: list[str] = []
+    for query in queries:
+        passages, error = adapter.retrieve_trace(
+            case_id=case_id,
+            query=query,
+            evidence=evidence,
+            raw_contents=raw_contents,
+            extractions=extractions,
+            top_k=12,
+        )
+        if error:
+            errors.append(error)
+            continue
+        for item in passages:
+            key = f"{item.evidence_id}::{item.passage}"
+            if key in seen:
+                continue
+            seen.add(key)
+            selected.append(
+                {
+                    "evidence_id": item.evidence_id,
+                    "evidence_title": item.evidence_title,
+                    "passage": item.passage,
+                    "score": item.score,
+                    "query": query,
+                }
+            )
+            if len(selected) >= limit:
+                break
+        if len(selected) >= limit:
+            break
+    log_llm_context(
+        "portrait_hipporag_retrieved_passages",
+        question=f"{case_title} / {suspect} / portrait passage selection",
+        passages=selected,
+        extra={"queries": queries, "errors": errors[:5], "selected": len(selected)},
+    )
+    return selected, "hipporag_retrieval" if selected else "hipporag_empty"
+
+
+def _guess_suspect(case_title: str, raw_contents: dict[str, str]) -> str:
+    if "杨周武" in case_title:
+        return "杨周武"
+    corpus = "\n".join(raw_contents.values())[:20000]
+    match = re.search(r"([\u4e00-\u9fa5]{2,4})(?:徇私枉法|涉嫌|被告人|犯罪嫌疑人)", f"{case_title}\n{corpus}")
+    return match.group(1) if match else "目标人员"
 
 
 def _select_report_passages(passages: list[dict[str, Any]], limit: int = 80) -> list[dict[str, Any]]:

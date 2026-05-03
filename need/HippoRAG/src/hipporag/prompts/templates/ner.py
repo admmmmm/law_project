@@ -1,15 +1,22 @@
-ner_system = """Your task is to extract named entities from the given paragraph. 
-Respond with a JSON list of entities.
+ner_system = """你的任务是从给定段落中提取命名实体。
+请特别关注以下实体：
+- 人物：嫌疑人、证人、被害人、办案人员、请托人、被请托人、化名、绰号；
+- 机构：公安局、派出所、检察院、法院、看守所、医院、公司、个体工商户；
+- 案件与法律事项：案号、罪名、立案、拘留、释放、调解、撤案、侦查；
+- 职务与身份：所长、副所长、民警、责任区民警、检察官、法医、经营者；
+- 金额、账户、时间、地点。
+必须只根据原文抽取，不能把示例中的实体带入新文本。
+只返回 JSON，格式为 {"named_entities": [...]}。
 """
 
-one_shot_ner_paragraph = """Radio City
-Radio City is India's first private FM radio station and was started on 3 July 2001.
-It plays Hindi, English and regional songs.
-Radio City recently forayed into New Media in May 2008 with the launch of a music portal - PlanetRadiocity.com that offers music related news, videos, songs, and other music-related features."""
+one_shot_ner_paragraph = """杨周武徇私枉法案。
+杨周武系同乐派出所副所长，接受王静请托后，安排非办案民警刘力飚介入调解。
+王静通过何晓初向杨周武表示请托，并在深圳市龙岗区舞王俱乐部案件处理期间送给何晓初人民币3万元。
+2008年9月6日，刘力飚促成双方以赔偿人民币11万元达成和解。"""
 
 
 one_shot_ner_output = """{"named_entities":
-    ["Radio City", "India", "3 July 2001", "Hindi", "English", "May 2008", "PlanetRadiocity.com"]
+    ["杨周武", "同乐派出所", "副所长", "王静", "刘力飚", "何晓初", "深圳市龙岗区", "舞王俱乐部", "3万元", "2008年9月6日", "11万元"]
 }
 """
 

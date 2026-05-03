@@ -127,7 +127,7 @@ class AlgorithmAdapter:
         if not (getenv("DEEPSEEK_API_KEY") or getenv("OPENAI_API_KEY")):
             return [], "DEEPSEEK_API_KEY is not set, so HippoRAG retrieval/rerank cannot call the LLM"
 
-        docs, doc_evidence = self._build_hipporag_docs(evidence, raw_contents, extractions or {})
+        docs, doc_evidence = self._build_hipporag_docs(evidence, raw_contents, extractions or {}, include_structured=True)
         if not docs:
             return [], "no passages available for HippoRAG retrieval"
         docs = docs[: max(settings.hipporag_max_docs, 1)]
@@ -191,7 +191,7 @@ class AlgorithmAdapter:
         if not (getenv("DEEPSEEK_API_KEY") or getenv("OPENAI_API_KEY")):
             return "", [], "DEEPSEEK_API_KEY is not set, so HippoRAG RAG QA cannot call the LLM"
 
-        docs, doc_evidence = self._build_hipporag_docs(evidence, raw_contents, extractions or {})
+        docs, doc_evidence = self._build_hipporag_docs(evidence, raw_contents, extractions or {}, include_structured=True)
         if not docs:
             return "", [], "no passages available for HippoRAG RAG QA"
         docs = docs[: max(settings.hipporag_max_docs, 1)]
@@ -266,7 +266,8 @@ class AlgorithmAdapter:
                     category=str(item.get("category") or "hipporag_qa"),
                     description=answer,
                     risk_level=risk_by_category.get(str(item.get("category")), "medium"),
-                    evidence_ids=[],
+                    evidence_ids=[str(eid) for eid in item.get("evidence_ids", []) if eid],
+                    source_passages=item.get("source_passages", []),
                 )
             )
         return clues
@@ -296,7 +297,7 @@ class AlgorithmAdapter:
             result["error"] = "DEEPSEEK_API_KEY is not set, so HippoRAG OpenIE cannot call the LLM"
             return result
 
-        docs, doc_evidence = self._build_hipporag_docs(evidence, raw_contents, extractions)
+        docs, doc_evidence = self._build_hipporag_docs(evidence, raw_contents, extractions, include_structured=False)
         if not docs:
             result["error"] = "no passages available for HippoRAG indexing"
             return result
@@ -324,7 +325,7 @@ class AlgorithmAdapter:
             hipporag.index(docs)
             result.update(self._read_hipporag_openie(hipporag, result["doc_evidence"]))
             if settings.hipporag_enable_qa:
-                result["qa"] = self._run_hipporag_case_qa(hipporag)
+                result["qa"] = self._run_hipporag_case_qa(hipporag, result["doc_evidence"])
             graph = getattr(hipporag, "graph", None)
             if graph is not None:
                 result["graph_nodes"] = graph.vcount()
@@ -339,6 +340,8 @@ class AlgorithmAdapter:
         evidence: list[EvidenceRecord],
         raw_contents: dict[str, str],
         extractions: dict[str, ExtractionResult],
+        *,
+        include_structured: bool,
     ) -> tuple[list[str], dict[str, str]]:
         docs: list[str] = []
         doc_evidence: dict[str, str] = {}
@@ -356,6 +359,8 @@ class AlgorithmAdapter:
         for item in evidence:
             extraction = extractions.get(item.evidence_id)
             if extraction and extraction.passages:
+                if extraction.route == "structured" and not include_structured:
+                    continue
                 for passage in extraction.passages:
                     add_doc(passage.text, passage.evidence_id or item.evidence_id)
             else:
@@ -409,7 +414,7 @@ class AlgorithmAdapter:
                 )
         return {"triples": triples, "entities": sorted(entities)}
 
-    def _run_hipporag_case_qa(self, hipporag: Any) -> list[dict[str, Any]]:
+    def _run_hipporag_case_qa(self, hipporag: Any, doc_evidence: dict[str, str | None]) -> list[dict[str, Any]]:
         language_guard = (
             "请只使用简体中文回答，不要混用英文、乱码或其他语言；"
             "结论必须标注支持证据与仍需补强之处。最后必须另起一行写：Answer: <中文答案>，以便系统解析答案。"
@@ -434,13 +439,38 @@ class AlgorithmAdapter:
         solutions, _, _ = hipporag.rag_qa([item["question"] for item in questions])
         answers: list[dict[str, Any]] = []
         for item, solution in zip(questions, solutions):
+            docs = _safe_sequence(getattr(solution, "docs", []))[: settings.hipporag_qa_top_k]
+            scores = _safe_sequence(getattr(solution, "doc_scores", []))
+            source_passages = []
+            evidence_ids: set[str] = set()
+            for idx, doc in enumerate(docs):
+                normalized = " ".join(str(doc).split())
+                evidence_id = doc_evidence.get(normalized)
+                if evidence_id:
+                    evidence_ids.add(evidence_id)
+                source_passages.append(
+                    {
+                        "rank": idx + 1,
+                        "score": float(scores[idx]) if idx < len(scores) else 0.0,
+                        "passage": str(doc),
+                        "evidence_id": evidence_id,
+                    }
+                )
+            log_llm_context(
+                "hipporag_case_qa_bound_sources",
+                question=item["question"],
+                passages=source_passages,
+                extra={"category": item["category"], "title": item["title"], "answer_chars": len(solution.answer or "")},
+            )
             answers.append(
                 {
                     "category": item["category"],
                     "title": item["title"],
                     "question": item["question"],
                     "answer": solution.answer or "",
-                    "docs": list(solution.docs[: settings.hipporag_qa_top_k]),
+                    "docs": [str(doc) for doc in docs],
+                    "evidence_ids": sorted(evidence_ids),
+                    "source_passages": source_passages,
                 }
             )
         return answers

@@ -36,6 +36,13 @@ export interface SuspiciousClue {
   description: string;
   risk_level: string;
   evidence_ids: string[];
+  source_passages?: Array<{
+    rank: number;
+    score: number;
+    passage: string;
+    evidence_id?: string | null;
+    evidence_title?: string | null;
+  }>;
 }
 
 export interface InvestigationGraph {

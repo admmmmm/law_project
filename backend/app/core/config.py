@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     hipporag_embedding_model: str = Field(default="BAAI/bge-m3", alias="HIPPORAG_EMBEDDING_MODEL")
     hipporag_save_dir: str = Field(default="../outputs/hipporag_cases", alias="HIPPORAG_SAVE_DIR")
     hipporag_max_docs: int = Field(default=240, alias="HIPPORAG_MAX_DOCS")
-    hipporag_passage_max_chars: int = Field(default=180, alias="HIPPORAG_PASSAGE_MAX_CHARS")
+    hipporag_passage_max_chars: int = Field(default=120, alias="HIPPORAG_PASSAGE_MAX_CHARS")
     hipporag_trace_window_chars: int = Field(default=220, alias="HIPPORAG_TRACE_WINDOW_CHARS")
     hipporag_retrieval_top_k: int = Field(default=8, alias="HIPPORAG_RETRIEVAL_TOP_K")
     hipporag_fail_fast: bool = Field(default=True, alias="HIPPORAG_FAIL_FAST")

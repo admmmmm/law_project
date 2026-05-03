@@ -28,6 +28,7 @@ class SuspiciousClue(BaseModel):
     description: str
     risk_level: str = "medium"
     evidence_ids: list[str] = Field(default_factory=list)
+    source_passages: list[dict[str, str | int | float | None]] = Field(default_factory=list)
 
 
 class InvestigationGraph(BaseModel):
