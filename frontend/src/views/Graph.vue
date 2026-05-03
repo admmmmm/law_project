@@ -72,7 +72,7 @@
             min="0"
             :max="Math.max(timelinePoints.length - 1, 0)"
             step="1"
-            @input="renderGraph"
+            @input="renderTimelineGraph"
           />
 
           <div class="tag-list">
@@ -368,13 +368,68 @@ const aliasSuggestions = computed(() => {
 
 onMounted(loadGraph);
 
+function graphCacheKey() {
+  return `jcmx:graph:v2:${activeCaseId.value}`;
+}
+
+function restoreGraphCache() {
+  if (!activeCaseId.value) return false;
+  const cached = sessionStorage.getItem(graphCacheKey());
+  if (!cached) return false;
+  try {
+    const parsed = JSON.parse(cached) as {
+      graph?: InvestigationGraph;
+      timelineIndex?: number;
+      selectedCategories?: string[];
+      viewMode?: ViewMode;
+      layoutMode?: LayoutMode;
+    };
+    if (parsed.graph?.nodes?.length) {
+      graph.value = parsed.graph;
+      viewMode.value = parsed.viewMode || viewMode.value;
+      layoutMode.value = parsed.layoutMode || layoutMode.value;
+      syncTimelineAndTags(false);
+      timelineIndex.value = Math.min(parsed.timelineIndex ?? timelineIndex.value, Math.max(timelinePoints.value.length - 1, 0));
+      selectedCategories.value = parsed.selectedCategories?.length ? parsed.selectedCategories : selectedCategories.value;
+      return true;
+    }
+  } catch {
+    sessionStorage.removeItem(graphCacheKey());
+  }
+  return false;
+}
+
+function persistGraphCache() {
+  if (!activeCaseId.value || !graph.value.nodes.length) return;
+  try {
+    sessionStorage.setItem(
+      graphCacheKey(),
+      JSON.stringify({
+        graph: graph.value,
+        timelineIndex: timelineIndex.value,
+        selectedCategories: selectedCategories.value,
+        viewMode: viewMode.value,
+        layoutMode: layoutMode.value,
+      }),
+    );
+  } catch {
+    // 图谱过大时跳过缓存，不影响主流程。
+  }
+}
+
 async function loadGraph() {
   if (!activeCaseId.value) return;
+  const restored = restoreGraphCache();
+  if (restored) {
+    await nextTick();
+    renderGraph();
+  }
   loading.value = true;
   error.value = '';
   try {
     graph.value = await backendApi.getGraph(activeCaseId.value);
-    syncTimelineAndTags();
+    syncTimelineAndTags(!restored);
+    persistGraphCache();
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
@@ -392,6 +447,7 @@ async function runAnalysis() {
     await backendApi.runAnalysis(activeCaseId.value);
     graph.value = await backendApi.getGraph(activeCaseId.value);
     syncTimelineAndTags();
+    persistGraphCache();
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
@@ -403,11 +459,12 @@ async function runAnalysis() {
 
 function renderGraph() {
   if (!graphRef.value || graph.value.nodes.length === 0) return;
+  persistGraphCache();
   graphOptions.layouts = [layoutConfig(layoutMode.value)];
   const visible = buildRenderableGraph();
   renderedNodeCount.value = visible.nodes.length;
   renderedEdgeCount.value = visible.edges.length;
-  const positioned = layoutMode.value === 'circle' ? applyCirclePositions(visible.nodes) : visible.nodes;
+  const positioned = layoutMode.value === 'tree' ? visible.nodes : applySpreadPositions(visible.nodes, visible.edges, layoutMode.value);
   const jsonData = {
     rootId: pickRootId(positioned, visible.edges),
     nodes: positioned.map(toRelationNode),
@@ -415,20 +472,33 @@ function renderGraph() {
   };
   graphRef.value.setOptions(graphOptions, true);
   graphRef.value.setJsonData(jsonData, (instance: any) => {
-    if (layoutMode.value !== 'circle') instance.doLayout();
+    if (layoutMode.value === 'tree') instance.doLayout();
     instance.moveToCenter();
     instance.zoomToFit();
   });
+}
+
+async function renderTimelineGraph() {
+  graphRenderKey.value += 1;
+  persistGraphCache();
+  await nextTick();
+  renderGraph();
 }
 
 function buildRenderableGraph() {
   const categorySet = new Set(selectedCategories.value);
   const cutoff = timelinePoints.value[timelineIndex.value] || '';
   const hasCutoff = Boolean(cutoff && cutoff !== '全部时间');
-  const allowedByTime = (value: string | null) => !hasCutoff || !value || value <= cutoff;
-  const timeNodes = graph.value.nodes.filter((node) => allowedByTime(itemDate(node)));
-  const timeNodeIds = new Set(timeNodes.map((node) => node.node_id));
-  const timeEdges = graph.value.edges.filter((edge) => allowedByTime(itemDate(edge)) && timeNodeIds.has(edge.source_id) && timeNodeIds.has(edge.target_id));
+  const allowedByTime = (value: string | null) => !hasCutoff || Boolean(value && value <= cutoff);
+  const datedNodeIds = new Set(graph.value.nodes.filter((node) => allowedByTime(itemDate(node))).map((node) => node.node_id));
+  const timeEdges = graph.value.edges.filter((edge) => {
+    const edgeDateAllowed = allowedByTime(itemDate(edge));
+    if (!edgeDateAllowed) return false;
+    datedNodeIds.add(edge.source_id);
+    datedNodeIds.add(edge.target_id);
+    return true;
+  });
+  const timeNodes = graph.value.nodes.filter((node) => datedNodeIds.has(node.node_id));
   const directNodeIds = new Set(timeNodes.filter((node) => selectedByTags(node, categorySet)).map((node) => node.node_id));
   const directEdgeIds = new Set(timeEdges.filter((edge) => selectedByTags(edge, categorySet)).map((edge) => edge.edge_id));
   const includedNodeIds = new Set(directNodeIds);
@@ -510,7 +580,7 @@ function modeNodeIds(nodes: GraphNode[], edges: GraphEdge[]) {
   return coreIds.size ? coreIds : ids;
 }
 
-function syncTimelineAndTags() {
+function syncTimelineAndTags(resetControls = true) {
   const dates = new Set<string>();
   graph.value.nodes.forEach((node) => {
     const date = itemDate(node);
@@ -522,8 +592,10 @@ function syncTimelineAndTags() {
   });
   const sortedDates = Array.from(dates).sort();
   timelinePoints.value = sortedDates.length ? sortedDates : ['全部时间'];
-  timelineIndex.value = Math.max(timelinePoints.value.length - 1, 0);
-  selectedCategories.value = availableCategories.value.map((item) => item.key);
+  if (resetControls) {
+    timelineIndex.value = Math.max(timelinePoints.value.length - 1, 0);
+    selectedCategories.value = availableCategories.value.map((item) => item.key);
+  }
 }
 
 function setViewMode(mode: ViewMode) {
@@ -540,15 +612,31 @@ async function setLayoutMode(mode: LayoutMode) {
 
 function layoutConfig(mode: LayoutMode) {
   if (mode === 'tree') return { layoutName: 'tree', from: 'left', min_per_width: 180, max_per_width: 360, min_per_height: 56 };
-  if (mode === 'force') return { layoutName: 'force', maxLayoutTimes: 500, force_node_repulsion: 2.2, force_line_elastic: 0.35 };
+  if (mode === 'force') return { layoutName: 'force', maxLayoutTimes: 900, force_node_repulsion: 8, force_line_elastic: 0.18 };
   return { layoutName: 'center', distance_coefficient: mode === 'circle' ? 1.4 : 1.0 };
 }
 
-function applyCirclePositions(nodes: GraphNode[]) {
-  const radius = Math.max(240, nodes.length * 12);
-  return nodes.map((node, index) => {
-    if (index === 0) return { ...node, properties: { ...node.properties, x: 0, y: 0, fixed: true } };
-    const angle = ((index - 1) / Math.max(nodes.length - 1, 1)) * Math.PI * 2;
+function applySpreadPositions(nodes: GraphNode[], edges: GraphEdge[], mode: LayoutMode) {
+  const degree = new Map<string, number>();
+  edges.forEach((edge) => {
+    degree.set(edge.source_id, (degree.get(edge.source_id) || 0) + 1);
+    degree.set(edge.target_id, (degree.get(edge.target_id) || 0) + 1);
+  });
+  const ordered = [...nodes].sort((a, b) => (degree.get(b.node_id) || 0) - (degree.get(a.node_id) || 0));
+  const center = ordered[0];
+  const rest = ordered.slice(1);
+  const minGap = mode === 'force' ? 170 : 145;
+  const ringSize = Math.max(10, Math.ceil(Math.sqrt(Math.max(rest.length, 1)) * 4));
+  return nodes.map((node) => {
+    if (center && node.node_id === center.node_id) {
+      return { ...node, properties: { ...node.properties, x: 0, y: 0, fixed: true } };
+    }
+    const rank = Math.max(rest.findIndex((item) => item.node_id === node.node_id), 0);
+    const ring = Math.floor(rank / ringSize) + 1;
+    const indexInRing = rank % ringSize;
+    const itemsInRing = Math.min(ringSize, rest.length - (ring - 1) * ringSize);
+    const angle = (indexInRing / Math.max(itemsInRing, 1)) * Math.PI * 2 + ring * 0.23;
+    const radius = mode === 'circle' ? Math.max(260, rest.length * 15) : 180 + ring * minGap;
     return {
       ...node,
       properties: {

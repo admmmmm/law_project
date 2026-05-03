@@ -21,6 +21,13 @@ class ReportService:
     def __init__(self, store: MemoryStore) -> None:
         self.store = store
 
+    def get_latest_portrait(self, case_id: str) -> PortraitReport:
+        with self.store.lock:
+            report = self.store.reports.get(case_id)
+            if not report:
+                raise not_found("portrait report not found")
+            return report
+
     def generate_portrait(self, case_id: str) -> PortraitReport:
         with self.store.lock:
             case = self.store.cases.get(case_id)
@@ -122,7 +129,7 @@ class ReportService:
                 graph=graph,
             )
 
-            return PortraitReport(
+            report = PortraitReport(
                 report_id=new_id("rpt"),
                 case_id=case_id,
                 generated_at=now_utc(),
@@ -131,6 +138,8 @@ class ReportService:
                 suggestions=suggestions,
                 generation_method=generation_method,
             )
+            self.store.reports[case_id] = report
+            return report
 
 
 def _build_clean_portrait_sections(case_title: str, evidence, raw_contents: dict[str, str], graph, clues, memories) -> list[PortraitSection]:
@@ -393,6 +402,8 @@ def _select_report_passages_with_hipporag(
             errors.append(error)
             continue
         for item in passages:
+            if _is_raw_structured_passage({"evidence_title": item.evidence_title, "passage": item.passage}):
+                continue
             key = f"{item.evidence_id}::{item.passage}"
             if key in seen:
                 continue
@@ -473,7 +484,7 @@ def _attach_claims_to_sections(
 
 
 def _verify_claim(text: str, section: str, element: str, evidence_ids: list[str], passages: list[dict[str, Any]]) -> PortraitClaim:
-    candidates = [p for p in passages if not evidence_ids or p.get("evidence_id") in evidence_ids]
+    candidates = [p for p in passages if (not evidence_ids or p.get("evidence_id") in evidence_ids) and not _is_raw_structured_passage(p)]
     scored = sorted(
         ((_score_passage(text, p), index, p) for index, p in enumerate(candidates)),
         key=lambda item: (item[0], -item[1]),
@@ -505,6 +516,8 @@ def _verify_claim(text: str, section: str, element: str, evidence_ids: list[str]
 
 
 def _score_passage(claim: str, passage: dict[str, Any]) -> float:
+    if _is_raw_structured_passage(passage):
+        return 0.0
     claim_terms = _claim_terms(claim)
     passage_text = passage["passage"]
     if not claim_terms:
@@ -566,6 +579,8 @@ def _clean_claim_text(value: str) -> str:
 def _is_selectable_claim_text(value: str) -> bool:
     text = _clean_claim_text(value)
     label = re.sub(r"[：:]\s*$", "", text).strip()
+    if _looks_like_raw_structured_text(label):
+        return False
     if len(label) < 8:
         return False
     if re.fullmatch(r"[\s*#\-•：:]+", label):
@@ -577,6 +592,20 @@ def _is_selectable_claim_text(value: str) -> bool:
     if re.fullmatch(r"(第一层|第二层|第三层|主体要件|客观行为|主观方面|结果与因果|抗辩预判)", label):
         return False
     return True
+
+
+def _is_raw_structured_passage(item: dict[str, Any]) -> bool:
+    return _looks_like_raw_structured_text(f"{item.get('evidence_title') or ''}\n{item.get('passage') or ''}")
+
+
+def _looks_like_raw_structured_text(text: str) -> bool:
+    normalized = " ".join(str(text or "").split())
+    if not normalized:
+        return False
+    if normalized.count(",") >= 5:
+        return True
+    markers = ("structured/", "synthetic/", ".csv", ".xlsx", "CALL00", "FLOW", "cdr.csv")
+    return sum(1 for marker in markers if marker in normalized) >= 2
 
 
 def _match_section_title(value: str, sections: list[PortraitSection]) -> str:

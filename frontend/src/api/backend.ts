@@ -249,4 +249,6 @@ export const backendApi = {
     request<PortraitReport>(`/cases/${caseId}/reports/portrait`, {
       method: 'POST',
     }),
+  getLatestPortrait: (caseId: string) =>
+    request<PortraitReport>(`/cases/${caseId}/reports/portrait/latest`),
 };

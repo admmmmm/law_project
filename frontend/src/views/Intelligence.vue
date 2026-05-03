@@ -183,7 +183,7 @@
             <strong>#{{ item.rank }} / score {{ item.score.toFixed(4) }}</strong>
             <span>{{ item.evidence_title || item.evidence_id || '未映射证据' }}</span>
           </div>
-          <p>{{ item.passage }}</p>
+          <p>{{ displayPassage(item.passage) }}</p>
         </article>
       </div>
       <div class="trace-section">
@@ -309,8 +309,22 @@ const tracePaths = computed(() => (traceResult.value?.paths || []).map((path) =>
 
 onMounted(loadGraph);
 
+function analysisCacheKey() {
+  return `jcmx:intelligence:v2:${activeCaseId.value}`;
+}
+
 async function loadGraph() {
   if (!activeCaseId.value) return;
+  const cached = sessionStorage.getItem(analysisCacheKey());
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached) as AnalysisRunResult;
+      result.value = parsed;
+      graph.value = parsed.graph;
+    } catch {
+      sessionStorage.removeItem(analysisCacheKey());
+    }
+  }
   try {
     graph.value = await backendApi.getGraph(activeCaseId.value);
   } catch {
@@ -325,11 +339,28 @@ async function runAnalysis() {
   try {
     result.value = await backendApi.runAnalysis(activeCaseId.value);
     graph.value = result.value.graph;
+    sessionStorage.setItem(analysisCacheKey(), JSON.stringify(result.value));
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
     loading.value = false;
   }
+}
+
+function displayPassage(value: string) {
+  const text = cleanMarkdownText(value || '');
+  if (looksLikeRawStructuredText(text)) {
+    const parts = text.split(',').map((item) => item.trim()).filter(Boolean);
+    const readable = parts.filter((item) => /[\u4e00-\u9fa5]/.test(item)).slice(0, 8).join(' / ');
+    return readable ? `结构化记录：${readable}` : '结构化记录，点击证据原文查看完整流水。';
+  }
+  return text;
+}
+
+function looksLikeRawStructuredText(value: string) {
+  const text = String(value || '');
+  if (text.split(',').length >= 6) return true;
+  return ['structured/', 'synthetic/', '.csv', '.xlsx', 'CALL00', 'FLOW', 'cdr.csv'].filter((marker) => text.includes(marker)).length >= 2;
 }
 
 async function openTrace(field: TraceField) {

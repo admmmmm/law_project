@@ -102,7 +102,7 @@
             <strong>#{{ item.rank }} / score {{ item.score.toFixed(4) }}</strong>
             <span>{{ item.evidence_title || item.evidence_id || '未映射证据' }}</span>
           </div>
-          <p>{{ item.passage }}</p>
+          <p>{{ displayPassage(item.passage) }}</p>
         </article>
       </div>
       <div class="trace-section">
@@ -117,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { backendApi, type EvidenceDetail, type PortraitReport, type TraceResult } from '../api/backend';
 
 const activeCaseId = ref(localStorage.getItem('active_case_id') || '');
@@ -134,17 +134,59 @@ const traceEvidence = ref<EvidenceDetail[]>([]);
 type PortraitClaim = NonNullable<NonNullable<PortraitReport['sections'][number]['claims']>[number]>;
 type PortraitSection = PortraitReport['sections'][number];
 
+onMounted(loadCachedReport);
+
+function reportCacheKey() {
+  return `jcmx:portrait:v2:${activeCaseId.value}`;
+}
+
+async function loadCachedReport() {
+  if (!activeCaseId.value) return;
+  const cached = sessionStorage.getItem(reportCacheKey());
+  if (cached) {
+    try {
+      report.value = JSON.parse(cached) as PortraitReport;
+    } catch {
+      sessionStorage.removeItem(reportCacheKey());
+    }
+  }
+  try {
+    const latest = await backendApi.getLatestPortrait(activeCaseId.value);
+    report.value = latest;
+    sessionStorage.setItem(reportCacheKey(), JSON.stringify(latest));
+  } catch {
+    // 没有历史报告时保持空状态，不要求用户重新生成以外的页面状态。
+  }
+}
+
 async function generateReport() {
   if (!activeCaseId.value) return;
   loading.value = true;
   error.value = '';
   try {
     report.value = await backendApi.generatePortrait(activeCaseId.value);
+    sessionStorage.setItem(reportCacheKey(), JSON.stringify(report.value));
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
     loading.value = false;
   }
+}
+
+function displayPassage(value: string) {
+  const text = cleanSourceSentence(value || '');
+  if (looksLikeRawStructuredText(text)) {
+    const parts = text.split(',').map((item) => item.trim()).filter(Boolean);
+    const readable = parts.filter((item) => /[\u4e00-\u9fa5]/.test(item)).slice(0, 8).join(' / ');
+    return readable ? `结构化记录：${readable}` : '结构化记录，点击证据原文查看完整流水。';
+  }
+  return text;
+}
+
+function looksLikeRawStructuredText(value: string) {
+  const text = String(value || '');
+  if (text.split(',').length >= 6) return true;
+  return ['structured/', 'synthetic/', '.csv', '.xlsx', 'CALL00', 'FLOW', 'cdr.csv'].filter((marker) => text.includes(marker)).length >= 2;
 }
 
 async function openTrace(label: string, text: string) {
