@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import sys
 from collections import defaultdict
 from os import getenv
@@ -156,11 +157,12 @@ class AlgorithmAdapter:
                 normalized = " ".join(str(doc).split())
                 evidence_id = normalized_doc_evidence.get(normalized)
                 score = float(scores[idx]) if idx < len(scores) else 0.0
+                passage = _trim_passage_for_query(str(doc), query, settings.hipporag_trace_window_chars)
                 passages.append(
                     TracePassage(
                         rank=idx + 1,
                         score=score,
-                        passage=str(doc),
+                        passage=passage,
                         evidence_id=evidence_id,
                         evidence_title=titles.get(evidence_id or ""),
                     )
@@ -224,11 +226,12 @@ class AlgorithmAdapter:
                 normalized = " ".join(str(doc).split())
                 evidence_id = normalized_doc_evidence.get(normalized)
                 score = float(scores[idx]) if idx < len(scores) else 0.0
+                passage = _trim_passage_for_query(str(doc), question, settings.hipporag_trace_window_chars)
                 passages.append(
                     TracePassage(
                         rank=idx + 1,
                         score=score,
-                        passage=str(doc),
+                        passage=passage,
                         evidence_id=evidence_id,
                         evidence_title=titles.get(evidence_id or ""),
                     )
@@ -328,12 +331,13 @@ class AlgorithmAdapter:
         seen: set[str] = set()
 
         def add_doc(text: str, evidence_id: str) -> None:
-            normalized = " ".join(str(text or "").split())
-            if not normalized or normalized in seen:
-                return
-            seen.add(normalized)
-            docs.append(normalized)
-            doc_evidence[normalized] = evidence_id
+            for chunk in _split_passage_text(str(text or ""), settings.hipporag_passage_max_chars):
+                normalized = " ".join(chunk.split())
+                if not normalized or normalized in seen:
+                    continue
+                seen.add(normalized)
+                docs.append(normalized)
+                doc_evidence[normalized] = evidence_id
 
         for item in evidence:
             extraction = extractions.get(item.evidence_id)
@@ -705,6 +709,60 @@ def _safe_sequence(value: Any) -> list[Any]:
         return list(value)
     except TypeError:
         return [value]
+
+
+def _split_passage_text(text: str, max_chars: int) -> list[str]:
+    normalized = " ".join(str(text or "").replace("\r", "\n").split())
+    if not normalized:
+        return []
+    limit = max(int(max_chars or 180), 60)
+    sentence_parts = [part.strip() for part in re.split(r"(?<=[。！？!?；;])\s*|\n+", normalized) if part.strip()]
+    if not sentence_parts:
+        sentence_parts = [normalized]
+
+    chunks: list[str] = []
+    current = ""
+    for sentence in sentence_parts:
+        if len(sentence) > limit:
+            if current:
+                chunks.append(current)
+                current = ""
+            chunks.extend(sentence[start : start + limit] for start in range(0, len(sentence), limit))
+            continue
+        candidate = f"{current} {sentence}".strip() if current else sentence
+        if len(candidate) <= limit:
+            current = candidate
+        else:
+            if current:
+                chunks.append(current)
+            current = sentence
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def _trim_passage_for_query(passage: str, query: str, window_chars: int) -> str:
+    normalized = " ".join(str(passage or "").split())
+    if not normalized:
+        return ""
+    limit = max(int(window_chars or 220), 80)
+    if len(normalized) <= limit:
+        return normalized
+
+    query_terms = [
+        term
+        for term in re.split(r"[\s，,。；;：:、（）()《》<>【】\[\]\"']+", str(query or ""))
+        if len(term) >= 2
+    ]
+    hit_positions = [normalized.find(term) for term in query_terms if normalized.find(term) >= 0]
+    center = min(hit_positions) if hit_positions else 0
+    start = max(center - limit // 3, 0)
+    end = min(start + limit, len(normalized))
+    if end - start < limit:
+        start = max(end - limit, 0)
+    prefix = "..." if start > 0 else ""
+    suffix = "..." if end < len(normalized) else ""
+    return f"{prefix}{normalized[start:end]}{suffix}"
 
 
 def _edge_evidence_ids(edges: list[GraphEdge]) -> list[str]:
