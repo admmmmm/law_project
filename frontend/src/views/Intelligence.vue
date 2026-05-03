@@ -162,29 +162,17 @@
         <button @click="traceOpen = false">关闭</button>
       </div>
       <div class="trace-section">
-        <h3>字段内容</h3>
-        <p class="trace-query">当前溯源句：{{ traceQueryText || '尚未选择' }}</p>
-        <div v-if="traceField" class="sentence-list">
-          <button
-            v-for="sentence in traceSentences(traceField)"
-            :key="sentence"
-            class="sentence-button"
-            :class="{ active: sentence === traceQueryText }"
-            @click="openTraceSentence(sentence)"
-          >
-            {{ sentence }}
-          </button>
-        </div>
-        <div class="markdown" v-html="renderMarkdown(traceField?.value || '')" />
+        <h3>当前选中</h3>
+        <p class="trace-query">{{ traceQueryText || '尚未选择具体句子' }}</p>
       </div>
       <div class="trace-section">
         <h3>证据原文</h3>
         <div v-if="evidenceLoading" class="muted">正在读取证据和 HippoRAG PPR 排序...</div>
         <div v-else-if="traceEvidence.length === 0" class="muted">暂无直接证据 ID。可以到图谱页按主体和路径继续追。</div>
-        <article v-for="item in traceEvidence" :key="item.evidence_id" class="evidence-doc">
-          <strong>{{ item.title }}</strong>
+        <details v-for="item in traceEvidence" :key="item.evidence_id" class="evidence-doc">
+          <summary>{{ item.title }}</summary>
           <pre>{{ item.content }}</pre>
-        </article>
+        </details>
       </div>
       <div class="trace-section">
         <h3>HippoRAG PPR 检索结果</h3>
@@ -201,7 +189,10 @@
       <div class="trace-section">
         <h3>图谱溯源路径候选</h3>
         <div v-if="tracePaths.length === 0" class="muted">暂无路径候选。</div>
-        <div v-for="path in tracePaths" :key="path" class="path-line">{{ path }}</div>
+        <details v-else class="path-details">
+          <summary>{{ tracePaths.length }} 条候选路径</summary>
+          <div v-for="path in tracePaths" :key="path" class="path-line">{{ path }}</div>
+        </details>
       </div>
     </aside>
   </div>
@@ -356,10 +347,30 @@ function traceSentences(field: TraceField) {
   const chunks = (field.value || '')
     .split(/\n+/)
     .flatMap((line) => line.split(/(?<=[。！？；;])/))
-    .map((line) => line.replace(/^[-*]\s*/, '').replace(/^\d+[.、]\s*/, '').trim())
-    .filter((line) => line.length >= 6);
-  const unique = Array.from(new Set(chunks));
-  return unique.length ? unique : [field.value || field.label];
+    .map(cleanSourceSentence)
+    .filter(isSourceableSentence);
+  return Array.from(new Set(chunks));
+}
+
+function cleanSourceSentence(value: string) {
+  return (value || '')
+    .replace(/^[-*•]\s*/, '')
+    .replace(/^\d+[.、]\s*/, '')
+    .replace(/\*\*/g, '')
+    .replace(/==/g, '')
+    .replace(/^["“”'‘’]+|["“”'‘’]+$/g, '')
+    .trim();
+}
+
+function isSourceableSentence(value: string) {
+  const text = cleanSourceSentence(value);
+  const withoutColon = text.replace(/[：:]\s*$/, '').trim();
+  if (withoutColon.length < 8) return false;
+  if (/^[\s*#\-•：:]+$/.test(withoutColon)) return false;
+  if (/^(结论|支持证据|仍需补强|证明力|身份|任职|职权|关键人员关系|案件对象|批准人|发信人|收信人|证明事项|来源文件)$/.test(withoutColon)) return false;
+  if (/^(证据|材料|相关证据)\s*\d*(?:-\d+)?$/.test(withoutColon)) return false;
+  if (/^(第一层|第二层|第三层|主体要件|客观行为|主观方面|结果与因果|抗辩预判)$/.test(withoutColon)) return false;
+  return true;
 }
 
 function sentenceKey(field: TraceField, sentence: string) {
@@ -463,7 +474,7 @@ function topEntityLabels(currentGraph: InvestigationGraph | null) {
 }
 
 function renderMarkdown(value: string) {
-  const escaped = escapeHtml(value || '');
+  const escaped = escapeHtml(cleanMarkdownText(value || ''));
   return escaped
     .replace(/^### (.*)$/gm, '<h4>$1</h4>')
     .replace(/^## (.*)$/gm, '<h3>$1</h3>')
@@ -472,6 +483,13 @@ function renderMarkdown(value: string) {
     .replace(/==(.+?)==/g, '<mark>$1</mark>')
     .replace(/^- (.*)$/gm, '<div class="md-list">• $1</div>')
     .replace(/\n/g, '<br />');
+}
+
+function cleanMarkdownText(value: string) {
+  return value
+    .replace(/^\s*[-*•]\s+/gm, '- ')
+    .replace(/\*{1,2}([^*\n：:]{1,24})\*{1,2}([：:])/g, '**$1**$2')
+    .trim();
 }
 
 function escapeHtml(value: string) {
@@ -804,9 +822,11 @@ function escapeHtml(value: string) {
   padding-top: 10px;
   margin-top: 10px;
 }
-.evidence-doc strong {
+.evidence-doc summary {
   display: block;
   margin-bottom: 8px;
+  cursor: pointer;
+  font-weight: 900;
 }
 .evidence-doc pre {
   max-height: 360px;
@@ -821,6 +841,12 @@ function escapeHtml(value: string) {
   padding: 8px 0;
   color: #bae6fd;
   font-size: 13px;
+}
+.path-details summary {
+  cursor: pointer;
+  color: #bae6fd;
+  font-size: 13px;
+  font-weight: 900;
 }
 .trace-error {
   border: 1px solid #7f1d1d;

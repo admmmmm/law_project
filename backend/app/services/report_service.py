@@ -209,8 +209,8 @@ def _attach_claims_to_sections(
 ) -> list[PortraitSection]:
     grouped: dict[str, list[PortraitClaim]] = {section.title: [] for section in sections}
     for raw in raw_claims:
-        text = str(raw.get("text") or "").strip()
-        if not text:
+        text = _clean_claim_text(str(raw.get("text") or ""))
+        if not _is_selectable_claim_text(text):
             continue
         section_title = _match_section_title(str(raw.get("section") or ""), sections)
         claim = _verify_claim(text, section_title, str(raw.get("element") or ""), raw.get("evidence_ids") or [], passages)
@@ -289,7 +289,39 @@ def _split_evidence_text(content: str, limit: int = 220) -> list[str]:
 
 def _split_claim_sentences(value: str) -> list[str]:
     text = re.sub(r"\*\*(.*?)\*\*", r"\1", value or "").replace("==", "")
-    return [part.strip("- *\t ") for part in re.split(r"(?<=[。！？!?；;])\s*|\n+", text) if len(part.strip()) >= 4]
+    sentences: list[str] = []
+    for part in re.split(r"(?<=[。！？!?；;])\s*|\n+", text):
+        sentence = _clean_claim_text(part)
+        if _is_selectable_claim_text(sentence):
+            sentences.append(sentence)
+    return sentences
+
+
+def _clean_claim_text(value: str) -> str:
+    return (
+        (value or "")
+        .strip()
+        .lstrip("-*• \t")
+        .replace("**", "")
+        .replace("==", "")
+        .strip(" \t\r\n\"'“”‘’")
+    )
+
+
+def _is_selectable_claim_text(value: str) -> bool:
+    text = _clean_claim_text(value)
+    label = re.sub(r"[：:]\s*$", "", text).strip()
+    if len(label) < 8:
+        return False
+    if re.fullmatch(r"[\s*#\-•：:]+", label):
+        return False
+    if re.fullmatch(r"(结论|支持证据|仍需补强|证明力|身份|任职|职权|关键人员关系|案件对象|批准人|发信人|收信人|证明事项|来源文件)", label):
+        return False
+    if re.fullmatch(r"(证据|材料|相关证据)\s*\d*(?:-\d+)?", label):
+        return False
+    if re.fullmatch(r"(第一层|第二层|第三层|主体要件|客观行为|主观方面|结果与因果|抗辩预判)", label):
+        return False
+    return True
 
 
 def _match_section_title(value: str, sections: list[PortraitSection]) -> str:

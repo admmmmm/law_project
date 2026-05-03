@@ -30,17 +30,17 @@
 
         <article v-for="section in report.sections" :key="section.title" class="report-section">
           <h3>{{ section.title }}</h3>
-          <div v-if="section.claims?.length" class="items">
+          <div v-if="sectionClaims(section).length" class="items">
             <button
-              v-for="claim in section.claims"
+              v-for="claim in sectionClaims(section)"
               :key="claim.claim_id"
               class="claim-sentence"
-              :class="[claim.status, { hover: hoveredClaim === claim.claim_id, active: traceText === claim.text }]"
+              :class="[claim.status, { hover: hoveredClaim === claim.claim_id, active: traceText === cleanSourceSentence(claim.text) }]"
               @mouseenter="hoveredClaim = claim.claim_id"
               @mouseleave="hoveredClaim = ''"
               @click="openClaimTrace(section.title, claim)"
             >
-              <span v-html="renderMarkdown(claim.text)" />
+              <span v-html="renderMarkdown(cleanSourceSentence(claim.text))" />
               <small>{{ claimStatusLabel(claim.status) }} / {{ Math.round((claim.confidence || 0) * 100) }}%</small>
             </button>
           </div>
@@ -107,10 +107,10 @@
       </div>
       <div class="trace-section">
         <h3>证据原文</h3>
-        <article v-for="item in traceEvidence" :key="item.evidence_id" class="evidence-doc">
-          <strong>{{ item.title }}</strong>
+        <details v-for="item in traceEvidence" :key="item.evidence_id" class="evidence-doc">
+          <summary>{{ item.title }}</summary>
           <pre>{{ item.content }}</pre>
-        </article>
+        </details>
       </div>
     </aside>
   </div>
@@ -132,6 +132,7 @@ const hoveredClaim = ref('');
 const traceResult = ref<TraceResult | null>(null);
 const traceEvidence = ref<EvidenceDetail[]>([]);
 type PortraitClaim = NonNullable<NonNullable<PortraitReport['sections'][number]['claims']>[number]>;
+type PortraitSection = PortraitReport['sections'][number];
 
 async function generateReport() {
   if (!activeCaseId.value) return;
@@ -148,14 +149,15 @@ async function generateReport() {
 
 async function openTrace(label: string, text: string) {
   if (!activeCaseId.value) return;
+  const cleanText = cleanSourceSentence(text);
   traceOpen.value = true;
   traceLoading.value = true;
   traceLabel.value = label;
-  traceText.value = text;
+  traceText.value = cleanText;
   traceResult.value = null;
   traceEvidence.value = [];
   try {
-    traceResult.value = await backendApi.traceAnalysis(activeCaseId.value, `${label}\n${text}`, [], 8);
+    traceResult.value = await backendApi.traceAnalysis(activeCaseId.value, `${label}\n${cleanText}`, [], 8);
     const ids = new Set<string>();
     traceResult.value.passages.forEach((item) => {
       if (item.evidence_id && ids.size < 5) ids.add(item.evidence_id);
@@ -170,13 +172,14 @@ async function openTrace(label: string, text: string) {
 
 async function openClaimTrace(label: string, claim: PortraitClaim) {
   if (!activeCaseId.value) return;
+  const claimText = cleanSourceSentence(claim.text);
   traceOpen.value = true;
   traceLoading.value = true;
   traceLabel.value = `${label}${claim.element ? ` / ${claim.element}` : ''}`;
-  traceText.value = `${claim.text}\n\n校验状态：${claim.status}\n置信度：${Math.round((claim.confidence || 0) * 100)}%\n${claim.verification_notes || ''}`;
+  traceText.value = claimText;
   traceResult.value = {
     case_id: activeCaseId.value,
-    query: claim.text,
+    query: claimText,
     provider: 'claim_verifier',
     passages: claim.supporting_passages.map((item, index) => ({
       rank: index + 1,
@@ -202,10 +205,34 @@ function sourceableSentences(value: string) {
   const chunks = normalized
     .split(/\n+/)
     .flatMap((line) => line.split(/(?<=[。！？；;])/))
-    .map((line) => line.replace(/^[-*]\s*/, '').replace(/^\d+[.、]\s*/, '').trim())
-    .filter((line) => line.length >= 3);
-  const unique = Array.from(new Set(chunks));
-  return unique.length ? unique : [value];
+    .map(cleanSourceSentence)
+    .filter(isSourceableSentence);
+  return Array.from(new Set(chunks));
+}
+
+function sectionClaims(section: PortraitSection) {
+  return (section.claims || []).filter((claim) => isSourceableSentence(cleanSourceSentence(claim.text)));
+}
+
+function cleanSourceSentence(value: string) {
+  return (value || '')
+    .replace(/^[-*•]\s*/, '')
+    .replace(/^\d+[.、]\s*/, '')
+    .replace(/\*\*/g, '')
+    .replace(/==/g, '')
+    .replace(/^["“”'‘’]+|["“”'‘’]+$/g, '')
+    .trim();
+}
+
+function isSourceableSentence(value: string) {
+  const text = cleanSourceSentence(value);
+  const withoutColon = text.replace(/[：:]\s*$/, '').trim();
+  if (withoutColon.length < 8) return false;
+  if (/^[\s*#\-•：:]+$/.test(withoutColon)) return false;
+  if (/^(结论|支持证据|仍需补强|证明力|身份|任职|职权|关键人员关系|案件对象|批准人|发信人|收信人|证明事项|来源文件)$/.test(withoutColon)) return false;
+  if (/^(证据|材料|相关证据)\s*\d*(?:-\d+)?$/.test(withoutColon)) return false;
+  if (/^(第一层|第二层|第三层|主体要件|客观行为|主观方面|结果与因果|抗辩预判)$/.test(withoutColon)) return false;
+  return true;
 }
 
 function formatTime(value: string) {
@@ -221,7 +248,7 @@ function claimStatusLabel(status: string) {
 }
 
 function renderMarkdown(value: string) {
-  const escaped = escapeHtml(value || '');
+  const escaped = escapeHtml(cleanMarkdownText(value || ''));
   return escaped
     .replace(/^### (.*)$/gm, '<h4>$1</h4>')
     .replace(/^## (.*)$/gm, '<h3>$1</h3>')
@@ -230,6 +257,13 @@ function renderMarkdown(value: string) {
     .replace(/==(.+?)==/g, '<mark>$1</mark>')
     .replace(/^- (.*)$/gm, '<div class="md-list">- $1</div>')
     .replace(/\n/g, '<br />');
+}
+
+function cleanMarkdownText(value: string) {
+  return value
+    .replace(/^\s*[-*•]\s+/gm, '- ')
+    .replace(/\*{1,2}([^*\n：:]{1,24})\*{1,2}([：:])/g, '**$1**$2')
+    .trim();
 }
 
 function escapeHtml(value: string) {
@@ -448,6 +482,10 @@ function escapeHtml(value: string) {
   border-top: 1px solid #23324b;
   padding-top: 10px;
   margin-top: 10px;
+}
+.evidence-doc summary {
+  cursor: pointer;
+  font-weight: 900;
 }
 .ppr-card div {
   display: flex;
