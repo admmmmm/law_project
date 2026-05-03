@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.errors import not_found
 from app.schemas.common import new_id, now_utc
 from app.schemas.report import ClaimPassage, PortraitClaim, PortraitReport, PortraitSection
+from app.services.llm_context_debug import log_llm_context
 from app.storage.memory_store import MemoryStore
 
 
@@ -101,6 +102,7 @@ class ReportService:
                     items=[record.content for record in memories if record.confirmed] or ["暂无人工确认的新事实。"],
                 ),
             ]
+            sections = _build_clean_portrait_sections(case.title, evidence, raw_contents, graph, clues, memories)
 
             suggestions = [
                 "按 **主体身份与职权 -> 行为事实 -> 主观明知/徇私动机 -> 结果因果** 的顺序回看证据。",
@@ -127,6 +129,145 @@ class ReportService:
             )
 
 
+def _build_clean_portrait_sections(case_title: str, evidence, raw_contents: dict[str, str], graph, clues, memories) -> list[PortraitSection]:
+    passages = _build_evidence_passages(evidence, raw_contents)
+    element_items = _build_element_analysis_items(passages)
+    basic_items = [
+        f"案件：{case_title}",
+        f"证据材料数量：{len(evidence)}。",
+        f"当前图谱规模：{len(graph.nodes) if graph else 0} 个节点，{len(graph.edges) if graph else 0} 条关系。",
+        f"高频主体/对象：{', '.join(_top_entity_labels(graph)) if graph else '待识别'}。",
+    ]
+    return [
+        PortraitSection(title="基础信息聚合", items=basic_items),
+        PortraitSection(title="行为事实还原", items=_build_behavior_items(passages, clues)),
+        PortraitSection(title="行为方式与反侦察迹象", items=_behavior_mode_notes(graph) or ["现有材料尚未稳定识别出反侦察操作；应继续核查现金取存、白手套账户、文书倒签补录、异常通话和证据缺失。"]),
+        PortraitSection(title="要件核查结论", items=element_items),
+        PortraitSection(title="主观方面推理", items=_build_subjective_items(passages, clues)),
+        PortraitSection(title="缺口标红与补强方向", items=_build_gap_items(passages)),
+        PortraitSection(title="抗辩预判", items=_defense_predictions(graph, clues)),
+        PortraitSection(title="人工确认记忆", items=[record.content for record in memories if record.confirmed] or ["暂无人工确认的新事实。"]),
+    ]
+
+
+def _build_element_analysis_items(passages: list[dict[str, Any]]) -> list[str]:
+    specs = [
+        {
+            "title": "主体要件",
+            "requirement": "行为人须属于司法工作人员，且对相关刑事案件或治安案件处置具有职务权限、指派权限、审批权限或实际影响力。",
+            "keywords": ["杨周武", "同乐派出所", "所长", "民警", "指派", "批准人", "责任区民警", "公安", "扫雷"],
+            "positive": "可初步推断目标人员与公安机关案件处置存在职务关联。",
+            "gap": "尚需明确任职文件、干部履历、岗位职责说明、案件审批权限或指派权限来源。",
+            "suggestion": "调取杨周武任职文件、岗位职责、分工记录、同乐派出所层级关系及相关文书审批流。",
+        },
+        {
+            "title": "客观行为",
+            "requirement": "存在应依法追究而不追究、违法调解、撤案、释放、降格处理、隐瞒事实或改变处置方向等枉法处置行为。",
+            "keywords": ["立案", "拘留", "释放", "调解", "撤销", "结案", "伤情", "鉴定", "赔偿", "刘力飚", "罗贤涛", "易承桂"],
+            "positive": "材料中已经出现案件处置、调解赔偿、释放或文书办理节点，可以作为客观行为链条的入口。",
+            "gap": "尚需把案发事实、伤情结论、处置决定、调解结案、释放结果按时间线闭合，避免只看到单个文书节点。",
+            "suggestion": "按时间轴核对接警、鉴定、拘留、调解、撤案或结案、释放、后续追责材料是否互相矛盾。",
+        },
+        {
+            "title": "主观方面",
+            "requirement": "需要证明明知案件事实或法律后果，仍因徇私动机故意作出枉法处置；徇私动机可由请托、利益输送、亲友关系、异常联系等间接证明。",
+            "keywords": ["明知", "徇私", "请托", "王静", "何晓初", "短信", "宴请", "送钱", "27万", "3万", "现金", "转账", "好处"],
+            "positive": "如资金、短信、宴请、请托和案件处置节点能够前后呼应，可形成主观明知与徇私动机的间接证明链。",
+            "gap": "当前仍需区分普通业务判断、程序瑕疵与明知故意；资金或请托线索必须与具体处置节点建立时间和对象对应。",
+            "suggestion": "将短信、通话、银行流水、现金取存、证人证言与拘留、调解、释放、结案节点放在同一时间轴交叉验证。",
+        },
+        {
+            "title": "结果与因果",
+            "requirement": "枉法处置造成有罪人员逃避追诉、案件被错误处理、被害人权益受损或其他严重后果，并能证明结果与职务行为之间存在因果关系。",
+            "keywords": ["逃避", "未追究", "释放", "解除", "赔偿", "11万", "结案", "火灾", "死亡", "受伤", "后果"],
+            "positive": "如果材料显示相关人员被释放、调解结案或未被继续追究，可作为结果与因果分析的核心事实。",
+            "gap": "仍需确认错误处置与未追究刑责之间的因果，而不是只证明后来发生了结果。",
+            "suggestion": "补强原案应追责标准、实际处理结果、责任人员未被追究原因及后续检察机关立案材料。",
+        },
+    ]
+    return [_format_element_item(spec, passages) for spec in specs]
+
+
+def _format_element_item(spec: dict[str, Any], passages: list[dict[str, Any]]) -> str:
+    supports = _find_supports(passages, spec["keywords"], limit=4)
+    evidence_lines = [_support_line(item) for item in supports] or ["未找到高匹配证据片段。"]
+    conclusion = f"✅ {spec['positive']}" if supports else "⚠️ 现有证据不足以形成稳定结论。"
+    return "\n".join(
+        [
+            f"### {spec['title']}",
+            f"法定要求：{spec['requirement']}",
+            "当前证据：" + "；".join(evidence_lines),
+            f"初步结论：{conclusion}",
+            f"缺口：{spec['gap']}",
+            f"建议：{spec['suggestion']}",
+        ]
+    )
+
+
+def _build_behavior_items(passages: list[dict[str, Any]], clues) -> list[str]:
+    items = []
+    for title, keywords in [
+        ("原案事实与处置节点", ["接警", "伤情", "鉴定", "立案", "拘留", "释放", "调解", "结案"]),
+        ("请托与协调安排", ["王静", "何晓初", "请托", "刘力飚", "安排", "调解", "短信", "通话"]),
+        ("资金与处置交叉", ["27万", "3万", "现金", "转账", "取现", "存入", "赔偿", "11万"]),
+    ]:
+        supports = _find_supports(passages, keywords, limit=3)
+        if supports:
+            items.append(f"{title}：" + "；".join(_support_line(item) for item in supports))
+    return items or ["现有证据尚未形成完整行为链条；应优先补齐案发事实、处置文书、请托联系和资金时间线。"]
+
+
+def _build_subjective_items(passages: list[dict[str, Any]], clues) -> list[str]:
+    supports = _find_supports(passages, ["明知", "徇私", "请托", "短信", "送钱", "宴请", "王静", "何晓初", "刘力飚"], limit=5)
+    if not supports:
+        return ["主观方面尚不能直接下结论；需要从请托、异常联系、利益输送和处置方向变化之间建立间接证明链。"]
+    return [
+        "主观方面应采用间接证明：材料中出现的请托、短信、宴请、资金或协调安排，需要与调解、释放、结案等处置节点交叉验证。",
+        "当前可用入口：" + "；".join(_support_line(item) for item in supports),
+    ]
+
+
+def _build_gap_items(passages: list[dict[str, Any]]) -> list[str]:
+    gaps = [
+        "任职与权限缺口：需要任职文件、岗位职责、审批权限、分工记录来支撑主体要件。",
+        "时间线缺口：需要把接警、鉴定、拘留、请托、资金、调解、释放、立案侦查放在同一时间轴。",
+        "主观证明缺口：需要证明杨周武明知案件事实和法律后果，且处置方向受到请托或利益输送影响。",
+        "资金闭环缺口：现金取存、过桥账户、控制账户和处置节点之间需要形成可解释闭环。",
+    ]
+    if _find_supports(passages, ["任职", "批准人", "所长"], 1):
+        gaps[0] = "任职与权限仍需补强：材料已有职务入口，但还缺正式任职文件、岗位职责或审批权限依据。"
+    return gaps
+
+
+def _find_supports(passages: list[dict[str, Any]], keywords: list[str], limit: int = 4) -> list[dict[str, Any]]:
+    scored: list[tuple[int, dict[str, Any]]] = []
+    for item in passages:
+        text = item.get("passage", "")
+        hits = sum(1 for word in keywords if word and word in text)
+        if hits:
+            scored.append((hits, item))
+    scored.sort(key=lambda row: (row[0], len(row[1].get("passage", ""))), reverse=True)
+    seen: set[str] = set()
+    results: list[dict[str, Any]] = []
+    for _, item in scored:
+        key = f"{item.get('evidence_id')}::{item.get('passage')}"
+        if key in seen:
+            continue
+        seen.add(key)
+        results.append(item)
+        if len(results) >= limit:
+            break
+    return results
+
+
+def _support_line(item: dict[str, Any]) -> str:
+    title = item.get("evidence_title") or item.get("evidence_id") or "未命名证据"
+    passage = str(item.get("passage") or "").strip()
+    if len(passage) > 90:
+        passage = passage[:90] + "..."
+    return f"{title}：{passage}"
+
+
 def _generate_grounded_claim_sections(
     *,
     case_title: str,
@@ -149,7 +290,13 @@ def _generate_grounded_claim_sections(
 
 
 def _try_deepseek_claims(case_title: str, sections: list[PortraitSection], passages: list[dict[str, Any]], graph) -> list[dict[str, Any]]:
-    selected_passages = passages[:80]
+    selected_passages = _select_report_passages(passages, limit=80)
+    log_llm_context(
+        "portrait_deepseek_claims",
+        question=f"{case_title} 信息画像报告与要件核查",
+        passages=selected_passages,
+        extra={"model": settings.deepseek_analysis_model, "total_passages": len(passages)},
+    )
     legal_context = _legal_context()
     graph_summary = {
         "nodes": len(graph.nodes) if graph else 0,
@@ -200,6 +347,32 @@ def _try_deepseek_claims(case_title: str, sections: list[PortraitSection], passa
         return claims if isinstance(claims, list) else []
     except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, TypeError, ValueError):
         return []
+
+
+def _select_report_passages(passages: list[dict[str, Any]], limit: int = 80) -> list[dict[str, Any]]:
+    priority = [
+        "杨周武", "同乐派出所", "王静", "何晓初", "刘力飚", "立案", "拘留", "释放", "调解", "撤销", "结案",
+        "徇私", "明知", "请托", "短信", "通话", "27万", "3万", "11万", "现金", "转账", "取现", "存入",
+        "伤情", "鉴定", "火灾", "检察院", "立案侦查",
+    ]
+    scored: list[tuple[int, int, dict[str, Any]]] = []
+    for index, item in enumerate(passages):
+        text = f"{item.get('evidence_title') or ''}\n{item.get('passage') or ''}"
+        score = sum(1 for word in priority if word in text)
+        scored.append((score, -index, item))
+    ranked = [item for score, _, item in sorted(scored, reverse=True) if score > 0]
+    ranked.extend(item for _, _, item in scored if item not in ranked)
+    selected: list[dict[str, Any]] = []
+    per_evidence: dict[str, int] = {}
+    for item in ranked:
+        evidence_id = str(item.get("evidence_id") or "")
+        if per_evidence.get(evidence_id, 0) >= 5:
+            continue
+        selected.append(item)
+        per_evidence[evidence_id] = per_evidence.get(evidence_id, 0) + 1
+        if len(selected) >= limit:
+            break
+    return selected
 
 
 def _attach_claims_to_sections(
@@ -325,6 +498,10 @@ def _is_selectable_claim_text(value: str) -> bool:
 
 
 def _match_section_title(value: str, sections: list[PortraitSection]) -> str:
+    if value and any(token in value for token in ["主体要件", "客观行为", "主观方面", "结果因果", "结果与因果", "要件"]):
+        target = next((section.title for section in sections if "要件" in section.title), None)
+        if target:
+            return target
     for section in sections:
         if value and (value in section.title or section.title in value):
             return section.title

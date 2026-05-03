@@ -255,7 +255,7 @@ const behaviorFields = computed<TraceField[]>(() => {
   const clues = graph.value?.clues || [];
   return [
     makeField('behavior.qa', '模型行为链条还原', clueText('behavior_reconstruction') || '暂无模型生成的完整行为链条。', ['行为', '链条', '处置']),
-    makeField('behavior.fund', '资金往来', clueText('fund_flow') || relationSummary(/资金|交易|转账|收款|付款|金额|现金|取现|存入/) || '暂无明确资金链条。', ['资金', '交易', '转账', '现金']),
+    makeField('behavior.fund', '资金往来', relationSummary(/资金|交易|转账|收款|付款|金额|现金|取现|存入/) || '暂无明确资金链条。', ['资金', '交易', '转账', '现金']),
     makeField('behavior.duty', '职务处置', clueText('duty_behavior') || relationSummary(/立案|拘留|释放|调解|撤销|审批|执法|报告|决定/) || '暂无明确职务处置链条。', ['立案', '拘留', '释放', '调解', '撤销']),
     makeField('behavior.method', '行为方式/反侦察', behaviorModeText() || '暂未发现足够明确的隐瞒、白手套过桥、现金化处理、文书倒签或规避留痕迹象。', ['隐瞒', '现金', '取现', '代持', '马甲', '倒签']),
     ...clues.filter((clue) => !['behavior_reconstruction', 'fund_flow', 'duty_behavior'].includes(clue.category)).slice(0, 4).map(fieldFromClue),
@@ -263,10 +263,38 @@ const behaviorFields = computed<TraceField[]>(() => {
 });
 
 const elementFields = computed<TraceField[]>(() => [
-  elementField('element.subject', '主体要件', /杨周武|派出所|所长|民警|司法工作人员/, '司法工作人员身份、职务权限、经办范围。'),
-  elementField('element.objective', '客观行为', /立案|拘留|释放|调解|撤销|审批|执法|处置|包庇|追诉/, '是否存在应立不立、违法调解、违法撤案、释放或降低处理强度。'),
-  elementField('element.subjective', '主观方面', /明知|故意|徇私|请托|收钱|利益|动机|隐瞒/, '明知、徇私动机、请托、利益输送与处置变化之间的关联。'),
-  elementField('element.result', '结果与因果', /逃避追诉|释放|撤销|被害人|赔偿|后果|影响/, '错误处置、逃避追诉、被害人权益受损及因果关系。'),
+  elementAnalysisField(
+    'element.subject',
+    '主体要件',
+    '法定要求：行为人须属于司法工作人员，且对相关案件处置具有职务权限、指派权限、审批权限或实际影响力。',
+    ['杨周武', '同乐派出所', '所长', '民警', '指派', '批准人', '责任区民警', '公安', '扫雷'],
+    '缺口：尚需明确任职文件、干部履历、岗位职责说明、案件审批权限或指派权限来源。',
+    '建议：调取杨周武任职文件、岗位职责、分工记录、同乐派出所层级关系及相关文书审批流。'
+  ),
+  elementAnalysisField(
+    'element.objective',
+    '客观行为',
+    '法定要求：存在应依法追究而不追究、违法调解、撤案、释放、降格处理、隐瞒事实或改变处置方向等枉法处置行为。',
+    ['立案', '拘留', '释放', '调解', '撤销', '结案', '伤情', '鉴定', '赔偿', '刘力飚', '罗贤涛', '易承桂'],
+    '缺口：尚需把案发事实、伤情结论、处置决定、调解结案、释放结果按时间线闭合。',
+    '建议：按时间轴核对接警、鉴定、拘留、调解、撤案或结案、释放、后续追责材料是否互相矛盾。'
+  ),
+  elementAnalysisField(
+    'element.subjective',
+    '主观方面',
+    '法定要求：需要证明明知案件事实或法律后果，仍因徇私动机故意作出枉法处置。',
+    ['明知', '徇私', '请托', '王静', '何晓初', '短信', '宴请', '送钱', '27万', '3万', '现金', '转账', '好处'],
+    '缺口：仍需区分普通业务判断、程序瑕疵与明知故意；资金或请托线索必须与具体处置节点建立时间和对象对应。',
+    '建议：将短信、通话、银行流水、现金取存、证人证言与拘留、调解、释放、结案节点放在同一时间轴交叉验证。'
+  ),
+  elementAnalysisField(
+    'element.result',
+    '结果与因果',
+    '法定要求：枉法处置造成有罪人员逃避追诉、案件被错误处理、被害人权益受损或其他严重后果，并能证明结果与职务行为存在因果关系。',
+    ['逃避', '未追究', '释放', '解除', '赔偿', '11万', '结案', '火灾', '死亡', '受伤', '后果'],
+    '缺口：仍需确认错误处置与未追究刑责之间的因果，而不是只证明后来发生了结果。',
+    '建议：补强原案应追责标准、实际处理结果、责任人员未被追究原因及后续检察机关立案材料。'
+  ),
 ]);
 
 const defenseFields = computed<TraceField[]>(() => [
@@ -396,6 +424,44 @@ function elementField(key: string, label: string, pattern: RegExp, fallback: str
   const matched = relationSummary(pattern) || findText(pattern.source) || fallback;
   const evidenceIds = evidenceIdsForPattern(pattern);
   return { key, label, value: matched, evidenceIds, keywords: [label, ...pattern.source.split('|')], status: evidenceIds.length ? 'ok' : 'gap' };
+}
+
+function elementAnalysisField(key: string, label: string, requirement: string, keywords: string[], gap: string, suggestion: string): TraceField {
+  const supportLines = supportLinesForKeywords(keywords, 4);
+  const evidenceIds = evidenceIdsForKeywords(keywords);
+  const currentEvidence = supportLines.length ? `当前证据：${supportLines.join('；')}` : '当前证据：尚未找到高匹配证据片段。';
+  const conclusion = supportLines.length
+    ? `初步结论：✅ 已有材料可以作为“${label}”分析入口，但仍需人工复核证据证明力。`
+    : `初步结论：⚠️ 现有材料不足以稳定支撑“${label}”。`;
+  return {
+    key,
+    label,
+    value: [requirement, currentEvidence, conclusion, gap, suggestion].join('\n'),
+    evidenceIds,
+    keywords,
+    status: supportLines.length ? 'ok' : 'gap',
+  };
+}
+
+function supportLinesForKeywords(keywords: string[], limit = 4) {
+  const rows: Array<{ score: number; text: string }> = [];
+  (graph.value?.clues || []).forEach((clue) => {
+    const text = `${clue.title}：${clue.description}`;
+    const score = keywords.filter((word) => text.includes(word)).length;
+    if (score) rows.push({ score, text });
+  });
+  (graph.value?.edges || []).forEach((edge) => {
+    const source = graph.value?.nodes.find((node) => node.node_id === edge.source_id)?.label || edge.source_id;
+    const target = graph.value?.nodes.find((node) => node.node_id === edge.target_id)?.label || edge.target_id;
+    const text = `${source} -> ${edge.relation} -> ${target}`;
+    const score = keywords.filter((word) => text.includes(word)).length;
+    if (score) rows.push({ score, text });
+  });
+  return rows
+    .sort((a, b) => b.score - a.score)
+    .map((row) => (row.text.length > 90 ? `${row.text.slice(0, 90)}...` : row.text))
+    .filter((text, index, arr) => arr.indexOf(text) === index)
+    .slice(0, limit);
 }
 
 function clueText(category: string) {

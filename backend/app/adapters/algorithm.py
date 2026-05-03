@@ -12,6 +12,7 @@ from app.schemas.analysis import TracePassage
 from app.schemas.common import new_id
 from app.schemas.graph import GraphEdge, GraphNode, InvestigationGraph, SuspiciousClue
 from app.schemas.ingestion import EvidenceRecord, ExtractionResult, ExtractedTriple
+from app.services.llm_context_debug import log_llm_context
 
 
 class HippoRagBridge:
@@ -194,6 +195,12 @@ class AlgorithmAdapter:
         if not docs:
             return "", [], "no passages available for HippoRAG RAG QA"
         docs = docs[: max(settings.hipporag_max_docs, 1)]
+        log_llm_context(
+            "hipporag_rag_qa_index_docs",
+            question=question,
+            passages=_docs_for_context_log(docs, doc_evidence),
+            extra={"case_id": case_id, "top_k": top_k, "model": settings.hipporag_llm_name},
+        )
         normalized_doc_evidence = {" ".join(doc.split()): doc_evidence.get(doc) for doc in docs}
         titles = {item.evidence_id: item.title for item in evidence}
         guarded_question = (
@@ -295,6 +302,12 @@ class AlgorithmAdapter:
         docs = docs[: max(settings.hipporag_max_docs, 1)]
         result["doc_evidence"] = {doc: doc_evidence.get(doc) for doc in docs}
         result["indexed_docs"] = len(docs)
+        log_llm_context(
+            "hipporag_openie_index_docs",
+            question="HippoRAG OpenIE indexing documents",
+            passages=_docs_for_context_log(docs, doc_evidence),
+            extra={"case_id": case_id, "model": settings.hipporag_llm_name},
+        )
 
         try:
             save_dir = self._case_hipporag_save_dir(case_id)
@@ -770,6 +783,17 @@ def _edge_evidence_ids(edges: list[GraphEdge]) -> list[str]:
     for edge in edges:
         ids.update(edge.evidence_ids)
     return sorted(ids)
+
+
+def _docs_for_context_log(docs: list[str], doc_evidence: dict[str, str | None]) -> list[dict[str, Any]]:
+    return [
+        {
+            "doc_id": f"doc_{idx + 1}",
+            "evidence_id": doc_evidence.get(doc),
+            "passage": doc,
+        }
+        for idx, doc in enumerate(docs)
+    ]
 
 
 def _evidence_ids_by_keywords(
