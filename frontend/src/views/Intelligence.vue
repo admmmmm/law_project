@@ -1,5 +1,5 @@
 <template>
-  <div class="analysis-page">
+  <div class="analysis-page" :class="{ 'with-trace': traceOpen }">
     <section class="workspace">
       <header class="hero">
         <div>
@@ -566,14 +566,18 @@ function escapeHtml(value: string) {
 <style scoped>
 .analysis-page {
   height: 100%;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 420px;
+  display: block;
   background: #eef3f7;
   color: #0f172a;
+}
+.analysis-page.with-trace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
 }
 .workspace {
   overflow: auto;
   padding: 24px;
+  min-width: 0;
 }
 .hero,
 .summary-card,
@@ -719,7 +723,7 @@ function escapeHtml(value: string) {
 }
 .element-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
   gap: 12px;
   margin-top: 14px;
 }
@@ -727,10 +731,11 @@ function escapeHtml(value: string) {
   border-color: #fdba74;
   background: #fff7ed;
 }
-.element-card div {
+.element-card > div:first-child {
   display: flex;
   justify-content: space-between;
   gap: 8px;
+  align-items: flex-start;
 }
 .element-card strong {
   font-weight: 900;
@@ -768,6 +773,8 @@ function escapeHtml(value: string) {
   text-align: left;
   font-size: 14px;
   line-height: 1.65;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 .claim-chip:hover,
 .claim-chip.hover {
@@ -964,7 +971,7 @@ function escapeHtml(value: string) {
   margin: 2px 0;
 }
 @media (max-width: 1200px) {
-  .analysis-page {
+  .analysis-page.with-trace {
     grid-template-columns: 1fr;
   }
   .trace-panel {
@@ -972,9 +979,11 @@ function escapeHtml(value: string) {
     border-top: 1px solid #23324b;
   }
   .field-grid,
-  .element-grid,
   .stats {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .element-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>
