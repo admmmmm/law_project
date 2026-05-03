@@ -9,6 +9,13 @@ export interface CaseSummary {
   memory_count: number;
 }
 
+export interface CaseCreatePayload {
+  title: string;
+  description?: string | null;
+  legal_basis?: string | null;
+  owner?: string | null;
+}
+
 export interface GraphNode {
   node_id: string;
   label: string;
@@ -190,6 +197,11 @@ export const backendApi = {
     request<CaseSummary>('/cases', {
       method: 'POST',
       body: JSON.stringify({ title, description }),
+    }),
+  createCustomCase: (payload: CaseCreatePayload) =>
+    request<CaseSummary>('/cases', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     }),
   ingestText: (caseId: string, title: string, content: string, sourceType = 'text') =>
     request<IngestionResult>(`/cases/${caseId}/ingestions/text`, {

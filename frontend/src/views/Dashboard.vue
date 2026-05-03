@@ -9,6 +9,35 @@
         <button class="primary" @click="createCase">新建默认案件</button>
       </section>
 
+      <section class="card custom-case">
+        <div class="custom-head">
+          <div>
+            <h2>自定义案件</h2>
+            <p class="hint">用于真实联调或新材料测试。创建后会自动切换为当前案件。</p>
+          </div>
+          <button class="secondary compact" @click="resetCustomCase">清空</button>
+        </div>
+        <div class="custom-grid">
+          <label>
+            案件名称
+            <input v-model="customCase.title" class="field" placeholder="例如：某某徇私枉法案" />
+          </label>
+          <label>
+            办案人/负责人
+            <input v-model="customCase.owner" class="field" placeholder="可选" />
+          </label>
+          <label class="wide">
+            法律依据/罪名方向
+            <input v-model="customCase.legalBasis" class="field" placeholder="例如：徇私枉法罪、玩忽职守罪" />
+          </label>
+          <label class="wide">
+            案件说明
+            <textarea v-model="customCase.description" class="field textarea" placeholder="简要写明案由、对象、当前已有材料范围。" />
+          </label>
+        </div>
+        <button class="primary create-custom" :disabled="!customCase.title.trim() || loading" @click="createCustomCase">创建自定义案件并切换</button>
+      </section>
+
       <section class="grid">
         <div class="card">
           <h2>1. 案件</h2>
@@ -75,6 +104,12 @@ const loading = ref(false);
 const error = ref('');
 const folderInput = ref<HTMLInputElement | null>(null);
 const zipInput = ref<HTMLInputElement | null>(null);
+const customCase = ref({
+  title: '',
+  description: '',
+  legalBasis: '',
+  owner: '',
+});
 
 const selectedCase = computed(() => cases.value.find((item) => item.case_id === selectedCaseId.value));
 const currentEvidenceCount = computed(() => selectedCase.value?.evidence_count || 0);
@@ -98,6 +133,32 @@ async function createCase() {
   await loadCases();
   selectedCaseId.value = item.case_id;
   persistCase();
+}
+
+async function createCustomCase() {
+  const title = customCase.value.title.trim();
+  if (!title) return;
+  await withLoading(async () => {
+    const item = await backendApi.createCustomCase({
+      title,
+      description: customCase.value.description.trim() || null,
+      legal_basis: customCase.value.legalBasis.trim() || null,
+      owner: customCase.value.owner.trim() || null,
+    });
+    await loadCases();
+    selectedCaseId.value = item.case_id;
+    persistCase();
+    resetCustomCase();
+  });
+}
+
+function resetCustomCase() {
+  customCase.value = {
+    title: '',
+    description: '',
+    legalBasis: '',
+    owner: '',
+  };
 }
 
 function persistCase() {
@@ -173,6 +234,42 @@ async function withLoading(task: () => Promise<void>) {
   justify-content: space-between;
   gap: 16px;
 }
+.hero-actions,
+.custom-head,
+.custom-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.hero-actions {
+  min-width: 260px;
+}
+.custom-case {
+  display: grid;
+  gap: 14px;
+}
+.custom-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.custom-grid label {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+.custom-grid .wide {
+  grid-column: 1 / -1;
+}
+.textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+.create-custom {
+  max-width: 280px;
+  justify-self: end;
+}
 .grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -211,6 +308,10 @@ p,
   padding: 9px 12px;
   font-size: 13px;
   font-weight: 900;
+}
+.compact {
+  width: auto;
+  min-width: 120px;
 }
 .primary {
   background: #0f766e;
