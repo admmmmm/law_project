@@ -584,15 +584,20 @@ function escapeHtml(value: string) {
 <style scoped>
 .analysis-page {
   height: 100%;
-  display: block;
+  min-height: 0;
+  display: flex;
   background: #eef3f7;
   color: #0f172a;
 }
 .analysis-page.with-trace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 420px;
+  min-height: 0;
 }
 .workspace {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
   overflow: auto;
   padding: 24px;
   min-width: 0;
@@ -842,6 +847,7 @@ function escapeHtml(value: string) {
   font-size: 12px;
 }
 .trace-panel {
+  min-height: 0;
   overflow: auto;
   border-left: 1px solid #23324b;
   background: #0f172a;

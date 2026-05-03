@@ -473,14 +473,18 @@ def _attach_claims_to_sections(
 
 
 def _verify_claim(text: str, section: str, element: str, evidence_ids: list[str], passages: list[dict[str, Any]]) -> PortraitClaim:
-    candidates = [p for p in passages if not evidence_ids or p["evidence_id"] in evidence_ids]
-    scored = sorted((_score_passage(text, p), p) for p in candidates)
-    top = [(score, p) for score, p in reversed(scored) if score > 0][:5]
+    candidates = [p for p in passages if not evidence_ids or p.get("evidence_id") in evidence_ids]
+    scored = sorted(
+        ((_score_passage(text, p), index, p) for index, p in enumerate(candidates)),
+        key=lambda item: (item[0], -item[1]),
+        reverse=True,
+    )
+    top = [(score, p) for score, _, p in scored if score > 0][:5]
     support = [
         ClaimPassage(
-            evidence_id=p["evidence_id"],
+            evidence_id=p.get("evidence_id") or "",
             evidence_title=p.get("evidence_title"),
-            passage=p["passage"],
+            passage=p.get("passage") or "",
             score=round(score, 4),
         )
         for score, p in top
