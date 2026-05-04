@@ -784,6 +784,8 @@ function addCount(map: Map<string, number>, key: string) {
 function itemDate(item: GraphNode | GraphEdge) {
   const properties = item.properties || {};
   const candidates = [
+    item.timestamp,
+    item.time_range?.[0],
     properties.time,
     properties.date,
     properties.time_sample,

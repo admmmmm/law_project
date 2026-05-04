@@ -7,6 +7,8 @@ class GraphNode(BaseModel):
     type: str
     properties: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
     evidence_ids: list[str] = Field(default_factory=list)
+    timestamp: str | None = None
+    time_range: list[str] = Field(default_factory=list)
     manually_verified: bool = False
 
 
@@ -18,6 +20,8 @@ class GraphEdge(BaseModel):
     confidence: float = Field(default=0.5, ge=0, le=1)
     properties: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
     evidence_ids: list[str] = Field(default_factory=list)
+    timestamp: str | None = None
+    time_range: list[str] = Field(default_factory=list)
     manually_verified: bool = False
 
 

@@ -13,6 +13,7 @@ from app.schemas.common import new_id
 from app.schemas.graph import GraphEdge, GraphNode, InvestigationGraph, SuspiciousClue
 from app.schemas.ingestion import EvidenceRecord, ExtractionResult, ExtractedTriple
 from app.services.llm_context_debug import log_llm_context
+from app.services.ontology import CASE_ONTOLOGY, extract_timestamp
 
 
 class HippoRagBridge:
@@ -501,12 +502,28 @@ class AlgorithmAdapter:
         edges: list[GraphEdge] = []
         clues: list[SuspiciousClue] = []
         node_ids: set[str] = set()
-        grouped: dict[tuple[str, str, str], dict[str, Any]] = defaultdict(
-            lambda: {"count": 0, "amount_total": 0.0, "times": set(), "evidence_ids": set()}
-        )
+        grouped: dict[tuple[str, str, str], dict[str, Any]] = defaultdict(_graph_group)
 
-        def add_node(node_id: str, label: str, node_type: str, evidence_id: str, properties: dict[str, Any] | None = None) -> None:
+        def add_node(
+            node_id: str,
+            label: str,
+            node_type: str,
+            evidence_id: str,
+            properties: dict[str, Any] | None = None,
+            timestamp: str | None = None,
+            time_range: list[str] | None = None,
+        ) -> None:
             if node_id in node_ids:
+                for node in nodes:
+                    if node.node_id != node_id:
+                        continue
+                    if evidence_id and evidence_id not in node.evidence_ids:
+                        node.evidence_ids.append(evidence_id)
+                    if timestamp and not node.timestamp:
+                        node.timestamp = timestamp
+                    for item in time_range or []:
+                        if item and item not in node.time_range:
+                            node.time_range.append(item)
                 return
             node_ids.add(node_id)
             nodes.append(
@@ -515,7 +532,9 @@ class AlgorithmAdapter:
                     label=label,
                     type=node_type,
                     properties={key: value for key, value in (properties or {}).items() if value not in (None, "")},
-                    evidence_ids=[evidence_id],
+                    evidence_ids=[evidence_id] if evidence_id else [],
+                    timestamp=timestamp,
+                    time_range=time_range or ([timestamp] if timestamp else []),
                 )
             )
 
@@ -527,39 +546,54 @@ class AlgorithmAdapter:
                 "evidence",
                 item.evidence_id,
                 {"source_type": item.source_type, "preview": item.content_preview},
+                timestamp=extract_timestamp(item.title) or extract_timestamp(content),
             )
             extraction = extractions.get(item.evidence_id)
             if extraction:
                 for triple in extraction.triples:
                     self._collect_triple(grouped, triple, item.evidence_id)
 
-        for (subject, relation, obj), data in grouped.items():
-            subject_id = f"entity:{subject}"
-            object_id = f"entity:{obj}"
+        for (subject_id, relation, object_id), data in grouped.items():
             evidence_ids = sorted(data["evidence_ids"])
             primary_evidence_id = evidence_ids[0] if evidence_ids else ""
-            add_node(subject_id, subject, "entity", primary_evidence_id)
-            add_node(object_id, obj, _node_type_for(relation), primary_evidence_id)
             count = int(data["count"])
             amount_total = float(data["amount_total"])
             times = sorted(data["times"])
+            first_time = times[0] if times else None
+            add_node(
+                subject_id, data["source_label"], data["source_type"], primary_evidence_id,
+                {"ontology_type": data["source_type"], "canonical_label": data["source_label"]},
+                timestamp=first_time, time_range=times,
+            )
+            add_node(
+                object_id, data["target_label"], data["target_type"], primary_evidence_id,
+                {"ontology_type": data["target_type"], "canonical_label": data["target_label"]},
+                timestamp=first_time, time_range=times,
+            )
+            edge_properties = dict(data["properties"])
+            edge_properties.update({
+                "count": count,
+                "amount_total": round(amount_total, 2) if amount_total else None,
+                "time_sample": "；".join(times[:3]) if times else None,
+                "relation_category": data["relation_category"],
+                "raw_relations": " / ".join(sorted(data["raw_relations"])[:6]),
+                "ontology_constrained": data["ontology_constrained"],
+            })
             edges.append(
                 GraphEdge(
                     edge_id=new_id("edge"),
                     source_id=subject_id,
                     target_id=object_id,
                     relation=relation,
-                    confidence=0.82 if count > 1 else 0.72,
-                    properties={
-                        "count": count,
-                        "amount_total": round(amount_total, 2) if amount_total else None,
-                        "time_sample": "；".join(times[:3]) if times else None,
-                    },
+                    confidence=min(0.96, float(data["confidence"]) + (0.04 if count > 1 else 0.0)),
+                    properties={key: value for key, value in edge_properties.items() if value not in (None, "")},
                     evidence_ids=evidence_ids,
+                    timestamp=first_time,
+                    time_range=times,
                 )
             )
 
-        clues.extend(self._clues_from_graph(edges, evidence, raw_contents))
+        clues.extend(_clues_from_ontology_graph(nodes, edges, evidence))
         return InvestigationGraph(case_id=case_id, nodes=nodes, edges=edges, clues=clues)
 
     def _collect_triple(
@@ -572,14 +606,27 @@ class AlgorithmAdapter:
             return
         if triple.relation in {"交易金额", "发生时间"}:
             return
-        key = (triple.subject, triple.relation, triple.object)
+        normalized = CASE_ONTOLOGY.normalize_triple(triple.subject, triple.relation, triple.object, triple.properties)
+        key = (normalized.subject.node_id, normalized.relation.label, normalized.object.node_id)
         item = grouped[key]
         item["count"] += 1
         item["evidence_ids"].add(evidence_id)
+        item["source_label"] = normalized.subject.canonical_label
+        item["target_label"] = normalized.object.canonical_label
+        item["source_type"] = normalized.subject.entity_type
+        item["target_type"] = normalized.object.entity_type
+        item["relation"] = normalized.relation.label
+        item["relation_category"] = normalized.relation.category
+        item["raw_relations"].add(normalized.raw_relation)
+        item["ontology_constrained"] = bool(item["ontology_constrained"] or normalized.properties.get("ontology_constrained"))
+        item["confidence"] = max(float(item["confidence"]), normalized.relation.confidence)
+        item["properties"].update({key: value for key, value in normalized.properties.items() if value not in (None, "")})
         amount = _to_float(triple.properties.get("amount"))
         if amount:
             item["amount_total"] += amount
-        if triple.properties.get("time"):
+        if normalized.timestamp:
+            item["times"].add(normalized.timestamp)
+        elif triple.properties.get("time"):
             item["times"].add(str(triple.properties["time"]))
 
     def _clues_from_graph(
@@ -693,10 +740,148 @@ class AlgorithmAdapter:
         return clues
 
 
+def _graph_group() -> dict[str, Any]:
+    return {
+        "count": 0,
+        "amount_total": 0.0,
+        "times": set(),
+        "evidence_ids": set(),
+        "source_label": "",
+        "target_label": "",
+        "source_type": "entity",
+        "target_type": "entity",
+        "relation": "关联",
+        "relation_category": "related",
+        "raw_relations": set(),
+        "ontology_constrained": False,
+        "confidence": 0.42,
+        "properties": {},
+    }
+
+
+def _clues_from_ontology_graph(
+    nodes: list[GraphNode],
+    edges: list[GraphEdge],
+    evidence: list[EvidenceRecord],
+) -> list[SuspiciousClue]:
+    evidence_ids = [item.evidence_id for item in evidence]
+    typed_edges: dict[str, list[GraphEdge]] = defaultdict(list)
+    for edge in edges:
+        typed_edges[str(edge.properties.get("relation_category") or "related")].append(edge)
+
+    clues: list[SuspiciousClue] = []
+    fund_edges = typed_edges.get("fund_flow", [])
+    duty_edges = typed_edges.get("duty_behavior", []) + typed_edges.get("procedure", [])
+    subjective_edges = typed_edges.get("subjective_state", [])
+    communication_edges = typed_edges.get("communication", [])
+    temporal_edges = [edge for edge in edges if edge.timestamp or edge.time_range]
+
+    if fund_edges and duty_edges:
+        shared = _shared_endpoint_edges(fund_edges, duty_edges)
+        clues.append(
+            SuspiciousClue(
+                clue_id=new_id("clue"),
+                title="资金链与职务处置存在交叉",
+                category="graph_path",
+                description=(
+                    f"图谱中存在 {len(fund_edges)} 条资金关系、{len(duty_edges)} 条职务/程序关系。"
+                    f"其中 {len(shared)} 组关系共享主体或共同证据，建议按时间轴核查请托、收钱、调解/释放是否闭合。"
+                ),
+                risk_level="high" if shared else "medium",
+                evidence_ids=_edge_evidence_ids(shared or fund_edges[:8] + duty_edges[:8]) or evidence_ids,
+            )
+        )
+
+    if subjective_edges and duty_edges:
+        shared = _shared_endpoint_edges(subjective_edges, duty_edges)
+        clues.append(
+            SuspiciousClue(
+                clue_id=new_id("clue"),
+                title="主观状态线索与处置行为相连",
+                category="graph_path",
+                description=(
+                    f"图谱中主观状态关系 {len(subjective_edges)} 条，职务/程序关系 {len(duty_edges)} 条。"
+                    "这些关系来自 ontology 归类后的关系集合，应优先查看共享主体、共同证据和前后时间。"
+                ),
+                risk_level="high",
+                evidence_ids=_edge_evidence_ids(shared or subjective_edges[:8] + duty_edges[:8]) or evidence_ids,
+            )
+        )
+
+    if communication_edges and (fund_edges or duty_edges):
+        bridge = _shared_endpoint_edges(communication_edges, fund_edges + duty_edges)
+        clues.append(
+            SuspiciousClue(
+                clue_id=new_id("clue"),
+                title="通讯记录可能连接资金或处置节点",
+                category="communication_bridge",
+                description=(
+                    f"图谱中通讯关系 {len(communication_edges)} 条，与资金/处置关系形成 {len(bridge)} 个共享端点或共同证据候选。"
+                    "这类线索适合用于还原请托、协调和反侦察式规避留痕。"
+                ),
+                risk_level="medium" if bridge else "low",
+                evidence_ids=_edge_evidence_ids(bridge or communication_edges[:8]) or evidence_ids,
+            )
+        )
+
+    unconstrained_edges = [edge for edge in edges if edge.properties.get("ontology_constrained") is False]
+    if unconstrained_edges:
+        clues.append(
+            SuspiciousClue(
+                clue_id=new_id("clue"),
+                title="存在未被 ontology 约束的开放关系",
+                category="ontology_gap",
+                description=(
+                    f"有 {len(unconstrained_edges)} 条关系被降级为‘关联’。这通常意味着 OpenIE 输出不符合当前案件本体，"
+                    "需要人工补充关系类型、别名规则或罪名模板。"
+                ),
+                risk_level="low",
+                evidence_ids=_edge_evidence_ids(unconstrained_edges[:12]) or evidence_ids,
+            )
+        )
+
+    if temporal_edges:
+        clues.append(
+            SuspiciousClue(
+                clue_id=new_id("clue"),
+                title="图谱关系已挂载时间戳",
+                category="timeline",
+                description=f"当前有 {len(temporal_edges)} 条关系携带 timestamp/time_range，可用于证据生长、先后顺序和因果链核查。",
+                risk_level="medium",
+                evidence_ids=_edge_evidence_ids(temporal_edges[:12]) or evidence_ids,
+            )
+        )
+
+    if clues:
+        return clues
+    return [
+        SuspiciousClue(
+            clue_id=new_id("clue"),
+            title="图谱分析等待更多结构化关系",
+            category="analysis_pending",
+            description="当前证据已按 ontology 入图，但尚未形成资金、职务、主观、通讯之间的交叉路径。",
+            risk_level="low",
+            evidence_ids=evidence_ids,
+        )
+    ]
+
+
+def _shared_endpoint_edges(left: list[GraphEdge], right: list[GraphEdge]) -> list[GraphEdge]:
+    related: list[GraphEdge] = []
+    for first in left:
+        first_nodes = {first.source_id, first.target_id}
+        first_evidence = set(first.evidence_ids)
+        for second in right:
+            if first_nodes.intersection({second.source_id, second.target_id}) or first_evidence.intersection(second.evidence_ids):
+                related.extend([first, second])
+    unique: dict[str, GraphEdge] = {}
+    for edge in related:
+        unique[edge.edge_id] = edge
+    return list(unique.values())
+
+
 def _node_type_for(relation: str) -> str:
-    if any(word in relation for word in ("资金", "交易", "收入", "支出", "转账")):
-        return "transaction"
-    return "entity"
+    return CASE_ONTOLOGY.classify_relation(relation).category
 
 
 def _entity_grounded_in_passage(entity: str, passage: str) -> bool:

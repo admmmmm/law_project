@@ -22,6 +22,8 @@ export interface GraphNode {
   type: string;
   properties: Record<string, string | number | boolean | null>;
   evidence_ids: string[];
+  timestamp?: string | null;
+  time_range?: string[];
   manually_verified: boolean;
 }
 
@@ -33,6 +35,8 @@ export interface GraphEdge {
   confidence: number;
   properties: Record<string, string | number | boolean | null>;
   evidence_ids: string[];
+  timestamp?: string | null;
+  time_range?: string[];
   manually_verified: boolean;
 }
 
