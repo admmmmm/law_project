@@ -11,7 +11,10 @@ class GraphService:
         with self.store.lock:
             if case_id not in self.store.cases:
                 raise not_found("case not found")
-            return self.store.graphs.setdefault(case_id, InvestigationGraph(case_id=case_id))
+            if case_id not in self.store.graphs:
+                self.store.graphs[case_id] = InvestigationGraph(case_id=case_id)
+                self.store.save()
+            return self.store.graphs[case_id]
 
     def apply_intervention(self, case_id: str, payload: GraphInterventionRequest) -> InvestigationGraph:
         with self.store.lock:
@@ -49,4 +52,5 @@ class GraphService:
                 ]
 
             self.store.graphs[case_id] = graph
+            self.store.save()
             return graph

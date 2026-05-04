@@ -19,6 +19,7 @@ class AnalysisService:
             graph = self.algorithm.build_graph(case_id, evidence, self.store.raw_contents, self.store.extractions)
             self.store.graphs[case_id] = graph
             self.store.cases[case_id] = case.model_copy(update={"status": "analyzed"})
+            self.store.save()
 
             scope_text = "、".join(payload.scopes)
             summary = f"已完成 {scope_text} 分析，生成 {len(graph.nodes)} 个节点、{len(graph.edges)} 条关系、{len(graph.clues)} 条线索。"

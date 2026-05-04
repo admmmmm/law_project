@@ -134,26 +134,13 @@ const traceEvidence = ref<EvidenceDetail[]>([]);
 type PortraitClaim = NonNullable<NonNullable<PortraitReport['sections'][number]['claims']>[number]>;
 type PortraitSection = PortraitReport['sections'][number];
 
-onMounted(loadCachedReport);
+onMounted(loadLatestReport);
 
-function reportCacheKey() {
-  return `jcmx:portrait:v2:${activeCaseId.value}`;
-}
-
-async function loadCachedReport() {
+async function loadLatestReport() {
   if (!activeCaseId.value) return;
-  const cached = sessionStorage.getItem(reportCacheKey());
-  if (cached) {
-    try {
-      report.value = JSON.parse(cached) as PortraitReport;
-    } catch {
-      sessionStorage.removeItem(reportCacheKey());
-    }
-  }
   try {
     const latest = await backendApi.getLatestPortrait(activeCaseId.value);
     report.value = latest;
-    sessionStorage.setItem(reportCacheKey(), JSON.stringify(latest));
   } catch {
     // 没有历史报告时保持空状态，不要求用户重新生成以外的页面状态。
   }
@@ -165,7 +152,6 @@ async function generateReport() {
   error.value = '';
   try {
     report.value = await backendApi.generatePortrait(activeCaseId.value);
-    sessionStorage.setItem(reportCacheKey(), JSON.stringify(report.value));
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {

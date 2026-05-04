@@ -139,6 +139,7 @@ class ReportService:
                 generation_method=generation_method,
             )
             self.store.reports[case_id] = report
+            self.store.save()
             return report
 
 

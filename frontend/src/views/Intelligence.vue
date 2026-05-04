@@ -309,22 +309,8 @@ const tracePaths = computed(() => (traceResult.value?.paths || []).map((path) =>
 
 onMounted(loadGraph);
 
-function analysisCacheKey() {
-  return `jcmx:intelligence:v2:${activeCaseId.value}`;
-}
-
 async function loadGraph() {
   if (!activeCaseId.value) return;
-  const cached = sessionStorage.getItem(analysisCacheKey());
-  if (cached) {
-    try {
-      const parsed = JSON.parse(cached) as AnalysisRunResult;
-      result.value = parsed;
-      graph.value = parsed.graph;
-    } catch {
-      sessionStorage.removeItem(analysisCacheKey());
-    }
-  }
   try {
     graph.value = await backendApi.getGraph(activeCaseId.value);
   } catch {
@@ -339,7 +325,6 @@ async function runAnalysis() {
   try {
     result.value = await backendApi.runAnalysis(activeCaseId.value);
     graph.value = result.value.graph;
-    sessionStorage.setItem(analysisCacheKey(), JSON.stringify(result.value));
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {

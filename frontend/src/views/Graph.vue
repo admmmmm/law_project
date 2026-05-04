@@ -368,68 +368,13 @@ const aliasSuggestions = computed(() => {
 
 onMounted(loadGraph);
 
-function graphCacheKey() {
-  return `jcmx:graph:v2:${activeCaseId.value}`;
-}
-
-function restoreGraphCache() {
-  if (!activeCaseId.value) return false;
-  const cached = sessionStorage.getItem(graphCacheKey());
-  if (!cached) return false;
-  try {
-    const parsed = JSON.parse(cached) as {
-      graph?: InvestigationGraph;
-      timelineIndex?: number;
-      selectedCategories?: string[];
-      viewMode?: ViewMode;
-      layoutMode?: LayoutMode;
-    };
-    if (parsed.graph?.nodes?.length) {
-      graph.value = parsed.graph;
-      viewMode.value = parsed.viewMode || viewMode.value;
-      layoutMode.value = parsed.layoutMode || layoutMode.value;
-      syncTimelineAndTags(false);
-      timelineIndex.value = Math.min(parsed.timelineIndex ?? timelineIndex.value, Math.max(timelinePoints.value.length - 1, 0));
-      selectedCategories.value = parsed.selectedCategories?.length ? parsed.selectedCategories : selectedCategories.value;
-      return true;
-    }
-  } catch {
-    sessionStorage.removeItem(graphCacheKey());
-  }
-  return false;
-}
-
-function persistGraphCache() {
-  if (!activeCaseId.value || !graph.value.nodes.length) return;
-  try {
-    sessionStorage.setItem(
-      graphCacheKey(),
-      JSON.stringify({
-        graph: graph.value,
-        timelineIndex: timelineIndex.value,
-        selectedCategories: selectedCategories.value,
-        viewMode: viewMode.value,
-        layoutMode: layoutMode.value,
-      }),
-    );
-  } catch {
-    // 图谱过大时跳过缓存，不影响主流程。
-  }
-}
-
 async function loadGraph() {
   if (!activeCaseId.value) return;
-  const restored = restoreGraphCache();
-  if (restored) {
-    await nextTick();
-    renderGraph();
-  }
   loading.value = true;
   error.value = '';
   try {
     graph.value = await backendApi.getGraph(activeCaseId.value);
-    syncTimelineAndTags(!restored);
-    persistGraphCache();
+    syncTimelineAndTags(true);
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
@@ -447,7 +392,6 @@ async function runAnalysis() {
     await backendApi.runAnalysis(activeCaseId.value);
     graph.value = await backendApi.getGraph(activeCaseId.value);
     syncTimelineAndTags();
-    persistGraphCache();
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
   } finally {
@@ -459,7 +403,6 @@ async function runAnalysis() {
 
 function renderGraph() {
   if (!graphRef.value || graph.value.nodes.length === 0) return;
-  persistGraphCache();
   graphOptions.layouts = [layoutConfig(layoutMode.value)];
   const visible = buildRenderableGraph();
   renderedNodeCount.value = visible.nodes.length;
@@ -480,7 +423,6 @@ function renderGraph() {
 
 async function renderTimelineGraph() {
   graphRenderKey.value += 1;
-  persistGraphCache();
   await nextTick();
   renderGraph();
 }
