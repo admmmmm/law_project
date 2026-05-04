@@ -27,7 +27,7 @@ class CaseService:
             self.store.evidence[case_id] = []
             self.store.memories[case_id] = []
             self.store.graphs[case_id] = InvestigationGraph(case_id=case_id)
-            self.store.save()
+            self.store.flush_case(case_id)
             return case
 
     def list_cases(self) -> list[CaseSummary]:

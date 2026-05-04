@@ -17,6 +17,13 @@
       </div>
       <p v-if="!activeCaseId" class="warn">请先到“案件导入”页新建或选择案件。</p>
       <p v-if="error" class="error">{{ error }}</p>
+      <AsyncProgressBar
+        v-if="progress.active.value"
+        compact
+        :value="progress.value.value"
+        :label="progress.label.value"
+        :detail="progress.detail.value"
+      />
 
       <section class="stats">
         <div><span>节点</span><strong>{{ graph?.nodes.length ?? 0 }}</strong></div>
@@ -169,6 +176,13 @@
         <h3>证据原文</h3>
         <div v-if="evidenceLoading" class="muted">正在读取证据和 HippoRAG PPR 排序...</div>
         <div v-else-if="traceEvidence.length === 0" class="muted">暂无直接证据 ID。可以到图谱页按主体和路径继续追。</div>
+        <AsyncProgressBar
+          v-if="traceProgress.active.value"
+          compact
+          :value="traceProgress.value.value"
+          :label="traceProgress.label.value"
+          :detail="traceProgress.detail.value"
+        />
         <details v-for="item in traceEvidence" :key="item.evidence_id" class="evidence-doc">
           <summary>{{ item.title }}</summary>
           <pre>{{ item.content }}</pre>
@@ -201,6 +215,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { backendApi, type AnalysisRunResult, type EvidenceDetail, type InvestigationGraph, type SuspiciousClue, type TraceResult } from '../api/backend';
+import AsyncProgressBar from '../components/AsyncProgressBar.vue';
+import { useSimulatedProgress } from '../composables/useSimulatedProgress';
 
 interface TraceField {
   key: string;
@@ -215,6 +231,7 @@ interface TraceField {
 const activeCaseId = ref(localStorage.getItem('active_case_id') || '');
 const loading = ref(false);
 const error = ref('');
+const progress = useSimulatedProgress();
 const result = ref<AnalysisRunResult | null>(null);
 const graph = ref<InvestigationGraph | null>(null);
 const traceOpen = ref(false);
@@ -222,6 +239,7 @@ const traceField = ref<TraceField | null>(null);
 const traceEvidence = ref<EvidenceDetail[]>([]);
 const traceResult = ref<TraceResult | null>(null);
 const evidenceLoading = ref(false);
+const traceProgress = useSimulatedProgress();
 const traceQueryText = ref('');
 const traceKey = ref('');
 const hoveredSentenceKey = ref('');
@@ -322,11 +340,20 @@ async function runAnalysis() {
   if (!activeCaseId.value) return;
   loading.value = true;
   error.value = '';
+  progress.start({
+    label: '正在运行智能分析',
+    detail: '等待后端提取关系、生成线索并整理三层分析卡片',
+  });
   try {
     result.value = await backendApi.runAnalysis(activeCaseId.value);
     graph.value = result.value.graph;
+    await progress.finish({
+      label: '智能分析已完成',
+      detail: '分析摘要和图谱数据已经更新',
+    });
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
+    progress.fail();
   } finally {
     loading.value = false;
   }
@@ -374,6 +401,10 @@ async function runTraceForText(field: TraceField, queryText: string) {
   traceEvidence.value = [];
   traceResult.value = null;
   evidenceLoading.value = true;
+  traceProgress.start({
+    label: '正在回溯证据',
+    detail: '检索 passage、路径候选与原始证据正文',
+  });
   try {
     if (field.sourcePassages?.length) {
       traceResult.value = {
@@ -397,8 +428,13 @@ async function runTraceForText(field: TraceField, queryText: string) {
       if (item.evidence_id && ids.size < 5) ids.add(item.evidence_id);
     });
     traceEvidence.value = await Promise.all([...ids].map((id) => backendApi.getEvidenceDetail(activeCaseId.value, id)));
+    await traceProgress.finish({
+      label: '证据回溯已完成',
+      detail: '可以继续查看 passage、路径和原始材料',
+    });
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
+    traceProgress.fail();
   } finally {
     evidenceLoading.value = false;
   }

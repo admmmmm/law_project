@@ -14,6 +14,13 @@
 
       <p v-if="!activeCaseId" class="warn">请先到“案件导入”页新建或选择案件。</p>
       <p v-if="error" class="error">{{ error }}</p>
+      <AsyncProgressBar
+        v-if="progress.active.value"
+        compact
+        :value="progress.value.value"
+        :label="progress.label.value"
+        :detail="progress.detail.value"
+      />
 
       <section class="conversation">
         <div v-if="messages.length === 0" class="empty">
@@ -54,6 +61,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { backendApi, type ChatResult } from '../api/backend';
+import AsyncProgressBar from '../components/AsyncProgressBar.vue';
+import { useSimulatedProgress } from '../composables/useSimulatedProgress';
 
 interface ChatMessage {
   id: string;
@@ -66,6 +75,7 @@ const activeCaseId = ref(localStorage.getItem('active_case_id') || '');
 const draft = ref('');
 const loading = ref(false);
 const error = ref('');
+const progress = useSimulatedProgress();
 const messages = ref<ChatMessage[]>([]);
 
 async function sendQuestion() {
@@ -76,6 +86,10 @@ async function sendQuestion() {
   draft.value = '';
   loading.value = true;
   error.value = '';
+  progress.start({
+    label: '正在检索并生成回答',
+    detail: 'HippoRAG 正在召回证据 passage 并组织答案',
+  });
   try {
     const result = await backendApi.chatAnalysis(activeCaseId.value, question, [], 8);
     if (result.error) error.value = result.error;
@@ -85,8 +99,13 @@ async function sendQuestion() {
       content: result.answer || '没有生成回答。请确认已导入证据，并且 HippoRAG/DeepSeek 配置可用。',
       passages: result.passages,
     });
+    await progress.finish({
+      label: '回答已生成',
+      detail: '相关证据 passage 已附在消息下方',
+    });
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
+    progress.fail();
   } finally {
     loading.value = false;
   }

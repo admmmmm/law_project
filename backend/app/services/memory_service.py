@@ -24,7 +24,7 @@ class MemoryService:
                 created_at=now_utc(),
             )
             self.store.memories.setdefault(case_id, []).append(record)
-            self.store.save()
+            self.store.flush_case(case_id)
             return record
 
     def list_by_case(self, case_id: str) -> list[MemoryRecord]:
@@ -58,5 +58,5 @@ class MemoryService:
             updated = target.model_copy(update={"written_back_to_graph": True})
             self.store.memories[case_id] = [updated if record.memory_id == memory_id else record for record in records]
             self.store.graphs[case_id] = graph
-            self.store.save()
+            self.store.flush_case(case_id)
             return updated

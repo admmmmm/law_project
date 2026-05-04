@@ -12,6 +12,13 @@
     </header>
 
     <div v-if="error" class="error-box">{{ error }}</div>
+    <AsyncProgressBar
+      v-if="progress.active.value"
+      compact
+      :value="progress.value.value"
+      :label="progress.label.value"
+      :detail="progress.detail.value"
+    />
 
     <main v-if="!activeCaseId" class="empty-state">
       <Network :size="54" />
@@ -183,6 +190,8 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import RelationGraph from 'relation-graph/vue3';
 import { Network } from 'lucide-vue-next';
 import { backendApi, type GraphEdge, type GraphNode, type InvestigationGraph } from '../api/backend';
+import AsyncProgressBar from '../components/AsyncProgressBar.vue';
+import { useSimulatedProgress } from '../composables/useSimulatedProgress';
 
 type LayoutMode = 'tree' | 'center' | 'circle' | 'force';
 type ViewMode = 'core' | 'evidence' | 'all';
@@ -190,6 +199,7 @@ type ViewMode = 'core' | 'evidence' | 'all';
 const activeCaseId = ref(localStorage.getItem('active_case_id') || '');
 const loading = ref(false);
 const error = ref('');
+const progress = useSimulatedProgress();
 const graphRef = ref<any>(null);
 const graphRenderKey = ref(0);
 const graph = ref<InvestigationGraph>({ case_id: activeCaseId.value, nodes: [], edges: [], clues: [] });
@@ -370,35 +380,65 @@ onMounted(loadGraph);
 
 async function loadGraph() {
   if (!activeCaseId.value) return;
-  loading.value = true;
-  error.value = '';
-  try {
-    graph.value = await backendApi.getGraph(activeCaseId.value);
-    syncTimelineAndTags(true);
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : String(err);
-  } finally {
-    loading.value = false;
-  }
+  await withGraphLoading(
+    async () => {
+      graph.value = await backendApi.getGraph(activeCaseId.value);
+      syncTimelineAndTags(true);
+    },
+    {
+      label: '正在加载图谱',
+      detail: '读取案件节点、关系和线索数据',
+      successLabel: '图谱已刷新',
+    },
+  );
   await nextTick();
   renderGraph();
 }
 
 async function runAnalysis() {
   if (!activeCaseId.value) return;
+  await withGraphLoading(
+    async () => {
+      await backendApi.runAnalysis(activeCaseId.value);
+      graph.value = await backendApi.getGraph(activeCaseId.value);
+      syncTimelineAndTags();
+    },
+    {
+      label: '正在重新分析案件',
+      detail: '后端正在重建图谱、线索和时间轴视图',
+      successLabel: '图谱分析已完成',
+    },
+  );
+  await nextTick();
+  renderGraph();
+}
+
+async function withGraphLoading(
+  task: () => Promise<void>,
+  options: {
+    label: string;
+    detail?: string;
+    successLabel?: string;
+  },
+) {
   loading.value = true;
   error.value = '';
+  progress.start({
+    label: options.label,
+    detail: options.detail,
+  });
   try {
-    await backendApi.runAnalysis(activeCaseId.value);
-    graph.value = await backendApi.getGraph(activeCaseId.value);
-    syncTimelineAndTags();
+    await task();
+    await progress.finish({
+      label: options.successLabel || `${options.label}完成`,
+      detail: '图谱界面已同步刷新',
+    });
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
+    progress.fail();
   } finally {
     loading.value = false;
   }
-  await nextTick();
-  renderGraph();
 }
 
 function renderGraph() {

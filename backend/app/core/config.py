@@ -6,7 +6,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-load_dotenv()
+load_dotenv(override=True)
 
 
 class Settings(BaseSettings):
@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     hipporag_enable_qa: bool = Field(default=True, alias="HIPPORAG_ENABLE_QA")
     hipporag_qa_top_k: int = Field(default=5, alias="HIPPORAG_QA_TOP_K")
     memory_auto_writeback: bool = Field(default=False, alias="MEMORY_AUTO_WRITEBACK")
+    storage_db_path: str = Field(default="../outputs/backend_state.sqlite3", alias="STORAGE_DB_PATH")
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:5173"]
 
 
