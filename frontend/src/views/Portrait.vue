@@ -17,6 +17,13 @@
       </div>
       <p v-if="!activeCaseId" class="warn">请先到“案件导入”页新建或选择案件。</p>
       <p v-if="error" class="error">{{ error }}</p>
+      <AsyncProgressBar
+        v-if="progress.active.value"
+        compact
+        :value="progress.value.value"
+        :label="progress.label.value"
+        :detail="progress.detail.value"
+      />
 
       <section v-if="!report" class="empty-report">
         暂无报告。运行智能分析后，再生成画像报告效果更完整。
@@ -95,6 +102,13 @@
       <div class="trace-section">
         <h3>HippoRAG PPR 检索结果</h3>
         <div v-if="traceLoading" class="muted">正在检索证据...</div>
+        <AsyncProgressBar
+          v-if="traceProgress.active.value"
+          compact
+          :value="traceProgress.value.value"
+          :label="traceProgress.label.value"
+          :detail="traceProgress.detail.value"
+        />
         <div v-if="traceResult?.error" class="trace-error">{{ traceResult.error }}</div>
         <div v-if="!traceLoading && !traceResult?.passages.length" class="muted">暂无 PPR passage 结果。</div>
         <article v-for="item in traceResult?.passages || []" :key="`${item.rank}-${item.evidence_id}-${item.score}`" class="ppr-card">
@@ -119,13 +133,17 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { backendApi, type EvidenceDetail, type PortraitReport, type TraceResult } from '../api/backend';
+import AsyncProgressBar from '../components/AsyncProgressBar.vue';
+import { useSimulatedProgress } from '../composables/useSimulatedProgress';
 
 const activeCaseId = ref(localStorage.getItem('active_case_id') || '');
 const loading = ref(false);
 const error = ref('');
 const report = ref<PortraitReport | null>(null);
+const progress = useSimulatedProgress();
 const traceOpen = ref(false);
 const traceLoading = ref(false);
+const traceProgress = useSimulatedProgress();
 const traceLabel = ref('');
 const traceText = ref('');
 const hoveredClaim = ref('');
@@ -152,8 +170,12 @@ async function loadCachedReport() {
   }
   try {
     const latest = await backendApi.getLatestPortrait(activeCaseId.value);
-    report.value = latest;
-    sessionStorage.setItem(reportCacheKey(), JSON.stringify(latest));
+    if (latest.generation_method !== 'pending') {
+      report.value = latest;
+      sessionStorage.setItem(reportCacheKey(), JSON.stringify(latest));
+    } else if (!report.value) {
+      report.value = null;
+    }
   } catch {
     // 没有历史报告时保持空状态，不要求用户重新生成以外的页面状态。
   }
@@ -163,11 +185,20 @@ async function generateReport() {
   if (!activeCaseId.value) return;
   loading.value = true;
   error.value = '';
+  progress.start({
+    label: '正在生成画像报告',
+    detail: '等待后端汇总分析结果并组织成报告结构',
+  });
   try {
     report.value = await backendApi.generatePortrait(activeCaseId.value);
     sessionStorage.setItem(reportCacheKey(), JSON.stringify(report.value));
+    await progress.finish({
+      label: '画像报告已生成',
+      detail: '报告内容已经刷新到当前页面',
+    });
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
+    progress.fail();
   } finally {
     loading.value = false;
   }
@@ -194,6 +225,10 @@ async function openTrace(label: string, text: string) {
   const cleanText = cleanSourceSentence(text);
   traceOpen.value = true;
   traceLoading.value = true;
+  traceProgress.start({
+    label: '正在检索支撑证据',
+    detail: 'HippoRAG 正在回溯相关 passage 与证据原文',
+  });
   traceLabel.value = label;
   traceText.value = cleanText;
   traceResult.value = null;
@@ -205,8 +240,13 @@ async function openTrace(label: string, text: string) {
       if (item.evidence_id && ids.size < 5) ids.add(item.evidence_id);
     });
     traceEvidence.value = await Promise.all([...ids].map((id) => backendApi.getEvidenceDetail(activeCaseId.value, id)));
+    await traceProgress.finish({
+      label: '证据回溯完成',
+      detail: '可以继续查看 passage 和原始材料',
+    });
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
+    traceProgress.fail();
   } finally {
     traceLoading.value = false;
   }
@@ -217,6 +257,10 @@ async function openClaimTrace(label: string, claim: PortraitClaim) {
   const claimText = cleanSourceSentence(claim.text);
   traceOpen.value = true;
   traceLoading.value = true;
+  traceProgress.start({
+    label: '正在读取画像支撑证据',
+    detail: '整理 claim 对应的 evidence 与支撑 passage',
+  });
   traceLabel.value = `${label}${claim.element ? ` / ${claim.element}` : ''}`;
   traceText.value = claimText;
   traceResult.value = {
@@ -235,8 +279,13 @@ async function openClaimTrace(label: string, claim: PortraitClaim) {
   try {
     const ids = Array.from(new Set(claim.supporting_passages.map((item) => item.evidence_id).filter(Boolean))).slice(0, 5);
     traceEvidence.value = await Promise.all(ids.map((id) => backendApi.getEvidenceDetail(activeCaseId.value, id)));
+    await traceProgress.finish({
+      label: '画像证据已加载',
+      detail: '支撑 passage 和原文已准备好',
+    });
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
+    traceProgress.fail();
   } finally {
     traceLoading.value = false;
   }

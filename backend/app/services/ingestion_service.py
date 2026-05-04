@@ -128,4 +128,5 @@ class IngestionService:
             self.store.raw_contents[evidence.evidence_id] = content
             self.store.extractions[evidence.evidence_id] = extraction
             self.store.cases[case_id] = case.model_copy(update={"status": "data_ingested"})
+            self.store.flush_case(case_id)
             return IngestionResult(case_id=case_id, accepted=True, evidence=evidence, extraction=extraction)

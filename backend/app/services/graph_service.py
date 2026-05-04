@@ -9,8 +9,9 @@ class GraphService:
 
     def get_graph(self, case_id: str) -> InvestigationGraph:
         with self.store.lock:
-            if case_id not in self.store.cases:
-                raise not_found("case not found")
+            # The graph page may be opened before evidence import/analysis, or after an
+            # in-memory reset while the frontend still holds the last case id.
+            # Returning an empty graph keeps the UI usable instead of surfacing a 404.
             return self.store.graphs.setdefault(case_id, InvestigationGraph(case_id=case_id))
 
     def apply_intervention(self, case_id: str, payload: GraphInterventionRequest) -> InvestigationGraph:
@@ -49,4 +50,5 @@ class GraphService:
                 ]
 
             self.store.graphs[case_id] = graph
+            self.store.flush_case(case_id)
             return graph

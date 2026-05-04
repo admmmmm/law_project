@@ -19,9 +19,13 @@ class AnalysisService:
             graph = self.algorithm.build_graph(case_id, evidence, self.store.raw_contents, self.store.extractions)
             self.store.graphs[case_id] = graph
             self.store.cases[case_id] = case.model_copy(update={"status": "analyzed"})
+            self.store.flush_case(case_id)
 
-            scope_text = "、".join(payload.scopes)
-            summary = f"已完成 {scope_text} 分析，生成 {len(graph.nodes)} 个节点、{len(graph.edges)} 条关系、{len(graph.clues)} 条线索。"
+            scope_text = " / ".join(payload.scopes)
+            summary = (
+                f"已完成 {scope_text} 分析，"
+                f"生成 {len(graph.nodes)} 个节点、{len(graph.edges)} 条关系、{len(graph.clues)} 条线索。"
+            )
             return AnalysisRunResult(case_id=case_id, status="completed", summary=summary, graph=graph)
 
     def trace(self, case_id: str, payload: TraceRequest) -> TraceResult:
@@ -83,7 +87,7 @@ class AnalysisService:
 def _rank_graph_paths(query: str, graph, evidence_ids: list[str], limit: int = 12) -> list[TracePath]:
     if not graph:
         return []
-    query_terms = [term for term in query.replace("：", " ").replace("，", " ").replace("。", " ").split() if term]
+    query_terms = [term for term in query.replace(",", " ").replace("，", " ").replace("。", " ").split() if term]
     evidence_set = set(evidence_ids)
     labels = {node.node_id: node.label for node in graph.nodes}
     paths: list[TracePath] = []

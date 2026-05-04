@@ -24,9 +24,11 @@ class ReportService:
     def get_latest_portrait(self, case_id: str) -> PortraitReport:
         with self.store.lock:
             report = self.store.reports.get(case_id)
-            if not report:
-                raise not_found("portrait report not found")
-            return report
+            if report:
+                return report
+            case = self.store.cases.get(case_id)
+            title = case.title if case else case_id
+            return _empty_portrait_report(case_id, title)
 
     def generate_portrait(self, case_id: str) -> PortraitReport:
         with self.store.lock:
@@ -139,7 +141,20 @@ class ReportService:
                 generation_method=generation_method,
             )
             self.store.reports[case_id] = report
+            self.store.flush_case(case_id)
             return report
+
+
+def _empty_portrait_report(case_id: str, case_title: str) -> PortraitReport:
+    return PortraitReport(
+        report_id="rpt_pending",
+        case_id=case_id,
+        generated_at=now_utc(),
+        title=f"{case_title} 画像报告（待生成）",
+        sections=[],
+        suggestions=[],
+        generation_method="pending",
+    )
 
 
 def _build_clean_portrait_sections(case_title: str, evidence, raw_contents: dict[str, str], graph, clues, memories) -> list[PortraitSection]:
