@@ -1,13 +1,16 @@
 <template>
-  <div class="whiteboard-page">
+  <div class="case-page">
     <div class="shell">
-      <section class="board">
+      <header class="page-head">
         <div>
-          <h1>白板工作台</h1>
-          <p>先在这里建案、导入材料、运行分析，再进入图谱和画像页继续深挖。</p>
+          <h1>案件管理</h1>
+          <p>选择案件、导入材料、运行分析，然后进入对应案件工作区。</p>
         </div>
-        <button class="primary" :disabled="loading" @click="createCase">新建默认案件</button>
-      </section>
+        <div class="head-actions">
+          <button class="secondary head-action" @click="openLegalKnowledge">法律知识库</button>
+          <button class="primary head-action" :disabled="loading" @click="createCase">新建默认案件</button>
+        </div>
+      </header>
 
       <AsyncProgressBar
         v-if="progress.active.value"
@@ -16,94 +19,134 @@
         :detail="progress.detail.value"
       />
 
-      <section class="card custom-case">
-        <div class="custom-head">
-          <div>
-            <h2>自定义案件</h2>
-            <p class="hint">用于真实联调或新材料测试。创建后会自动切换为当前案件。</p>
-          </div>
-          <button class="secondary compact" :disabled="loading" @click="resetCustomCase">清空</button>
-        </div>
-        <div class="custom-grid">
-          <label>
-            案件名称
-            <input v-model="customCase.title" class="field" placeholder="例如：杨周武徇私枉法案" />
-          </label>
-          <label>
-            办案人/负责人
-            <input v-model="customCase.owner" class="field" placeholder="可选" />
-          </label>
-          <label class="wide">
-            法律依据/罪名方向
-            <input v-model="customCase.legalBasis" class="field" placeholder="例如：徇私枉法罪、玩忽职守罪" />
-          </label>
-          <label class="wide">
-            案件说明
-            <textarea
-              v-model="customCase.description"
-              class="field textarea"
-              placeholder="简要写明案由、对象、当前已有材料范围。"
-            />
-          </label>
-        </div>
-        <button class="primary create-custom" :disabled="!customCase.title.trim() || loading" @click="createCustomCase">
-          创建自定义案件并切换
-        </button>
-      </section>
-
-      <section class="grid">
-        <div class="card">
-          <h2>1. 案件</h2>
-          <select v-model="selectedCaseId" class="field" @change="persistCase">
-            <option value="">未选择</option>
-            <option v-for="item in cases" :key="item.case_id" :value="item.case_id">
-              {{ item.title }} ({{ item.evidence_count }})
-            </option>
-          </select>
-          <p class="hint">当前案件 ID：{{ selectedCaseId || '-' }}</p>
-        </div>
-
-        <div class="card">
-          <h2>2. 导入</h2>
-          <input ref="folderInput" class="hidden-input" type="file" multiple webkitdirectory @change="onFolderChange" />
-          <input ref="zipInput" class="hidden-input" type="file" accept=".zip" @change="onZipChange" />
-          <button class="secondary" :disabled="!selectedCaseId || loading" @click="folderInput?.click()">选择文件夹</button>
-          <button class="secondary" :disabled="!selectedCaseId || loading" @click="zipInput?.click()">选择压缩包</button>
-          <p class="hint">支持 txt / md / csv / xlsx / json / pdf / docx / zip；旧 xls 建议先转成 CSV 或 XLSX。</p>
-        </div>
-
-        <div class="card">
-          <h2>3. 分析</h2>
-          <button class="primary" :disabled="!selectedCaseId || loading" @click="runAnalysis">运行分析并进图谱</button>
-          <p class="hint">{{ analysisSummary || '导入后点击分析。' }}</p>
-        </div>
-      </section>
-
-      <section class="card">
-        <h2>导入状态</h2>
-        <AsyncProgressBar
-          v-if="loading || importInProgress"
-          compact
-          :value="progress.active.value ? progress.value.value : 16"
-          :label="progress.active.value ? progress.label.value : '正在处理导入任务'"
-          :detail="progress.active.value ? progress.detail.value : '请保持当前页面，等待后端完成解析'"
-        />
-        <div v-else-if="batchResult || currentEvidenceCount > 0">
-          <div class="stats">
-            <div><b>{{ currentImportedCount }}</b><span>已导入</span></div>
-            <div><b>{{ currentSkippedCount }}</b><span>已跳过</span></div>
-            <div><b>{{ currentTripleCount }}</b><span>三元组</span></div>
-          </div>
-          <p v-if="!batchResult" class="hint status-note">这是后端案件列表返回的已导入证据数量，不展示任何演示数据。</p>
-          <div v-if="batchResult?.skipped.length" class="skipped">
-            <div class="font-bold">跳过文件</div>
-            <div v-for="item in batchResult.skipped.slice(0, 8)" :key="item.filename">
-              {{ item.filename }}：{{ item.reason }}
+      <section class="case-layout">
+        <aside class="case-sidebar">
+          <div class="panel-head">
+            <div>
+              <h2>案件列表</h2>
+              <p>{{ cases.length }} 个案件</p>
             </div>
+            <button class="secondary small" :disabled="loading" @click="loadCases">刷新</button>
           </div>
-        </div>
-        <div v-else class="hint">还没有导入。本页不展示任何演示数据。</div>
-        <div v-if="error" class="error">{{ error }}</div>
+          <div class="case-list">
+            <button
+              v-for="item in cases"
+              :key="item.case_id"
+              class="case-row"
+              :class="{ active: item.case_id === selectedCaseId }"
+              @click="selectCase(item.case_id)"
+            >
+              <strong>{{ item.title }}</strong>
+              <span>{{ statusLabel(item.status) }} · {{ item.evidence_count }} 份证据</span>
+              <code>{{ item.case_id }}</code>
+            </button>
+          </div>
+
+          <div class="new-case">
+            <div class="panel-head compact-head">
+              <h2>新建案件</h2>
+              <button class="secondary small" :disabled="loading" @click="resetCustomCase">清空</button>
+            </div>
+            <label>
+              案件名称
+              <input v-model="customCase.title" class="field" placeholder="例如：杨周武徇私枉法案" />
+            </label>
+            <label>
+              办案人
+              <input v-model="customCase.owner" class="field" placeholder="可选" />
+            </label>
+            <label>
+              涉嫌罪名
+              <select v-model="customCase.offenseId" class="field">
+                <option value="">留空：先按事实分析</option>
+                <option v-for="item in offenseTemplates" :key="item.offense_id" :value="item.offense_id">
+                  {{ item.name }}
+                </option>
+              </select>
+            </label>
+            <label>
+              案件说明
+              <textarea v-model="customCase.description" class="field textarea" placeholder="简要写明案由、对象、材料范围。"></textarea>
+            </label>
+            <button class="primary" :disabled="!customCase.title.trim() || loading" @click="createCustomCase">创建并切换</button>
+          </div>
+        </aside>
+
+        <main class="case-main">
+          <section class="case-profile">
+            <div>
+              <p class="eyebrow">当前案件</p>
+              <h2>{{ selectedCase?.title || '未选择案件' }}</h2>
+              <p class="hint">案件 ID：{{ selectedCaseId || '-' }}</p>
+              <div v-if="selectedCase" class="offense-line">
+                <span>涉嫌罪名</span>
+                <select :value="selectedCase.offense_id || ''" class="field compact-select" :disabled="loading" @change="onOffenseChange">
+                  <option value="">留空：事实分析</option>
+                  <option v-for="item in offenseTemplates" :key="item.offense_id" :value="item.offense_id">
+                    {{ item.name }}
+                  </option>
+                </select>
+              </div>
+            </div>
+            <div class="quick-actions">
+              <button class="secondary" :disabled="!selectedCaseId" @click="openWorkspace('graph')">证据图谱</button>
+              <button class="secondary" :disabled="!selectedCaseId" @click="openWorkspace('portrait')">画像页</button>
+              <button class="secondary" :disabled="!selectedCaseId" @click="openWorkspace('intelligence')">智能分析</button>
+              <button class="danger" :disabled="!selectedCaseId || loading" @click="deleteSelectedCase">删除案件</button>
+            </div>
+          </section>
+
+          <section class="status-strip">
+            <div><b>{{ selectedCase ? statusLabel(selectedCase.status) : '-' }}</b><span>状态</span></div>
+            <div><b>{{ currentEvidenceCount }}</b><span>证据材料</span></div>
+            <div><b>{{ currentTripleCount }}</b><span>三元组</span></div>
+            <div><b>{{ currentSkippedCount }}</b><span>跳过文件</span></div>
+          </section>
+
+          <section class="work-grid">
+            <div class="card">
+              <h2>材料导入</h2>
+              <input ref="folderInput" class="hidden-input" type="file" multiple webkitdirectory @change="onFolderChange" />
+              <input ref="zipInput" class="hidden-input" type="file" accept=".zip" @change="onZipChange" />
+              <button class="secondary" :disabled="!selectedCaseId || loading" @click="folderInput?.click()">选择文件夹</button>
+              <button class="secondary" :disabled="!selectedCaseId || loading" @click="zipInput?.click()">选择压缩包</button>
+              <p class="hint">支持 txt / md / csv / xlsx / json / pdf / docx / zip。</p>
+            </div>
+
+            <div class="card">
+              <h2>分析入口</h2>
+              <button class="primary" :disabled="!selectedCaseId || loading" @click="runAnalysis">运行分析并进图谱</button>
+              <p class="hint">{{ analysisSummary || '导入后点击分析。' }}</p>
+            </div>
+          </section>
+
+          <section class="card">
+            <h2>导入状态</h2>
+            <AsyncProgressBar
+              v-if="loading || importInProgress"
+              compact
+              :value="progress.active.value ? progress.value.value : 16"
+              :label="progress.active.value ? progress.label.value : '正在处理导入任务'"
+              :detail="progress.active.value ? progress.detail.value : '请保持当前页面，等待后端完成解析'"
+            />
+            <div v-else-if="batchResult || currentEvidenceCount > 0">
+              <div class="stats">
+                <div><b>{{ currentImportedCount }}</b><span>已导入</span></div>
+                <div><b>{{ currentSkippedCount }}</b><span>已跳过</span></div>
+                <div><b>{{ currentTripleCount }}</b><span>三元组</span></div>
+              </div>
+              <p v-if="!batchResult" class="hint status-note">这是后端案件列表返回的已导入证据数量，不展示任何演示数据。</p>
+              <div v-if="batchResult?.skipped.length" class="skipped">
+                <div class="font-bold">跳过文件</div>
+                <div v-for="item in batchResult.skipped.slice(0, 8)" :key="item.filename">
+                  {{ item.filename }}：{{ item.reason }}
+                </div>
+              </div>
+            </div>
+            <div v-else class="hint">还没有导入。本页不展示任何演示数据。</div>
+            <div v-if="error" class="error">{{ error }}</div>
+          </section>
+        </main>
       </section>
     </div>
   </div>
@@ -112,12 +155,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { backendApi, type BatchIngestionResult, type CaseSummary } from '../api/backend';
+import { backendApi, type BatchIngestionResult, type CaseSummary, type OffenseTemplateSummary } from '../api/backend';
 import AsyncProgressBar from '../components/AsyncProgressBar.vue';
 import { useSimulatedProgress } from '../composables/useSimulatedProgress';
 
 const router = useRouter();
 const cases = ref<CaseSummary[]>([]);
+const offenseTemplates = ref<OffenseTemplateSummary[]>([]);
 const selectedCaseId = ref(localStorage.getItem('active_case_id') || '');
 const batchResult = ref<BatchIngestionResult | null>(null);
 const analysisSummary = ref('');
@@ -131,6 +175,7 @@ const customCase = ref({
   title: '',
   description: '',
   legalBasis: '',
+  offenseId: '',
   owner: '',
 });
 
@@ -143,6 +188,7 @@ const currentTripleCount = computed(() => (batchResult.value ? totalTriples.valu
 
 onMounted(async () => {
   restoreDashboardState();
+  await loadOffenseTemplates();
   await loadCases();
 });
 
@@ -193,6 +239,14 @@ async function loadCases() {
   }
 }
 
+async function loadOffenseTemplates() {
+  try {
+    offenseTemplates.value = await backendApi.listOffenseTemplates();
+  } catch {
+    offenseTemplates.value = [];
+  }
+}
+
 async function createCase() {
   await withLoading(
     async () => {
@@ -217,7 +271,8 @@ async function createCustomCase() {
       const item = await backendApi.createCustomCase({
         title,
         description: customCase.value.description.trim() || null,
-        legal_basis: customCase.value.legalBasis.trim() || null,
+        legal_basis: selectedOffenseName(customCase.value.offenseId),
+        offense_id: customCase.value.offenseId || null,
         owner: customCase.value.owner.trim() || null,
       });
       await loadCases();
@@ -233,18 +288,98 @@ async function createCustomCase() {
   );
 }
 
+async function deleteSelectedCase() {
+  if (!selectedCaseId.value || !selectedCase.value) return;
+  const ok = window.confirm(`确定删除案件「${selectedCase.value.title}」吗？该操作会删除证据、图谱、报告和记忆。`);
+  if (!ok) return;
+  await withLoading(
+    async () => {
+      const deletedId = selectedCaseId.value;
+      await backendApi.deleteCase(deletedId);
+      sessionStorage.removeItem(dashboardCacheKey(deletedId));
+      if (localStorage.getItem('active_case_id') === deletedId) {
+        localStorage.removeItem('active_case_id');
+      }
+      if (localStorage.getItem('active_workspace_id') === deletedId) {
+        localStorage.removeItem('active_workspace_id');
+      }
+      selectedCaseId.value = '';
+      batchResult.value = null;
+      analysisSummary.value = '';
+      await loadCases();
+      if (cases.value[0]) {
+        selectedCaseId.value = cases.value[0].case_id;
+        persistCase();
+      }
+    },
+    {
+      label: '正在删除案件',
+      detail: '清理案件、证据、图谱、报告和记忆',
+      successLabel: '案件已删除',
+    },
+  );
+}
+
 function resetCustomCase() {
   customCase.value = {
     title: '',
     description: '',
     legalBasis: '',
+    offenseId: '',
     owner: '',
   };
 }
 
+async function onOffenseChange(event: Event) {
+  if (!selectedCaseId.value) return;
+  const offenseId = (event.target as HTMLSelectElement).value;
+  await withLoading(
+    async () => {
+      await backendApi.updateCase(selectedCaseId.value, {
+        offense_id: offenseId || null,
+        legal_basis: selectedOffenseName(offenseId),
+      });
+      await loadCases();
+    },
+    {
+      label: '正在保存罪名选择',
+      detail: offenseId ? '后续分析会参考对应法律知识库' : '后续分析将按证据事实进行',
+      successLabel: '罪名选择已保存',
+    },
+  );
+}
+
+function selectedOffenseName(offenseId: string) {
+  if (!offenseId) return null;
+  return offenseTemplates.value.find((item) => item.offense_id === offenseId)?.name || offenseId;
+}
+
 function persistCase() {
   localStorage.setItem('active_case_id', selectedCaseId.value);
+  localStorage.setItem('active_workspace_id', selectedCaseId.value);
   restoreDashboardState();
+}
+
+function selectCase(caseId: string) {
+  selectedCaseId.value = caseId;
+  persistCase();
+}
+
+function statusLabel(status: string) {
+  return {
+    created: '已建案',
+    data_ingested: '已导入',
+    analyzed: '已分析',
+  }[status] || status || '未知';
+}
+
+function openWorkspace(page: string) {
+  if (!selectedCaseId.value) return;
+  router.push(`/${selectedCaseId.value}/${page}`);
+}
+
+function openLegalKnowledge() {
+  router.push('/legal-knowledge');
 }
 
 async function onFolderChange(event: Event) {
@@ -298,7 +433,7 @@ async function runAnalysis() {
       const result = await backendApi.runAnalysis(selectedCaseId.value);
       analysisSummary.value = result.summary;
       persistDashboardState();
-      await router.push('/graph');
+      await router.push(`/${selectedCaseId.value}/graph`);
     },
     {
       label: '正在运行分析',
@@ -344,7 +479,7 @@ async function withLoading(
 </script>
 
 <style scoped>
-.whiteboard-page {
+.case-page {
   height: 100%;
   overflow: auto;
   background: #f1f5f9;
@@ -353,13 +488,13 @@ async function withLoading(
 }
 
 .shell {
-  max-width: 1024px;
+  max-width: 1280px;
   margin: 0 auto;
   display: grid;
   gap: 16px;
 }
 
-.board,
+.page-head,
 .card {
   border: 1px solid #cbd5e1;
   background: #ffffff;
@@ -367,39 +502,128 @@ async function withLoading(
   padding: 18px;
 }
 
-.board {
+.page-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
 }
 
-.custom-head {
+.head-action {
+  width: auto;
+  min-width: 140px;
+}
+
+.head-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.case-layout {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.case-sidebar,
+.case-main,
+.case-profile,
+.status-strip {
+  min-width: 0;
+}
+
+.case-sidebar {
+  display: grid;
+  gap: 12px;
+}
+
+.panel-head,
+.case-profile {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.custom-case {
-  display: grid;
-  gap: 14px;
+.panel-head h2,
+.compact-head h2 {
+  margin-bottom: 0;
 }
 
-.custom-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+.panel-head p {
+  margin-top: 3px;
 }
 
-.custom-grid label {
+.case-list,
+.new-case,
+.case-profile,
+.status-strip {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.case-list {
+  display: grid;
+  gap: 8px;
+  max-height: 420px;
+  overflow: auto;
+}
+
+.case-row {
+  width: 100%;
+  text-align: left;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 10px;
+}
+
+.case-row.active {
+  border-color: #0f766e;
+  background: #ecfdf5;
+}
+
+.case-row strong,
+.case-row span,
+.case-row code {
+  display: block;
+}
+
+.offense-line {
+  display: grid;
+  grid-template-columns: 72px minmax(180px, 260px);
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
   color: #334155;
   font-size: 13px;
   font-weight: 800;
 }
 
-.custom-grid .wide {
-  grid-column: 1 / -1;
+.compact-select {
+  min-height: 36px;
+}
+
+.case-row span,
+.case-row code {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.new-case {
+  display: grid;
+  gap: 10px;
+}
+
+.new-case label {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .textarea {
@@ -407,15 +631,37 @@ async function withLoading(
   resize: vertical;
 }
 
-.create-custom {
-  max-width: 280px;
-  justify-self: end;
+.case-main {
+  display: grid;
+  gap: 16px;
 }
 
-.grid {
+.quick-actions,
+.work-grid,
+.status-strip {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: 10px;
+}
+
+.quick-actions {
+  grid-template-columns: repeat(4, auto);
+}
+
+.work-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.status-strip {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.status-strip div {
+  border-right: 1px solid #e2e8f0;
+  padding: 4px 12px;
+}
+
+.status-strip div:last-child {
+  border-right: 0;
 }
 
 h1 {
@@ -430,9 +676,15 @@ h2 {
 }
 
 p,
-.hint {
+.hint,
+.eyebrow {
   color: #64748b;
   font-size: 13px;
+}
+
+.eyebrow {
+  color: #0f766e;
+  font-weight: 900;
 }
 
 .field {
@@ -463,6 +715,11 @@ p,
   min-width: 120px;
 }
 
+.small {
+  width: auto;
+  padding: 7px 10px;
+}
+
 .primary {
   background: #0f766e;
   color: #ffffff;
@@ -472,6 +729,17 @@ p,
   border: 1px solid #94a3b8;
   background: #ffffff;
   color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.danger {
+  border: 1px solid #fecdd3;
+  border-radius: 6px;
+  background: #fff1f2;
+  color: #be123c;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 900;
   margin-bottom: 8px;
 }
 
@@ -527,9 +795,15 @@ button:disabled {
 }
 
 @media (max-width: 900px) {
-  .board,
-  .grid {
+  .page-head,
+  .case-layout,
+  .work-grid,
+  .status-strip {
     display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .quick-actions {
     grid-template-columns: 1fr;
   }
 }

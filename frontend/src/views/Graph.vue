@@ -47,7 +47,7 @@
         <div v-if="!loading && graph.nodes.length > 0" class="control-card">
           <div class="control-head">
             <span>时间轴添加证据</span>
-            <strong>{{ currentTimelineLabel }}</strong>
+            <strong>{{ timelineEnabled ? currentTimelineLabel : '未启用' }}</strong>
           </div>
 
           <div class="segmented">
@@ -72,6 +72,11 @@
             </button>
           </div>
 
+          <label class="timeline-toggle">
+            <input v-model="timelineEnabled" type="checkbox" @change="renderTimelineGraph" />
+            <span>按时间轴生长</span>
+          </label>
+
           <input
             v-model.number="timelineIndex"
             class="timeline"
@@ -79,14 +84,29 @@
             min="0"
             :max="Math.max(timelinePoints.length - 1, 0)"
             step="1"
+            :disabled="!timelineEnabled"
             @input="renderTimelineGraph"
           />
 
           <div class="tag-list">
+            <label class="tag-pill select-all">
+              <input type="checkbox" :checked="allCategoriesSelected" @change="toggleAllCategories" />
+              <span>全选</span>
+            </label>
             <label v-for="item in availableCategories" :key="item.key" class="tag-pill">
               <input v-model="selectedCategories" type="checkbox" :value="item.key" @change="renderGraph" />
               <span>{{ item.label }} {{ item.count }}</span>
             </label>
+          </div>
+
+          <div class="graph-index">
+            <label for="graph-index-select">本轮节点/关系</label>
+            <select id="graph-index-select" v-model="selectedIndexValue" @change="focusGraphIndexItem">
+              <option value="">选择后在图中高亮</option>
+              <option v-for="item in renderedIndexItems" :key="item.value" :value="item.value">
+                {{ item.label }}
+              </option>
+            </select>
           </div>
         </div>
 
@@ -192,11 +212,13 @@ import { Network } from 'lucide-vue-next';
 import { backendApi, type GraphEdge, type GraphNode, type InvestigationGraph } from '../api/backend';
 import AsyncProgressBar from '../components/AsyncProgressBar.vue';
 import { useSimulatedProgress } from '../composables/useSimulatedProgress';
+import { currentWorkspaceFromPath } from '../workspace';
 
 type LayoutMode = 'tree' | 'center' | 'circle' | 'force';
 type ViewMode = 'core' | 'evidence' | 'all';
 
 const activeCaseId = ref(localStorage.getItem('active_case_id') || '');
+const workspace = computed(() => currentWorkspaceFromPath());
 const loading = ref(false);
 const error = ref('');
 const progress = useSimulatedProgress();
@@ -208,6 +230,10 @@ const selectedNode = ref<GraphNode | null>(null);
 const selectedEdge = ref<GraphEdge | null>(null);
 const renderedNodeCount = ref(0);
 const renderedEdgeCount = ref(0);
+const renderedNodes = ref<GraphNode[]>([]);
+const renderedEdges = ref<GraphEdge[]>([]);
+const selectedIndexValue = ref('');
+const timelineEnabled = ref(false);
 const timelineIndex = ref(0);
 const timelinePoints = ref<string[]>(['全部时间']);
 const selectedCategories = ref<string[]>([]);
@@ -331,6 +357,29 @@ const availableCategories = computed(() => {
   return FILTER_TAGS.filter((item) => counts.has(item.key)).map((item) => ({ ...item, count: counts.get(item.key) || 0 }));
 });
 
+const allCategoriesSelected = computed(() => {
+  const available = availableCategories.value.map((item) => item.key);
+  return available.length > 0 && available.every((key) => selectedCategories.value.includes(key));
+});
+
+const renderedIndexItems = computed(() => {
+  const nodeItems = renderedNodes.value
+    .slice()
+    .sort((a, b) => a.type.localeCompare(b.type, 'zh-Hans-CN') || a.label.localeCompare(b.label, 'zh-Hans-CN'))
+    .map((node) => ({
+      value: `node:${node.node_id}`,
+      label: `节点｜${trim(node.label, 24)}｜${node.type}`,
+    }));
+  const edgeItems = renderedEdges.value
+    .slice()
+    .sort((a, b) => a.relation.localeCompare(b.relation, 'zh-Hans-CN') || relationText(a).localeCompare(relationText(b), 'zh-Hans-CN'))
+    .map((edge) => ({
+      value: `edge:${edge.edge_id}`,
+      label: `关系｜${trim(relationText(edge), 36)}`,
+    }));
+  return [...nodeItems, ...edgeItems];
+});
+
 const elementChecks = computed(() => {
   const nodes = graph.value.nodes;
   const edges = graph.value.edges;
@@ -382,7 +431,9 @@ async function loadGraph() {
   if (!activeCaseId.value) return;
   await withGraphLoading(
     async () => {
-      graph.value = await backendApi.getGraph(activeCaseId.value);
+      graph.value = workspace.value?.temporary
+        ? await backendApi.getMergedGraph(workspace.value.baseCaseId, workspace.value.selectedCaseIds)
+        : await backendApi.getGraph(activeCaseId.value);
       syncTimelineAndTags(true);
     },
     {
@@ -397,6 +448,10 @@ async function loadGraph() {
 
 async function runAnalysis() {
   if (!activeCaseId.value) return;
+  if (workspace.value?.temporary) {
+    await loadGraph();
+    return;
+  }
   await withGraphLoading(
     async () => {
       await backendApi.runAnalysis(activeCaseId.value);
@@ -447,6 +502,11 @@ function renderGraph() {
   const visible = buildRenderableGraph();
   renderedNodeCount.value = visible.nodes.length;
   renderedEdgeCount.value = visible.edges.length;
+  renderedNodes.value = visible.nodes;
+  renderedEdges.value = visible.edges;
+  if (selectedIndexValue.value && !renderedIndexItems.value.some((item) => item.value === selectedIndexValue.value)) {
+    selectedIndexValue.value = '';
+  }
   const positioned = layoutMode.value === 'tree' ? visible.nodes : applySpreadPositions(visible.nodes, visible.edges, layoutMode.value);
   const jsonData = {
     rootId: pickRootId(positioned, visible.edges),
@@ -458,6 +518,9 @@ function renderGraph() {
     if (layoutMode.value === 'tree') instance.doLayout();
     instance.moveToCenter();
     instance.zoomToFit();
+    if (selectedIndexValue.value) {
+      window.setTimeout(() => focusGraphIndexItem(false), 80);
+    }
   });
 }
 
@@ -470,7 +533,7 @@ async function renderTimelineGraph() {
 function buildRenderableGraph() {
   const categorySet = new Set(selectedCategories.value);
   const cutoff = timelinePoints.value[timelineIndex.value] || '';
-  const hasCutoff = Boolean(cutoff && cutoff !== '全部时间');
+  const hasCutoff = timelineEnabled.value && Boolean(cutoff && cutoff !== '全部时间');
   const allowedByTime = (value: string | null) => !hasCutoff || Boolean(value && value <= cutoff);
   const datedNodeIds = new Set(graph.value.nodes.filter((node) => allowedByTime(itemDate(node))).map((node) => node.node_id));
   const timeEdges = graph.value.edges.filter((edge) => {
@@ -483,18 +546,17 @@ function buildRenderableGraph() {
   const timeNodes = graph.value.nodes.filter((node) => datedNodeIds.has(node.node_id));
   const directNodeIds = new Set(timeNodes.filter((node) => selectedByTags(node, categorySet)).map((node) => node.node_id));
   const directEdgeIds = new Set(timeEdges.filter((edge) => selectedByTags(edge, categorySet)).map((edge) => edge.edge_id));
-  const includedNodeIds = new Set(directNodeIds);
+  const visibleNodeIds = new Set(directNodeIds);
   timeEdges.forEach((edge) => {
-    if (directEdgeIds.has(edge.edge_id)) {
-      includedNodeIds.add(edge.source_id);
-      includedNodeIds.add(edge.target_id);
-    }
+    if (!directEdgeIds.has(edge.edge_id)) return;
+    visibleNodeIds.add(edge.source_id);
+    visibleNodeIds.add(edge.target_id);
   });
-  const filteredNodes = timeNodes.filter((node) => includedNodeIds.has(node.node_id));
+  const filteredNodes = timeNodes.filter((node) => visibleNodeIds.has(node.node_id));
   let filteredEdges = timeEdges.filter(
     (edge) =>
       directEdgeIds.has(edge.edge_id) ||
-      (includedNodeIds.has(edge.source_id) && includedNodeIds.has(edge.target_id) && (directNodeIds.has(edge.source_id) || directNodeIds.has(edge.target_id))),
+      (directNodeIds.has(edge.source_id) && directNodeIds.has(edge.target_id)),
   );
 
   const modeIds = modeNodeIds(filteredNodes, filteredEdges);
@@ -519,13 +581,29 @@ function buildRenderableGraph() {
       .slice(0, MAX_RENDER_NODES)
       .map((item) => item.node.node_id),
   );
+  forceSelectedIndexIds(selectedIds);
+  const selectedEdgeId = selectedIndexValue.value.startsWith('edge:') ? selectedIndexValue.value.slice(5) : '';
   return {
     nodes: modeNodes.filter((node) => selectedIds.has(node.node_id)),
     edges: filteredEdges
       .filter((edge) => selectedIds.has(edge.source_id) && selectedIds.has(edge.target_id))
-      .sort((a, b) => Number(b.properties?.count || 1) - Number(a.properties?.count || 1))
+      .sort((a, b) => Number(b.edge_id === selectedEdgeId) - Number(a.edge_id === selectedEdgeId) || Number(b.properties?.count || 1) - Number(a.properties?.count || 1))
       .slice(0, MAX_RENDER_EDGES),
   };
+}
+
+function forceSelectedIndexIds(selectedIds: Set<string>) {
+  if (!selectedIndexValue.value) return;
+  const [kind, ...rest] = selectedIndexValue.value.split(':');
+  const id = rest.join(':');
+  if (kind === 'node') {
+    selectedIds.add(id);
+    return;
+  }
+  const edge = graph.value.edges.find((item) => item.edge_id === id);
+  if (!edge) return;
+  selectedIds.add(edge.source_id);
+  selectedIds.add(edge.target_id);
 }
 
 function modeNodeIds(nodes: GraphNode[], edges: GraphEdge[]) {
@@ -583,6 +661,43 @@ function syncTimelineAndTags(resetControls = true) {
 function setViewMode(mode: ViewMode) {
   viewMode.value = mode;
   renderGraph();
+}
+
+function toggleAllCategories(event: Event) {
+  const checked = Boolean((event.target as HTMLInputElement).checked);
+  selectedCategories.value = checked ? availableCategories.value.map((item) => item.key) : [];
+  renderGraph();
+}
+
+function focusGraphIndexItem(updateSelection: boolean | Event = true) {
+  if (!selectedIndexValue.value) return;
+  const shouldUpdateSelection = updateSelection !== false;
+  const [kind, ...rest] = selectedIndexValue.value.split(':');
+  const id = rest.join(':');
+  const instance = graphRef.value?.getInstance?.();
+  if (kind === 'node') {
+    const node = renderedNodes.value.find((item) => item.node_id === id);
+    if (!node) return;
+    if (shouldUpdateSelection) {
+      selectedKind.value = 'node';
+      selectedNode.value = node;
+      selectedEdge.value = null;
+    }
+    instance?.setCheckedNode?.(id);
+    instance?.focusNodeById?.(id);
+    return;
+  }
+  if (kind === 'edge') {
+    const edge = renderedEdges.value.find((item) => item.edge_id === id);
+    if (!edge) return;
+    if (shouldUpdateSelection) {
+      selectedKind.value = 'edge';
+      selectedEdge.value = edge;
+      selectedNode.value = null;
+    }
+    instance?.setCheckedLine?.(id);
+    instance?.focusNodeById?.(edge.source_id);
+  }
 }
 
 async function setLayoutMode(mode: LayoutMode) {
@@ -715,6 +830,7 @@ function itemTags(item: GraphNode | GraphEdge) {
 }
 
 function nodeTags(node: GraphNode) {
+  if (node.tags?.length) return [...new Set(node.tags)];
   const text = `${node.label} ${node.type} ${JSON.stringify(node.properties || {})}`;
   const tags: string[] = [];
   if (node.type === 'evidence') tags.push('evidence');
@@ -733,6 +849,7 @@ function nodeTags(node: GraphNode) {
 }
 
 function edgeTags(edge: GraphEdge) {
+  if (edge.tags?.length) return [...new Set(edge.tags)];
   const text = `${edge.relation} ${JSON.stringify(edge.properties || {})}`;
   const tags: string[] = [];
   if (isFundEdge(edge)) tags.push('bank_flow');
@@ -848,11 +965,19 @@ function toRelationLine(edge: GraphEdge) {
   };
 }
 
+function relationText(edge: GraphEdge) {
+  const source = nodeMap.value.get(edge.source_id)?.label || edge.source_id;
+  const target = nodeMap.value.get(edge.target_id)?.label || edge.target_id;
+  const count = edge.properties?.count ? ` x${edge.properties.count}` : '';
+  return `${source} --${edge.relation}${count}--> ${target}`;
+}
+
 function onNodeClick(node: { data?: GraphNode }) {
   if (!node.data) return;
   selectedKind.value = 'node';
   selectedNode.value = node.data;
   selectedEdge.value = null;
+  selectedIndexValue.value = `node:${node.data.node_id}`;
 }
 
 function evidenceNodeText(node: GraphNode) {
@@ -883,6 +1008,7 @@ function onLineClick(line: { data?: GraphEdge }) {
   selectedKind.value = 'edge';
   selectedEdge.value = line.data;
   selectedNode.value = null;
+  selectedIndexValue.value = `edge:${line.data.edge_id}`;
 }
 
 function nodeColor(node: GraphNode) {
@@ -1060,7 +1186,22 @@ function makeCheck(title: string, description: string, passed: boolean) {
 }
 .timeline {
   width: 100%;
-  margin: 12px 0;
+  margin: 8px 0 12px;
+  accent-color: #0f766e;
+}
+.timeline:disabled {
+  opacity: 0.45;
+}
+.timeline-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+}
+.timeline-toggle input {
   accent-color: #0f766e;
 }
 .tag-list {
@@ -1082,6 +1223,26 @@ function makeCheck(title: string, description: string, passed: boolean) {
 }
 .tag-pill input {
   accent-color: #0f766e;
+}
+.graph-index {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+.graph-index label {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 900;
+}
+.graph-index select {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 800;
 }
 .render-note {
   position: absolute;

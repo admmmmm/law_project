@@ -2,6 +2,7 @@ from fastapi import APIRouter, File, Form, UploadFile
 
 from app.core.dependencies import IngestionServiceDep
 from app.schemas.ingestion import BatchIngestionResult, EvidenceDetail, IngestionResult, TextIngestionRequest
+from app.schemas.ingestion import EvidenceRecord
 
 router = APIRouter()
 
@@ -14,6 +15,11 @@ def ingest_text(case_id: str, payload: TextIngestionRequest, service: IngestionS
 @router.get("/{case_id}/evidence/{evidence_id}", response_model=EvidenceDetail)
 def get_evidence_detail(case_id: str, evidence_id: str, service: IngestionServiceDep) -> EvidenceDetail:
     return service.get_evidence_detail(case_id, evidence_id)
+
+
+@router.get("/{case_id}/evidence", response_model=list[EvidenceRecord])
+def list_evidence(case_id: str, service: IngestionServiceDep) -> list[EvidenceRecord]:
+    return service.list_evidence(case_id)
 
 
 @router.post("/{case_id}/ingestions/files", response_model=IngestionResult)

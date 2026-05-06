@@ -1,356 +1,292 @@
 <template>
-  <div class="analysis-page" :class="{ 'with-trace': traceOpen }">
-    <section class="workspace">
-      <header class="hero">
-        <div>
-          <h1>智能分析</h1>
-          <p>三层画像白板：基础信息、行为事实、要件核查。字段可点击查看证据原文和溯源路径。</p>
-        </div>
-        <button class="primary-btn" :disabled="!activeCaseId || loading" @click="runAnalysis">
-          {{ loading ? '分析中...' : '运行分析' }}
-        </button>
-      </header>
-
-      <div class="case-line">
-        <span>当前案件：</span>
-        <code>{{ activeCaseId || '未选择案件' }}</code>
+  <div class="analysis-page">
+    <header class="hero">
+      <div>
+        <h1>智能分析</h1>
+        <p>假设验证和可疑资金流以会话保存。点击卡片查看，继续追问，或删除会话。</p>
       </div>
-      <p v-if="!activeCaseId" class="warn">请先到“案件导入”页新建或选择案件。</p>
-      <p v-if="error" class="error">{{ error }}</p>
-      <AsyncProgressBar
-        v-if="progress.active.value"
-        compact
-        :value="progress.value.value"
-        :label="progress.label.value"
-        :detail="progress.detail.value"
-      />
+    </header>
 
-      <section class="stats">
-        <div><span>节点</span><strong>{{ graph?.nodes.length ?? 0 }}</strong></div>
-        <div><span>关系</span><strong>{{ graph?.edges.length ?? 0 }}</strong></div>
-        <div><span>线索</span><strong>{{ graph?.clues.length ?? 0 }}</strong></div>
-        <div><span>状态</span><strong>{{ runStatus }}</strong></div>
-      </section>
+    <section class="case-line">
+      <span>当前案件：</span>
+      <code>{{ activeCaseId || '未选择案件' }}</code>
+    </section>
+    <p v-if="!activeCaseId" class="warn">请先到“案件管理”页新建或选择案件。</p>
+    <p v-if="error" class="error">{{ error }}</p>
+    <AsyncProgressBar v-if="progress.active.value" compact :value="progress.value.value" :label="progress.label.value" :detail="progress.detail.value" />
 
-      <section class="summary-card">
-        <h2>分析摘要</h2>
-        <div class="markdown" v-html="renderMarkdown(analysisSummary)" />
-      </section>
-
-      <section class="layer-card">
-        <div class="layer-head">
-          <span>第一层</span>
-          <h2>基础信息卡片</h2>
-          <p>身份、职务、权限、关系网络。每个字段都能回到证据原文和路径候选。</p>
-        </div>
-        <div class="field-grid">
-          <article v-for="field in basicFields" :key="field.key" class="field-card">
-            <span>{{ field.label }}</span>
-            <div class="sentence-stack">
-              <button
-                v-for="sentence in traceSentences(field)"
-                :key="sentenceKey(field, sentence)"
-                class="claim-chip"
-                :class="{ hover: hoveredSentenceKey === sentenceKey(field, sentence), active: traceKey === sentenceKey(field, sentence) }"
-                @mouseenter="hoveredSentenceKey = sentenceKey(field, sentence)"
-                @mouseleave="hoveredSentenceKey = ''"
-                @click="openTraceSentenceForField(field, sentence)"
-              >
-                <span v-html="renderMarkdown(sentence)" />
-              </button>
-            </div>
-            <small>{{ field.evidenceIds.length ? `${field.evidenceIds.length} 份证据` : '暂无直接证据' }}</small>
-          </article>
-        </div>
-      </section>
-
-      <section class="layer-card">
-        <div class="layer-head">
-          <span>第二层</span>
-          <h2>行为事实还原</h2>
-          <p>更细地还原资金、通话、文书处置和行为方式，特别关注隐瞒、规避留痕和反侦察动作。</p>
-        </div>
-        <div class="timeline-list">
-          <article v-for="field in behaviorFields" :key="field.key" class="fact-row">
-            <div>
-              <strong>{{ field.label }}</strong>
-              <div class="sentence-stack">
-                <button
-                  v-for="sentence in traceSentences(field)"
-                  :key="sentenceKey(field, sentence)"
-                  class="claim-chip"
-                  :class="{ hover: hoveredSentenceKey === sentenceKey(field, sentence), active: traceKey === sentenceKey(field, sentence) }"
-                  @mouseenter="hoveredSentenceKey = sentenceKey(field, sentence)"
-                  @mouseleave="hoveredSentenceKey = ''"
-                  @click="openTraceSentenceForField(field, sentence)"
-                >
-                  <span v-html="renderMarkdown(sentence)" />
-                </button>
-              </div>
-            </div>
-            <span>{{ field.evidenceIds.length }} 证据</span>
-          </article>
-        </div>
-      </section>
-
-      <section class="layer-card">
-        <div class="layer-head">
-          <span>第三层</span>
-          <h2>要件拆解、证据归类、缺口标红、抗辩预判</h2>
-          <p>这里不只列线索，而是看每个要件现在有没有证据支撑，缺什么，对方可能怎么辩。</p>
-        </div>
-        <div class="element-grid">
-          <article v-for="item in elementFields" :key="item.key" class="element-card" :class="{ gap: item.status === 'gap' }">
-            <div>
-              <strong>{{ item.label }}</strong>
-              <span>{{ item.status === 'ok' ? '已有支撑' : '缺口待补强' }}</span>
-            </div>
-            <div class="sentence-stack compact">
-              <button
-                v-for="sentence in traceSentences(item)"
-                :key="sentenceKey(item, sentence)"
-                class="claim-chip"
-                :class="{ hover: hoveredSentenceKey === sentenceKey(item, sentence), active: traceKey === sentenceKey(item, sentence) }"
-                @mouseenter="hoveredSentenceKey = sentenceKey(item, sentence)"
-                @mouseleave="hoveredSentenceKey = ''"
-                @click="openTraceSentenceForField(item, sentence)"
-              >
-                <span v-html="renderMarkdown(sentence)" />
-              </button>
-            </div>
-          </article>
-        </div>
-        <div class="defense-box">
-          <h3>抗辩预判</h3>
-          <article v-for="item in defenseFields" :key="item.key" class="defense-item">
-            <span>{{ item.label }}</span>
-            <div class="sentence-stack compact">
-              <button
-                v-for="sentence in traceSentences(item)"
-                :key="sentenceKey(item, sentence)"
-                class="claim-chip"
-                :class="{ hover: hoveredSentenceKey === sentenceKey(item, sentence), active: traceKey === sentenceKey(item, sentence) }"
-                @mouseenter="hoveredSentenceKey = sentenceKey(item, sentence)"
-                @mouseleave="hoveredSentenceKey = ''"
-                @click="openTraceSentenceForField(item, sentence)"
-              >
-                <span v-html="renderMarkdown(sentence)" />
-              </button>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <section class="layer-card">
-        <div class="layer-head inline">
-          <div>
-            <span>线索</span>
-            <h2>案件级线索</h2>
-          </div>
-          <router-link to="/graph">查看证据图谱</router-link>
-        </div>
-        <div v-if="!graph?.clues.length" class="empty">暂无线索。</div>
-        <article v-for="clue in graph?.clues || []" :key="clue.clue_id" class="clue" @click="openTrace(fieldFromClue(clue))">
-          <div>
-            <h3>{{ clue.title }}</h3>
-            <span>{{ clue.category }} / {{ clue.risk_level }}</span>
-          </div>
-          <div class="markdown" v-html="renderMarkdown(clue.description)" />
-        </article>
-      </section>
+    <section class="mode-tabs">
+      <button :class="{ active: activeMode === 'hypothesis' }" @click="switchMode('hypothesis')">假设验证</button>
+      <button :class="{ active: activeMode === 'financial_flow' }" @click="switchMode('financial_flow')">可疑资金流</button>
+      <button class="secondary" @click="showNewThread = !showNewThread">新建对话</button>
     </section>
 
-    <aside v-if="traceOpen" class="trace-panel">
-      <div class="trace-head">
-        <div>
-          <h2>{{ traceField?.label }}</h2>
-          <p>证据原文 + 溯源路径候选</p>
-        </div>
-        <button @click="traceOpen = false">关闭</button>
-      </div>
-      <div class="trace-section">
-        <h3>当前选中</h3>
-        <p class="trace-query">{{ traceQueryText || '尚未选择具体句子' }}</p>
-      </div>
-      <div class="trace-section">
-        <h3>证据原文</h3>
-        <div v-if="evidenceLoading" class="muted">正在读取证据和 HippoRAG PPR 排序...</div>
-        <div v-else-if="traceEvidence.length === 0" class="muted">暂无直接证据 ID。可以到图谱页按主体和路径继续追。</div>
-        <AsyncProgressBar
-          v-if="traceProgress.active.value"
-          compact
-          :value="traceProgress.value.value"
-          :label="traceProgress.label.value"
-          :detail="traceProgress.detail.value"
-        />
-        <details v-for="item in traceEvidence" :key="item.evidence_id" class="evidence-doc">
-          <summary>{{ item.title }}</summary>
-          <pre>{{ item.content }}</pre>
-        </details>
-      </div>
-      <div class="trace-section">
-        <h3>HippoRAG PPR 检索结果</h3>
-        <div v-if="traceResult?.error" class="trace-error">{{ traceResult.error }}</div>
-        <div v-if="!traceResult?.passages.length" class="muted">暂无 PPR passage 结果。</div>
-        <article v-for="item in traceResult?.passages || []" :key="`${item.rank}-${item.evidence_id}-${item.score}`" class="ppr-card">
+    <section v-if="showNewThread" class="new-thread">
+      <h2>{{ activeMode === 'hypothesis' ? '新建假设验证' : '新建可疑资金流分析' }}</h2>
+      <input v-model="newTitle" class="field" placeholder="可选：给这轮分析起个标题" />
+      <textarea
+        v-model="newQuestion"
+        rows="5"
+        :placeholder="activeMode === 'hypothesis' ? '输入检察官假设，例如：某些执法文书可能存在倒签或补录。' : '输入资金流问题，留空也可以让系统按默认方向分析。'"
+      />
+      <button class="primary-btn" :disabled="loading || !activeCaseId || !effectiveNewQuestion.trim()" @click="createThread">创建并分析</button>
+    </section>
+
+    <section class="conversation-layout">
+      <aside class="thread-panel">
+        <div class="panel-head">
           <div>
-            <strong>#{{ item.rank }} / score {{ item.score.toFixed(4) }}</strong>
-            <span>{{ item.evidence_title || item.evidence_id || '未映射证据' }}</span>
+            <h2>会话卡片</h2>
+            <p>{{ threads.length }} 个</p>
           </div>
-          <p>{{ displayPassage(item.passage) }}</p>
-        </article>
-      </div>
-      <div class="trace-section">
-        <h3>图谱溯源路径候选</h3>
-        <div v-if="tracePaths.length === 0" class="muted">暂无路径候选。</div>
-        <details v-else class="path-details">
-          <summary>{{ tracePaths.length }} 条候选路径</summary>
-          <div v-for="path in tracePaths" :key="path" class="path-line">{{ path }}</div>
-        </details>
-      </div>
-    </aside>
+          <button class="secondary small" :disabled="loading" @click="loadThreads">刷新</button>
+        </div>
+        <div v-if="threads.length === 0" class="empty">暂无会话。点击“新建对话”开始。</div>
+        <button v-for="thread in threads" :key="thread.thread_id" class="thread-card" :class="{ active: selectedThreadId === thread.thread_id }" @click="selectThread(thread.thread_id)">
+          <div>
+            <strong>{{ thread.title }}</strong>
+            <span>{{ labelForMode(thread.mode) }} · {{ thread.message_count }} 条消息</span>
+            <p>{{ thread.summary || '暂无摘要' }}</p>
+          </div>
+          <button class="delete-btn" @click.stop="deleteThread(thread)">删除</button>
+        </button>
+      </aside>
+
+      <main class="detail-panel">
+        <div v-if="!threadDetail" class="empty detail-empty">选择左侧会话，或新建一个分析对话。</div>
+        <template v-else>
+          <div class="detail-head">
+            <div>
+              <h2>{{ threadDetail.thread.title }}</h2>
+              <p>{{ labelForMode(threadDetail.thread.mode) }} / {{ threadDetail.thread.thread_id }}</p>
+            </div>
+          </div>
+
+          <article v-for="message in threadDetail.messages" :key="message.message_id" class="message" :class="message.role">
+            <div class="message-role">{{ message.role === 'user' ? '检察官' : 'DeepSeek + RAG' }}</div>
+            <div v-if="message.role === 'assistant'" class="answer-text">
+              <button
+                v-for="sentence in message.claims.length ? message.claims : fallbackSentences(message.content)"
+                :key="sentence.sentence_id"
+                class="sentence"
+                :class="sentence.status"
+                @click="selectedSentence = sentence"
+              >
+                <span v-html="renderInlineMarkdown(sentence.text)" />
+              </button>
+            </div>
+            <div v-else class="message-text">{{ message.content }}</div>
+            <p v-if="message.error" class="muted">提示：{{ message.error }}</p>
+          </article>
+
+          <section class="followup">
+            <h3>继续追问</h3>
+            <p class="hint">输入 <code>@</code> 后可选择证据。标准格式会插入为 <code>@[证据标题](证据ID)</code>。</p>
+            <textarea v-model="followup" rows="4" placeholder="例如：请查看 @ 后选择某份证据，再重新判断这个假设。" @input="updateMentionSuggestions" />
+            <div v-if="mentionSuggestions.length" class="mention-menu">
+              <button v-for="item in mentionSuggestions" :key="item.evidence_id" @click="insertMention(item)">
+                <strong>{{ item.title }}</strong>
+                <span>{{ item.evidence_id }}</span>
+              </button>
+            </div>
+            <button class="primary-btn" :disabled="loading || !followup.trim()" @click="sendFollowup">发送追问</button>
+          </section>
+        </template>
+      </main>
+
+      <aside class="source-drawer" :class="{ open: selectedSentence }">
+        <button class="close-btn" @click="selectedSentence = null">关闭</button>
+        <h2>句子溯源</h2>
+        <p v-if="!selectedSentence" class="empty">点击答案中的句子查看来源。</p>
+        <template v-else>
+          <div class="source-status" :class="selectedSentence.status">
+            {{ statusLabel(selectedSentence.status) }} / {{ Math.round(selectedSentence.confidence * 100) }}%
+          </div>
+          <p class="selected-text">{{ selectedSentence.text }}</p>
+          <h3>证据 passage</h3>
+          <article v-for="passage in selectedSentence.supporting_passages" :key="`${passage.rank}-${passage.passage}`" class="passage">
+            <strong>#{{ passage.rank }} / {{ passage.score.toFixed(3) }}</strong>
+            <span>{{ passage.evidence_title || passage.evidence_id || '未映射证据' }}</span>
+            <p>{{ passage.passage }}</p>
+          </article>
+          <p v-if="!selectedSentence.supporting_passages.length" class="empty">暂无可靠 passage 支撑。</p>
+        </template>
+      </aside>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { backendApi, type AnalysisRunResult, type EvidenceDetail, type InvestigationGraph, type SuspiciousClue, type TraceResult } from '../api/backend';
+import { backendApi, type AnalysisThread, type AnalysisThreadDetail, type EvidenceRecord, type GroundedSentence } from '../api/backend';
 import AsyncProgressBar from '../components/AsyncProgressBar.vue';
 import { useSimulatedProgress } from '../composables/useSimulatedProgress';
 
-interface TraceField {
-  key: string;
-  label: string;
-  value: string;
-  evidenceIds: string[];
-  status?: 'ok' | 'gap';
-  keywords?: string[];
-  sourcePassages?: NonNullable<SuspiciousClue['source_passages']>;
-}
+type ThreadMode = 'hypothesis' | 'financial_flow';
 
 const activeCaseId = ref(localStorage.getItem('active_case_id') || '');
+const activeMode = ref<ThreadMode>('hypothesis');
+const threads = ref<AnalysisThread[]>([]);
+const threadDetail = ref<AnalysisThreadDetail | null>(null);
+const selectedThreadId = ref(localStorage.getItem('active_analysis_thread_id') || '');
+const evidence = ref<EvidenceRecord[]>([]);
 const loading = ref(false);
 const error = ref('');
+const showNewThread = ref(false);
+const newTitle = ref('');
+const newQuestion = ref('');
+const followup = ref('');
+const mentionSuggestions = ref<EvidenceRecord[]>([]);
+const selectedSentence = ref<GroundedSentence | null>(null);
 const progress = useSimulatedProgress();
-const result = ref<AnalysisRunResult | null>(null);
-const graph = ref<InvestigationGraph | null>(null);
-const traceOpen = ref(false);
-const traceField = ref<TraceField | null>(null);
-const traceEvidence = ref<EvidenceDetail[]>([]);
-const traceResult = ref<TraceResult | null>(null);
-const evidenceLoading = ref(false);
-const traceProgress = useSimulatedProgress();
-const traceQueryText = ref('');
-const traceKey = ref('');
-const hoveredSentenceKey = ref('');
 
-const analysisSummary = computed(() => {
-  if (result.value?.summary) return `**${result.value.summary}**`;
-  if (graph.value?.nodes.length) {
-    return `已有图谱结果：**${graph.value.nodes.length}** 个节点，**${graph.value.edges.length}** 条关系，**${graph.value.clues.length}** 条案件级线索。点击“运行分析”可重新生成。`;
-  }
-  return '暂无分析结果。导入证据后点击 **运行分析**。';
+const effectiveNewQuestion = computed(() => {
+  if (newQuestion.value.trim()) return newQuestion.value.trim();
+  return activeMode.value === 'financial_flow'
+    ? '请分析本案是否存在可疑资金流动、现金化、过桥账户、资金与处置节点前后呼应的问题。'
+    : '';
 });
 
-const runStatus = computed(() => {
-  if (loading.value) return '分析中';
-  if (result.value?.status) return result.value.status;
-  if (graph.value?.nodes.length) return '已有图谱';
-  return '未运行';
+onMounted(async () => {
+  await loadEvidence();
+  await loadThreads();
+  if (selectedThreadId.value) await selectThread(selectedThreadId.value);
 });
 
-const basicFields = computed<TraceField[]>(() => {
-  const current = graph.value;
-  const top = topEntityLabels(current);
-  return [
-    makeField('basic.case', '案件对象', '杨周武徇私枉法案', ['案件', '杨周武']),
-    makeField('basic.identity', '身份/职务', findText('杨周武|派出所|所长|民警|司法工作人员') || '待从证据中确认司法工作人员身份、任职单位和职责权限。', ['杨周武', '派出所', '所长']),
-    makeField('basic.power', '职权范围', findText('立案|拘留|释放|调解|撤销|审批|处置') || '待确认其是否实际参与或控制立案、拘留、调解、撤案、释放等处置。', ['立案', '拘留', '释放', '调解']),
-    makeField('basic.relations', '关键关系人', top.length ? top.join('、') : '待识别关键人员关系。', top),
-  ];
-});
+async function switchMode(mode: ThreadMode) {
+  activeMode.value = mode;
+  selectedSentence.value = null;
+  threadDetail.value = null;
+  selectedThreadId.value = '';
+  await loadThreads();
+}
 
-const behaviorFields = computed<TraceField[]>(() => {
-  const clues = graph.value?.clues || [];
-  return [
-    makeField('behavior.qa', '模型行为链条还原', clueText('behavior_reconstruction') || '暂无模型生成的完整行为链条。', ['行为', '链条', '处置']),
-    makeField('behavior.fund', '资金往来', relationSummary(/资金|交易|转账|收款|付款|金额|现金|取现|存入/) || '暂无明确资金链条。', ['资金', '交易', '转账', '现金']),
-    makeField('behavior.duty', '职务处置', clueText('duty_behavior') || relationSummary(/立案|拘留|释放|调解|撤销|审批|执法|报告|决定/) || '暂无明确职务处置链条。', ['立案', '拘留', '释放', '调解', '撤销']),
-    makeField('behavior.method', '行为方式/反侦察', behaviorModeText() || '暂未发现足够明确的隐瞒、白手套过桥、现金化处理、文书倒签或规避留痕迹象。', ['隐瞒', '现金', '取现', '代持', '马甲', '倒签']),
-    ...clues.filter((clue) => !['behavior_reconstruction', 'fund_flow', 'duty_behavior'].includes(clue.category)).slice(0, 4).map(fieldFromClue),
-  ];
-});
+async function loadThreads() {
+  if (!activeCaseId.value) return;
+  threads.value = await backendApi.listAnalysisThreads(activeCaseId.value, activeMode.value);
+}
 
-const elementFields = computed<TraceField[]>(() => [
-  elementAnalysisField(
-    'element.subject',
-    '主体要件',
-    '法定要求：行为人须属于司法工作人员，且对相关案件处置具有职务权限、指派权限、审批权限或实际影响力。',
-    ['杨周武', '同乐派出所', '所长', '民警', '指派', '批准人', '责任区民警', '公安', '扫雷'],
-    '缺口：尚需明确任职文件、干部履历、岗位职责说明、案件审批权限或指派权限来源。',
-    '建议：调取杨周武任职文件、岗位职责、分工记录、同乐派出所层级关系及相关文书审批流。'
-  ),
-  elementAnalysisField(
-    'element.objective',
-    '客观行为',
-    '法定要求：存在应依法追究而不追究、违法调解、撤案、释放、降格处理、隐瞒事实或改变处置方向等枉法处置行为。',
-    ['立案', '拘留', '释放', '调解', '撤销', '结案', '伤情', '鉴定', '赔偿', '刘力飚', '罗贤涛', '易承桂'],
-    '缺口：尚需把案发事实、伤情结论、处置决定、调解结案、释放结果按时间线闭合。',
-    '建议：按时间轴核对接警、鉴定、拘留、调解、撤案或结案、释放、后续追责材料是否互相矛盾。'
-  ),
-  elementAnalysisField(
-    'element.subjective',
-    '主观方面',
-    '法定要求：需要证明明知案件事实或法律后果，仍因徇私动机故意作出枉法处置。',
-    ['明知', '徇私', '请托', '王静', '何晓初', '短信', '宴请', '送钱', '27万', '3万', '现金', '转账', '好处'],
-    '缺口：仍需区分普通业务判断、程序瑕疵与明知故意；资金或请托线索必须与具体处置节点建立时间和对象对应。',
-    '建议：将短信、通话、银行流水、现金取存、证人证言与拘留、调解、释放、结案节点放在同一时间轴交叉验证。'
-  ),
-  elementAnalysisField(
-    'element.result',
-    '结果与因果',
-    '法定要求：枉法处置造成有罪人员逃避追诉、案件被错误处理、被害人权益受损或其他严重后果，并能证明结果与职务行为存在因果关系。',
-    ['逃避', '未追究', '释放', '解除', '赔偿', '11万', '结案', '火灾', '死亡', '受伤', '后果'],
-    '缺口：仍需确认错误处置与未追究刑责之间的因果，而不是只证明后来发生了结果。',
-    '建议：补强原案应追责标准、实际处理结果、责任人员未被追究原因及后续检察机关立案材料。'
-  ),
-]);
-
-const defenseFields = computed<TraceField[]>(() => [
-  makeField('defense.mistake', '认识错误抗辩', '可能主张只是业务判断或事实认识偏差。需要补强其知悉伤情、案件事实、法律后果的证据。', ['明知', '伤情', '鉴定']),
-  makeField('defense.procedure', '程序瑕疵抗辩', '可能主张只是程序不规范而非徇私枉法。需要证明异常处置与请托、利益输送或特定关系存在关联。', ['程序', '调解', '撤销', '释放']),
-  makeField('defense.money', '资金无关抗辩', '可能主张资金是借款、还款、投资或正常往来。需要核查备注、资金来源、过桥账户、现金取存闭环与处置节点。', ['借款', '还款', '资金', '现金']),
-  makeField('defense.power', '职责边界抗辩', '可能主张没有决定权或只是执行上级意见。需要还原经办、审批、授意、协调、签批链条。', ['审批', '经办', '决定', '上级']),
-]);
-
-const tracePaths = computed(() => (traceResult.value?.paths || []).map((path) => `${path.source} --${path.relation}--> ${path.target}  score ${path.score.toFixed(2)}`));
-
-onMounted(loadGraph);
-
-async function loadGraph() {
+async function loadEvidence() {
   if (!activeCaseId.value) return;
   try {
-    graph.value = await backendApi.getGraph(activeCaseId.value);
+    evidence.value = await backendApi.listEvidence(activeCaseId.value);
   } catch {
-    graph.value = null;
+    evidence.value = [];
   }
 }
 
-async function runAnalysis() {
-  if (!activeCaseId.value) return;
+async function createThread() {
+  await runTask('正在创建分析会话', async () => {
+    const detail = await backendApi.createAnalysisThread(activeCaseId.value, {
+      mode: activeMode.value,
+      title: newTitle.value.trim() || null,
+      initial_question: effectiveNewQuestion.value,
+    });
+    threadDetail.value = detail;
+    selectedThreadId.value = detail.thread.thread_id;
+    localStorage.setItem('active_analysis_thread_id', selectedThreadId.value);
+    newTitle.value = '';
+    newQuestion.value = '';
+    showNewThread.value = false;
+    await loadThreads();
+  });
+}
+
+async function selectThread(threadId: string) {
+  if (!threadId || !activeCaseId.value) return;
+  selectedSentence.value = null;
+  threadDetail.value = await backendApi.getAnalysisThread(activeCaseId.value, threadId);
+  selectedThreadId.value = threadId;
+  localStorage.setItem('active_analysis_thread_id', threadId);
+}
+
+async function sendFollowup() {
+  if (!threadDetail.value || !followup.value.trim()) return;
+  await runTask('正在继续追问', async () => {
+    threadDetail.value = await backendApi.addAnalysisThreadMessage(activeCaseId.value, threadDetail.value!.thread.thread_id, followup.value.trim());
+    selectedThreadId.value = threadDetail.value.thread.thread_id;
+    followup.value = '';
+    mentionSuggestions.value = [];
+    selectedSentence.value = null;
+    await loadThreads();
+  });
+}
+
+async function deleteThread(thread: AnalysisThread) {
+  const ok = window.confirm(`确定删除会话「${thread.title}」吗？`);
+  if (!ok) return;
+  await runTask('正在删除会话', async () => {
+    await backendApi.deleteAnalysisThread(activeCaseId.value, thread.thread_id);
+    if (selectedThreadId.value === thread.thread_id) {
+      selectedThreadId.value = '';
+      threadDetail.value = null;
+      selectedSentence.value = null;
+      localStorage.removeItem('active_analysis_thread_id');
+    }
+    await loadThreads();
+  });
+}
+
+function updateMentionSuggestions() {
+  const match = followup.value.match(/@([^\s@，。；,;]*)$/);
+  if (!match) {
+    mentionSuggestions.value = [];
+    return;
+  }
+  const keyword = match[1] || '';
+  mentionSuggestions.value = evidence.value
+    .filter((item) => item.title.includes(keyword) || item.evidence_id.includes(keyword))
+    .slice(0, 8);
+}
+
+function insertMention(item: EvidenceRecord) {
+  followup.value = followup.value.replace(/@([^\s@，。；,;]*)$/, `@[${item.title}](${item.evidence_id}) `);
+  mentionSuggestions.value = [];
+}
+
+function fallbackSentences(content: string): GroundedSentence[] {
+  return content
+    .split(/(?<=[。！？\n])/)
+    .map((text, index) => text.trim())
+    .filter(Boolean)
+    .map((text, index) => ({
+      sentence_id: `fallback_${index}`,
+      text,
+      start: 0,
+      end: 0,
+      status: 'weak',
+      confidence: 0,
+      supporting_passages: [],
+      supporting_graph_paths: [],
+    }));
+}
+
+function labelForMode(mode: string) {
+  return mode === 'financial_flow' ? '可疑资金流' : '假设验证';
+}
+
+function statusLabel(status: string) {
+  return { supported: '证据支撑', weak: '支撑较弱', unsupported: '暂无支撑' }[status] || status;
+}
+
+function renderInlineMarkdown(value: string) {
+  const escaped = String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return escaped
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<span class="md-link">$1</span>');
+}
+
+async function runTask(label: string, task: () => Promise<void>) {
   loading.value = true;
   error.value = '';
-  progress.start({
-    label: '正在运行智能分析',
-    detail: '等待后端提取关系、生成线索并整理三层分析卡片',
-  });
+  progress.start({ label, detail: '后端正在检索证据、调用 DeepSeek 并保存会话' });
   try {
-    result.value = await backendApi.runAnalysis(activeCaseId.value);
-    graph.value = result.value.graph;
-    await progress.finish({
-      label: '智能分析已完成',
-      detail: '分析摘要和图谱数据已经更新',
-    });
+    await task();
+    await progress.finish({ label: `${label}完成`, detail: '结果已保存到后端' });
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
     progress.fail();
@@ -358,346 +294,50 @@ async function runAnalysis() {
     loading.value = false;
   }
 }
-
-function displayPassage(value: string) {
-  const text = cleanMarkdownText(value || '');
-  if (looksLikeRawStructuredText(text)) {
-    const parts = text.split(',').map((item) => item.trim()).filter(Boolean);
-    const readable = parts.filter((item) => /[\u4e00-\u9fa5]/.test(item)).slice(0, 8).join(' / ');
-    return readable ? `结构化记录：${readable}` : '结构化记录，点击证据原文查看完整流水。';
-  }
-  return text;
-}
-
-function looksLikeRawStructuredText(value: string) {
-  const text = String(value || '');
-  if (text.split(',').length >= 6) return true;
-  return ['structured/', 'synthetic/', '.csv', '.xlsx', 'CALL00', 'FLOW', 'cdr.csv'].filter((marker) => text.includes(marker)).length >= 2;
-}
-
-async function openTrace(field: TraceField) {
-  traceField.value = field;
-  traceOpen.value = true;
-  const firstSentence = traceSentences(field)[0] || field.value;
-  traceKey.value = sentenceKey(field, firstSentence);
-  await runTraceForText(field, firstSentence);
-}
-
-async function openTraceSentence(sentence: string) {
-  if (!traceField.value) return;
-  traceKey.value = sentenceKey(traceField.value, sentence);
-  await runTraceForText(traceField.value, sentence);
-}
-
-async function openTraceSentenceForField(field: TraceField, sentence: string) {
-  traceField.value = field;
-  traceOpen.value = true;
-  traceKey.value = sentenceKey(field, sentence);
-  await runTraceForText(field, sentence);
-}
-
-async function runTraceForText(field: TraceField, queryText: string) {
-  traceQueryText.value = queryText;
-  traceEvidence.value = [];
-  traceResult.value = null;
-  evidenceLoading.value = true;
-  traceProgress.start({
-    label: '正在回溯证据',
-    detail: '检索 passage、路径候选与原始证据正文',
-  });
-  try {
-    if (field.sourcePassages?.length) {
-      traceResult.value = {
-        case_id: activeCaseId.value,
-        query: `${field.label}\n${queryText}`,
-        provider: 'hipporag_qa_bound_sources',
-        passages: field.sourcePassages.map((item, index) => ({
-          rank: item.rank || index + 1,
-          score: item.score || 0,
-          passage: item.passage,
-          evidence_id: item.evidence_id || null,
-          evidence_title: item.evidence_title || null,
-        })),
-        paths: [],
-      };
-    } else {
-      traceResult.value = await backendApi.traceAnalysis(activeCaseId.value, `${field.label}\n${queryText}`, field.evidenceIds, 8);
-    }
-    const ids = new Set<string>(field.evidenceIds.slice(0, 5));
-    traceResult.value.passages.forEach((item) => {
-      if (item.evidence_id && ids.size < 5) ids.add(item.evidence_id);
-    });
-    traceEvidence.value = await Promise.all([...ids].map((id) => backendApi.getEvidenceDetail(activeCaseId.value, id)));
-    await traceProgress.finish({
-      label: '证据回溯已完成',
-      detail: '可以继续查看 passage、路径和原始材料',
-    });
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : String(err);
-    traceProgress.fail();
-  } finally {
-    evidenceLoading.value = false;
-  }
-}
-
-function traceSentences(field: TraceField) {
-  const chunks = (field.value || '')
-    .split(/\n+/)
-    .flatMap((line) => line.split(/(?<=[。！？；;])/))
-    .map(cleanSourceSentence)
-    .filter(isSourceableSentence);
-  return Array.from(new Set(chunks));
-}
-
-function cleanSourceSentence(value: string) {
-  return (value || '')
-    .replace(/^[-*•]\s*/, '')
-    .replace(/^\d+[.、]\s*/, '')
-    .replace(/\*\*/g, '')
-    .replace(/==/g, '')
-    .replace(/^["“”'‘’]+|["“”'‘’]+$/g, '')
-    .trim();
-}
-
-function isSourceableSentence(value: string) {
-  const text = cleanSourceSentence(value);
-  const withoutColon = text.replace(/[：:]\s*$/, '').trim();
-  if (withoutColon.length < 8) return false;
-  if (/^[\s*#\-•：:]+$/.test(withoutColon)) return false;
-  if (/^(结论|支持证据|仍需补强|证明力|身份|任职|职权|关键人员关系|案件对象|批准人|发信人|收信人|证明事项|来源文件)$/.test(withoutColon)) return false;
-  if (/^(证据|材料|相关证据)\s*\d*(?:-\d+)?$/.test(withoutColon)) return false;
-  if (/^(第一层|第二层|第三层|主体要件|客观行为|主观方面|结果与因果|抗辩预判)$/.test(withoutColon)) return false;
-  return true;
-}
-
-function sentenceKey(field: TraceField, sentence: string) {
-  return `${field.key}::${sentence}`;
-}
-
-function makeField(key: string, label: string, value: string, keywords: string[] = []): TraceField {
-  return { key, label, value, keywords, evidenceIds: evidenceIdsForKeywords(keywords.length ? keywords : [label, value]) };
-}
-
-function fieldFromClue(clue: SuspiciousClue): TraceField {
-  return {
-    key: clue.clue_id,
-    label: clue.title,
-    value: clue.description,
-    evidenceIds: clue.evidence_ids,
-    keywords: [clue.title, clue.category],
-    status: clue.risk_level === 'high' ? 'gap' : 'ok',
-    sourcePassages: clue.source_passages || [],
-  };
-}
-
-function elementField(key: string, label: string, pattern: RegExp, fallback: string): TraceField {
-  const matched = relationSummary(pattern) || findText(pattern.source) || fallback;
-  const evidenceIds = evidenceIdsForPattern(pattern);
-  return { key, label, value: matched, evidenceIds, keywords: [label, ...pattern.source.split('|')], status: evidenceIds.length ? 'ok' : 'gap' };
-}
-
-function elementAnalysisField(key: string, label: string, requirement: string, keywords: string[], gap: string, suggestion: string): TraceField {
-  const supportLines = supportLinesForKeywords(keywords, 4);
-  const evidenceIds = evidenceIdsForKeywords(keywords);
-  const currentEvidence = supportLines.length ? `当前证据：${supportLines.join('；')}` : '当前证据：尚未找到高匹配证据片段。';
-  const conclusion = supportLines.length
-    ? `初步结论：✅ 已有材料可以作为“${label}”分析入口，但仍需人工复核证据证明力。`
-    : `初步结论：⚠️ 现有材料不足以稳定支撑“${label}”。`;
-  return {
-    key,
-    label,
-    value: [requirement, currentEvidence, conclusion, gap, suggestion].join('\n'),
-    evidenceIds,
-    keywords,
-    status: supportLines.length ? 'ok' : 'gap',
-  };
-}
-
-function supportLinesForKeywords(keywords: string[], limit = 4) {
-  const rows: Array<{ score: number; text: string }> = [];
-  (graph.value?.clues || []).forEach((clue) => {
-    const text = `${clue.title}：${clue.description}`;
-    const score = keywords.filter((word) => text.includes(word)).length;
-    if (score) rows.push({ score, text });
-  });
-  (graph.value?.edges || []).forEach((edge) => {
-    const source = graph.value?.nodes.find((node) => node.node_id === edge.source_id)?.label || edge.source_id;
-    const target = graph.value?.nodes.find((node) => node.node_id === edge.target_id)?.label || edge.target_id;
-    const text = `${source} -> ${edge.relation} -> ${target}`;
-    const score = keywords.filter((word) => text.includes(word)).length;
-    if (score) rows.push({ score, text });
-  });
-  return rows
-    .sort((a, b) => b.score - a.score)
-    .map((row) => (row.text.length > 90 ? `${row.text.slice(0, 90)}...` : row.text))
-    .filter((text, index, arr) => arr.indexOf(text) === index)
-    .slice(0, limit);
-}
-
-function clueText(category: string) {
-  return (graph.value?.clues || []).filter((clue) => clue.category === category).map((clue) => clue.description).join('\n\n');
-}
-
-function relationSummary(pattern: RegExp) {
-  const edges = (graph.value?.edges || []).filter((edge) => pattern.test(`${edge.relation} ${JSON.stringify(edge.properties || {})}`)).slice(0, 6);
-  if (edges.length === 0) return '';
-  return edges
-    .map((edge) => {
-      const source = graph.value?.nodes.find((node) => node.node_id === edge.source_id)?.label || edge.source_id;
-      const target = graph.value?.nodes.find((node) => node.node_id === edge.target_id)?.label || edge.target_id;
-      return `- ${source} -> **${edge.relation}** -> ${target}`;
-    })
-    .join('\n');
-}
-
-function behaviorModeText() {
-  const parts: string[] = [];
-  const all = JSON.stringify(graph.value || {});
-  if (/现金|取现|存入|ATM/.test(all)) parts.push('**现金化处理**：出现取现、存入或现金相关表述，应核查是否用于切断资金流留痕。');
-  if (/过桥|代持|控制账户|马甲|假名|别名/.test(all)) parts.push('**白手套/马甲账户**：出现控制、代持、马甲或别名线索，应建立真人合并建议并人工确认。');
-  if (/删除|隐瞒|倒签|补录|撤销|释放/.test(all)) parts.push('**程序规避或留痕异常**：出现删除、隐瞒、倒签、补录、撤销、释放等词，需核查文书时间和审批链。');
-  return parts.join('\n\n');
-}
-
-function findText(patternSource: string) {
-  const pattern = new RegExp(patternSource);
-  const clue = (graph.value?.clues || []).find((item) => pattern.test(item.title + item.description));
-  if (clue) return clue.description;
-  const edge = (graph.value?.edges || []).find((item) => pattern.test(item.relation + JSON.stringify(item.properties || {})));
-  if (!edge) return '';
-  const source = graph.value?.nodes.find((node) => node.node_id === edge.source_id)?.label || edge.source_id;
-  const target = graph.value?.nodes.find((node) => node.node_id === edge.target_id)?.label || edge.target_id;
-  return `${source} -> ${edge.relation} -> ${target}`;
-}
-
-function evidenceIdsForKeywords(keywords: string[]) {
-  const ids = new Set<string>();
-  const words = keywords.filter(Boolean).slice(0, 8);
-  (graph.value?.nodes || []).forEach((node) => {
-    const text = `${node.label} ${JSON.stringify(node.properties || {})}`;
-    if (words.some((word) => text.includes(word))) node.evidence_ids.forEach((id) => ids.add(id));
-  });
-  (graph.value?.edges || []).forEach((edge) => {
-    const text = `${edge.relation} ${JSON.stringify(edge.properties || {})}`;
-    if (words.some((word) => text.includes(word))) edge.evidence_ids.forEach((id) => ids.add(id));
-  });
-  return [...ids];
-}
-
-function evidenceIdsForPattern(pattern: RegExp) {
-  const ids = new Set<string>();
-  (graph.value?.nodes || []).forEach((node) => {
-    if (pattern.test(`${node.label} ${JSON.stringify(node.properties || {})}`)) node.evidence_ids.forEach((id) => ids.add(id));
-  });
-  (graph.value?.edges || []).forEach((edge) => {
-    if (pattern.test(`${edge.relation} ${JSON.stringify(edge.properties || {})}`)) edge.evidence_ids.forEach((id) => ids.add(id));
-  });
-  return [...ids];
-}
-
-function topEntityLabels(currentGraph: InvestigationGraph | null) {
-  if (!currentGraph) return [];
-  const labels = new Map(currentGraph.nodes.filter((node) => node.type !== 'evidence' && node.type !== 'algorithm_provider').map((node) => [node.node_id, node.label]));
-  const degree = new Map<string, number>();
-  currentGraph.edges.forEach((edge) => {
-    if (labels.has(edge.source_id)) degree.set(edge.source_id, (degree.get(edge.source_id) || 0) + 1);
-    if (labels.has(edge.target_id)) degree.set(edge.target_id, (degree.get(edge.target_id) || 0) + 1);
-  });
-  return Array.from(degree.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
-    .map(([id]) => labels.get(id) || id);
-}
-
-function renderMarkdown(value: string) {
-  const escaped = escapeHtml(cleanMarkdownText(value || ''));
-  return escaped
-    .replace(/^### (.*)$/gm, '<h4>$1</h4>')
-    .replace(/^## (.*)$/gm, '<h3>$1</h3>')
-    .replace(/^# (.*)$/gm, '<h2>$1</h2>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/==(.+?)==/g, '<mark>$1</mark>')
-    .replace(/^- (.*)$/gm, '<div class="md-list">• $1</div>')
-    .replace(/\n/g, '<br />');
-}
-
-function cleanMarkdownText(value: string) {
-  return value
-    .replace(/^\s*[-*•]\s+/gm, '- ')
-    .replace(/\*{1,2}([^*\n：:]{1,24})\*{1,2}([：:])/g, '**$1**$2')
-    .trim();
-}
-
-function escapeHtml(value: string) {
-  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
 </script>
 
 <style scoped>
 .analysis-page {
-  height: 100%;
-  min-height: 0;
-  display: flex;
+  min-height: 100%;
   background: #eef3f7;
   color: #0f172a;
-}
-.analysis-page.with-trace {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 420px;
-  min-height: 0;
-}
-.workspace {
-  flex: 1;
-  height: 100%;
-  min-height: 0;
-  overflow: auto;
   padding: 24px;
-  min-width: 0;
 }
 .hero,
-.summary-card,
-.layer-card {
+.new-thread,
+.thread-panel,
+.detail-panel,
+.source-drawer {
   border: 1px solid #d8e1ea;
   border-radius: 10px;
   background: #ffffff;
   padding: 18px;
-  margin-bottom: 16px;
 }
-.hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+.hero,
+.case-line,
+.mode-tabs,
+.new-thread {
+  margin-bottom: 14px;
 }
 .hero h1 {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 900;
 }
 .hero p,
 .case-line,
-.layer-head p,
-.empty {
+.hint,
+.muted,
+.empty,
+.thread-card span,
+.thread-card p,
+.detail-head p {
   color: #64748b;
   font-size: 14px;
-}
-.primary-btn {
-  border-radius: 8px;
-  background: #0f766e;
-  color: #ffffff;
-  padding: 10px 16px;
-  font-weight: 900;
-}
-.primary-btn:disabled {
-  opacity: 0.5;
-}
-.case-line {
-  margin: 0 0 14px;
 }
 .warn,
 .error {
   border-radius: 8px;
   padding: 10px 12px;
-  font-size: 14px;
   margin-bottom: 14px;
 }
 .warn {
@@ -710,356 +350,228 @@ function escapeHtml(value: string) {
   background: #fff1f2;
   color: #be123c;
 }
-.stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.stats div {
-  border: 1px solid #d8e1ea;
-  border-radius: 10px;
-  background: #ffffff;
-  padding: 14px;
-}
-.stats span {
-  display: block;
-  color: #64748b;
-  font-size: 13px;
-}
-.stats strong {
-  display: block;
-  margin-top: 5px;
-  font-size: 26px;
-}
-.summary-card h2,
-.layer-head h2 {
-  font-size: 18px;
-  font-weight: 900;
-}
-.layer-head span {
-  color: #0f766e;
-  font-size: 12px;
-  font-weight: 900;
-}
-.layer-head.inline {
+.mode-tabs {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
 }
-.layer-head a {
-  color: #0f766e;
+.mode-tabs button,
+.primary-btn,
+.secondary,
+.delete-btn,
+.close-btn {
+  border-radius: 8px;
+  padding: 9px 13px;
   font-weight: 900;
 }
-.field-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-top: 14px;
+.mode-tabs button.active,
+.primary-btn {
+  background: #0f766e;
+  color: #fff;
 }
-.field-card,
-.fact-row,
-.element-card,
-.defense-item,
-.clue {
-  text-align: left;
-  border: 1px solid #e2e8f0;
-  border-radius: 9px;
-  background: #f8fafc;
-  padding: 13px;
+.secondary {
+  border: 1px solid #94a3b8;
+  background: #fff;
 }
-.clue:hover {
-  border-color: #0f766e;
-  background: #f0fdfa;
+.small {
+  padding: 7px 10px;
 }
-.field-card span,
-.field-card small {
-  display: block;
-  color: #64748b;
-  font-size: 12px;
-}
-.timeline-list {
+.new-thread {
   display: grid;
   gap: 10px;
-  margin-top: 14px;
 }
-.fact-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 12px;
+.field,
+textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #0f172a;
+  background: #fff;
 }
-.fact-row strong {
-  font-size: 15px;
-}
-.fact-row > span {
-  color: #0f766e;
-  font-size: 12px;
-  font-weight: 900;
-}
-.element-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
-  gap: 12px;
-  margin-top: 14px;
-}
-.element-card.gap {
-  border-color: #fdba74;
-  background: #fff7ed;
-}
-.element-card > div:first-child {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  align-items: flex-start;
-}
-.element-card strong {
-  font-weight: 900;
-}
-.element-card span {
-  color: #0f766e;
-  font-size: 12px;
-  font-weight: 900;
-}
-.element-card.gap span {
-  color: #c2410c;
-}
-.element-card p,
-.defense-item p {
-  margin-top: 8px;
-  color: #475569;
-  font-size: 13px;
+textarea {
+  resize: vertical;
   line-height: 1.6;
 }
-.sentence-stack {
+.conversation-layout {
   display: grid;
-  gap: 7px;
-  margin: 8px 0;
+  grid-template-columns: 340px minmax(0, 1fr) 360px;
+  gap: 14px;
+  align-items: start;
 }
-.sentence-stack.compact {
-  margin-bottom: 0;
-}
-.claim-chip {
-  width: 100%;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  color: #334155;
-  padding: 7px 8px;
-  text-align: left;
-  font-size: 14px;
-  line-height: 1.65;
-  white-space: normal;
-  overflow-wrap: break-word;
-}
-.claim-chip:hover,
-.claim-chip.hover {
-  border-color: #5eead4;
-  background: #ecfeff;
-}
-.claim-chip.active {
-  border-color: #0f766e;
-  background: #ccfbf1;
-  box-shadow: inset 3px 0 0 #0f766e;
-}
-.field-card:has(.claim-chip.hover),
-.fact-row:has(.claim-chip.hover),
-.element-card:has(.claim-chip.hover),
-.defense-item:has(.claim-chip.hover) {
-  border-color: #99f6e4;
-}
-.defense-box {
-  margin-top: 16px;
-}
-.defense-box h3 {
-  font-weight: 900;
-  margin-bottom: 10px;
-}
-.defense-item {
-  width: 100%;
-  margin-bottom: 8px;
-}
-.defense-item span {
-  font-weight: 900;
-}
-.clue {
-  width: 100%;
-  margin-top: 10px;
-}
-.clue div:first-child {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-.clue h3 {
-  font-weight: 900;
-}
-.clue span {
-  color: #64748b;
-  font-size: 12px;
-}
-.trace-panel {
-  min-height: 0;
-  overflow: auto;
-  border-left: 1px solid #23324b;
-  background: #0f172a;
-  color: #ffffff;
-  padding: 16px;
-}
-.trace-head {
+.panel-head,
+.detail-head {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 14px;
-}
-.trace-head h2 {
-  font-size: 18px;
-  font-weight: 900;
-}
-.trace-head p,
-.muted {
-  color: #94a3b8;
-  font-size: 13px;
-}
-.trace-head button {
-  align-self: start;
-  border: 1px solid #334155;
-  border-radius: 7px;
-  padding: 6px 10px;
-}
-.trace-section {
-  border: 1px solid #23324b;
-  border-radius: 9px;
-  background: #111c31;
-  padding: 13px;
+  gap: 12px;
   margin-bottom: 12px;
 }
-.trace-section h3 {
-  font-weight: 900;
-  margin-bottom: 8px;
-}
-.trace-query {
-  color: #bae6fd;
-  font-size: 12px;
-  line-height: 1.5;
-  margin-bottom: 8px;
-}
-.sentence-list {
-  display: grid;
-  gap: 7px;
-  margin-bottom: 10px;
-}
-.sentence-button {
+.thread-card {
   width: 100%;
-  border: 1px solid #334155;
-  border-radius: 7px;
-  background: #0f172a;
-  color: #cbd5e1;
-  padding: 8px 10px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
   text-align: left;
-  font-size: 12px;
-  line-height: 1.5;
-}
-.sentence-button:hover,
-.sentence-button.active {
-  border-color: #14b8a6;
-  background: #123b3c;
-  color: #ffffff;
-}
-.evidence-doc {
-  border-top: 1px solid #23324b;
-  padding-top: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 12px;
   margin-top: 10px;
 }
-.evidence-doc summary {
+.thread-card.active {
+  border-color: #0f766e;
+  background: #ecfdf5;
+}
+.thread-card strong,
+.thread-card span,
+.thread-card p {
   display: block;
-  margin-bottom: 8px;
-  cursor: pointer;
-  font-weight: 900;
 }
-.evidence-doc pre {
-  max-height: 360px;
-  overflow: auto;
-  white-space: pre-wrap;
-  color: #cbd5e1;
-  font-size: 12px;
-  line-height: 1.6;
-}
-.path-line {
-  border-top: 1px solid #23324b;
-  padding: 8px 0;
-  color: #bae6fd;
-  font-size: 13px;
-}
-.path-details summary {
-  cursor: pointer;
-  color: #bae6fd;
-  font-size: 13px;
-  font-weight: 900;
-}
-.trace-error {
-  border: 1px solid #7f1d1d;
-  border-radius: 7px;
-  background: #450a0a;
-  color: #fecaca;
-  padding: 8px;
-  font-size: 12px;
-  line-height: 1.5;
-  margin-bottom: 8px;
-}
-.ppr-card {
-  border-top: 1px solid #23324b;
-  padding: 10px 0;
-}
-.ppr-card div {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  color: #ffffff;
-  font-size: 13px;
-}
-.ppr-card span {
-  color: #7dd3fc;
-  font-size: 12px;
-  text-align: right;
-}
-.ppr-card p {
+.thread-card p {
   margin-top: 6px;
-  color: #cbd5e1;
+}
+.delete-btn {
+  align-self: start;
+  border: 1px solid #fecdd3;
+  background: #fff1f2;
+  color: #be123c;
+}
+.message {
+  border-top: 1px solid #e2e8f0;
+  padding: 16px 0;
+}
+.message:first-of-type {
+  border-top: 0;
+}
+.message-role {
+  color: #0f766e;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+.message-text,
+.answer-text {
+  white-space: pre-wrap;
+  line-height: 1.9;
+}
+.sentence {
+  display: inline;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #334155;
+  padding: 1px 2px;
+  text-align: left;
+  line-height: 1.9;
+}
+.sentence:hover {
+  background: #ccfbf1;
+}
+.sentence.supported {
+  text-decoration: underline;
+  text-decoration-color: #0f766e;
+}
+.sentence.weak {
+  text-decoration: underline;
+  text-decoration-color: #f59e0b;
+}
+.sentence.unsupported {
+  text-decoration: underline;
+  text-decoration-color: #ef4444;
+}
+.sentence :deep(strong) {
+  font-weight: 900;
+  color: #0f172a;
+}
+.sentence :deep(code) {
+  border-radius: 4px;
+  background: #e2e8f0;
+  padding: 1px 4px;
+}
+.sentence :deep(.md-link) {
+  color: #0f766e;
+  font-weight: 800;
+}
+.followup {
+  border-top: 1px solid #e2e8f0;
+  margin-top: 16px;
+  padding-top: 16px;
+}
+.mention-menu {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  margin: 8px 0;
+  max-height: 240px;
+  overflow: auto;
+}
+.mention-menu button {
+  width: 100%;
+  display: grid;
+  gap: 3px;
+  text-align: left;
+  border-top: 1px solid #e2e8f0;
+  padding: 8px 10px;
+}
+.mention-menu button:first-child {
+  border-top: 0;
+}
+.mention-menu span {
+  color: #64748b;
   font-size: 12px;
-  line-height: 1.6;
 }
-.markdown {
-  color: inherit;
-  font-size: 14px;
-  line-height: 1.7;
+.source-drawer {
+  position: sticky;
+  top: 14px;
+  display: none;
+  max-height: calc(100vh - 40px);
+  overflow: auto;
 }
-.markdown :deep(strong) {
+.source-drawer.open {
+  display: block;
+}
+.close-btn {
+  float: right;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+}
+.source-status {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 6px 10px;
+  margin: 12px 0;
   font-weight: 900;
 }
-.markdown :deep(mark) {
-  border-radius: 4px;
-  background: #fed7aa;
-  color: #9a3412;
-  padding: 0 3px;
+.source-status.supported {
+  background: #dcfce7;
+  color: #166534;
 }
-.markdown :deep(.md-list) {
-  margin: 2px 0;
+.source-status.weak {
+  background: #fef3c7;
+  color: #92400e;
+}
+.source-status.unsupported {
+  background: #fee2e2;
+  color: #991b1b;
+}
+.selected-text {
+  line-height: 1.8;
+}
+.passage {
+  border-top: 1px solid #e2e8f0;
+  padding: 10px 0;
+  line-height: 1.6;
+}
+.passage span {
+  display: block;
+  color: #0f766e;
+  font-size: 13px;
 }
 @media (max-width: 1200px) {
-  .analysis-page.with-trace {
+  .conversation-layout {
     grid-template-columns: 1fr;
   }
-  .trace-panel {
-    border-left: 0;
-    border-top: 1px solid #23324b;
-  }
-  .field-grid,
-  .stats {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .element-grid {
-    grid-template-columns: 1fr;
+  .source-drawer {
+    position: static;
   }
 }
 </style>

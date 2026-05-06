@@ -86,6 +86,12 @@ class IngestionService:
                     )
             raise not_found("evidence not found")
 
+    def list_evidence(self, case_id: str) -> list[EvidenceRecord]:
+        with self.store.lock:
+            if case_id not in self.store.cases:
+                raise not_found("case not found")
+            return list(self.store.evidence.get(case_id, []))
+
     def _should_skip(self, filename: str) -> bool:
         suffix = Path(filename).suffix.lower()
         name = Path(filename).name
@@ -127,6 +133,7 @@ class IngestionService:
             self.store.evidence.setdefault(case_id, []).append(evidence)
             self.store.raw_contents[evidence.evidence_id] = content
             self.store.extractions[evidence.evidence_id] = extraction
+            self.store.portrait_facts.pop(case_id, None)
             self.store.cases[case_id] = case.model_copy(update={"status": "data_ingested"})
             self.store.flush_case(case_id)
             return IngestionResult(case_id=case_id, accepted=True, evidence=evidence, extraction=extraction)

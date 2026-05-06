@@ -1,0 +1,569 @@
+{
+  "stats": {
+    "nodes": 233,
+    "edges": 253,
+    "clues": 7
+  },
+  "persons": [
+    "登记材料",
+    "安全要求",
+    "杨周武",
+    "超时经营",
+    "人员拥挤",
+    "酒后滋事",
+    "治安纠纷",
+    "责任区",
+    "所领导",
+    "依法取缔",
+    "跟踪整改",
+    "督促查处",
+    "跟踪检查",
+    "经营者",
+    "整改",
+    "所长",
+    "消防隐患",
+    "涉黄涉毒",
+    "打架斗殴",
+    "重点问题",
+    "责任",
+    "检查",
+    "报告",
+    "复查",
+    "报警人",
+    "持械斗殴",
+    "黄某",
+    "李某",
+    "送医",
+    "江军",
+    "头皮裂伤",
+    "颅骨",
+    "损伤程度",
+    "轻伤标准",
+    "法医",
+    "罗贤涛",
+    "易承桂",
+    "汪春蓉",
+    "赵志高",
+    "该案",
+    "中华人民共和国刑事诉讼法",
+    "第八十六条",
+    "立案侦查",
+    "文件",
+    "轻伤",
+    "轻微伤",
+    "刑事立案",
+    "拘留",
+    "枉法",
+    "员工",
+    "刑事拘留",
+    "罗永发",
+    "我局",
+    "何晓初",
+    "王静",
+    "枉法调解",
+    "贿赂",
+    "王静请托",
+    "安排案件",
+    "张某",
+    "王某",
+    "检察官",
+    "杨",
+    "刘力飚",
+    "舞王案子",
+    "杨所",
+    "立案",
+    "刑拘",
+    "调解",
+    "徇私",
+    "罗宇",
+    "陈三一",
+    "纸袋",
+    "承办人",
+    "调解处理",
+    "调解结案",
+    "放人",
+    "刑事追诉",
+    "审批",
+    "释放",
+    "张夏天",
+    "案件",
+    "舞台",
+    "冷烟花",
+    "汇报",
+    "违法经营",
+    "现场",
+    "事故调查",
+    "消防",
+    "张伟",
+    "警方",
+    "检察机关",
+    "侦查程序",
+    "通话记录",
+    "证人证言",
+    "履职材料",
+    "ATM",
+    "现金柜台"
+  ],
+  "organizations": [
+    "舞王俱乐部无证无照经营及治安隐患",
+    "同乐派出所",
+    "舞王俱乐部证照过期",
+    "舞王俱乐部消防许可缺失",
+    "舞王俱乐部娱乐经营许可缺失",
+    "舞王俱乐部超时超员",
+    "舞王俱乐部涉黄涉毒警情",
+    "舞王俱乐部保安配置不足",
+    "同乐派出所责任区",
+    "舞王俱乐部",
+    "舞王俱乐部治安和消防隐患",
+    "舞王俱乐部隐患整改",
+    "舞王俱乐部无证无照经营和重大隐患",
+    "基层派出所",
+    "广东省公安厅",
+    "公安机关",
+    "辖区派出所",
+    "舞王俱乐部隐患排查",
+    "舞王俱乐部报告",
+    "舞王俱乐部处置",
+    "舞王俱乐部内约十余人持械斗殴",
+    "龙岗区人民医院",
+    "深圳市公安局龙岗分局",
+    "龙岗区龙平路舞王俱乐部",
+    "龙岗区三和村舞王俱乐部",
+    "深圳市龙岗区看守所",
+    "深圳市人民检察院",
+    "舞王俱乐部的无证经营及消防、治安隐患",
+    "省委省政府",
+    "市委市政府",
+    "公安",
+    "银行流水",
+    "深圳市公安局龙岗分局同乐派出所"
+  ],
+  "person_edges": [
+    {
+      "source": "责任区",
+      "relation": "关联",
+      "target": "所领导"
+    },
+    {
+      "source": "杨周武",
+      "relation": "关联",
+      "target": "依法取缔"
+    },
+    {
+      "source": "杨周武",
+      "relation": "关联",
+      "target": "跟踪整改"
+    },
+    {
+      "source": "杨周武",
+      "relation": "关联",
+      "target": "督促查处"
+    },
+    {
+      "source": "经营者",
+      "relation": "关联",
+      "target": "整改"
+    },
+    {
+      "source": "杨周武",
+      "relation": "关联",
+      "target": "所长"
+    },
+    {
+      "source": "责任",
+      "relation": "关联",
+      "target": "检查"
+    },
+    {
+      "source": "责任",
+      "relation": "关联",
+      "target": "报告"
+    },
+    {
+      "source": "责任",
+      "relation": "关联",
+      "target": "整改"
+    },
+    {
+      "source": "责任",
+      "relation": "关联",
+      "target": "复查"
+    },
+    {
+      "source": "头皮裂伤",
+      "relation": "关联",
+      "target": "颅骨"
+    },
+    {
+      "source": "损伤程度",
+      "relation": "关联",
+      "target": "轻伤标准"
+    },
+    {
+      "source": "李某",
+      "relation": "关联",
+      "target": "法医"
+    },
+    {
+      "source": "江军",
+      "relation": "主观认知",
+      "target": "罗贤涛"
+    },
+    {
+      "source": "江军",
+      "relation": "主观认知",
+      "target": "易承桂"
+    },
+    {
+      "source": "汪春蓉",
+      "relation": "主观认知",
+      "target": "罗贤涛"
+    },
+    {
+      "source": "汪春蓉",
+      "relation": "主观认知",
+      "target": "易承桂"
+    },
+    {
+      "source": "赵志高",
+      "relation": "主观认知",
+      "target": "罗贤涛"
+    },
+    {
+      "source": "赵志高",
+      "relation": "主观认知",
+      "target": "易承桂"
+    },
+    {
+      "source": "中华人民共和国刑事诉讼法",
+      "relation": "关联",
+      "target": "第八十六条"
+    },
+    {
+      "source": "第八十六条",
+      "relation": "关联",
+      "target": "立案侦查"
+    },
+    {
+      "source": "杨周武",
+      "relation": "批准/决定",
+      "target": "文件"
+    },
+    {
+      "source": "江军",
+      "relation": "关联",
+      "target": "汪春蓉"
+    },
+    {
+      "source": "江军",
+      "relation": "关联",
+      "target": "赵志高"
+    },
+    {
+      "source": "易承桂",
+      "relation": "关联",
+      "target": "江军"
+    },
+    {
+      "source": "罗贤涛",
+      "relation": "关联",
+      "target": "江军"
+    },
+    {
+      "source": "江军",
+      "relation": "关联",
+      "target": "轻伤"
+    },
+    {
+      "source": "汪春蓉",
+      "relation": "关联",
+      "target": "轻微伤"
+    },
+    {
+      "source": "赵志高",
+      "relation": "关联",
+      "target": "轻微伤"
+    },
+    {
+      "source": "杨周武",
+      "relation": "关联",
+      "target": "刑事立案"
+    },
+    {
+      "source": "杨周武",
+      "relation": "关联",
+      "target": "拘留"
+    },
+    {
+      "source": "杨周武",
+      "relation": "调解/结案",
+      "target": "枉法"
+    },
+    {
+      "source": "罗贤涛",
+      "relation": "关联",
+      "target": "员工"
+    },
+    {
+      "source": "易承桂",
+      "relation": "关联",
+      "target": "刑事拘留"
+    },
+    {
+      "source": "罗永发",
+      "relation": "关联",
+      "target": "罗贤涛"
+    },
+    {
+      "source": "罗贤涛",
+      "relation": "拘留",
+      "target": "我局"
+    },
+    {
+      "source": "杨周武",
+      "relation": "关联",
+      "target": "何晓初"
+    },
+    {
+      "source": "何晓初",
+      "relation": "关联",
+      "target": "杨周武"
+    },
+    {
+      "source": "杨周武",
+      "relation": "请托/利益",
+      "target": "王静"
+    },
+    {
+      "source": "杨周武",
+      "relation": "关联",
+      "target": "枉法调解"
+    },
+    {
+      "source": "何晓初",
+      "relation": "关联",
+      "target": "贿赂"
+    },
+    {
+      "source": "杨周武",
+      "relation": "关联",
+      "target": "王静请托"
+    },
+    {
+      "source": "杨周武",
+      "relation": "关联",
+      "target": "安排案件"
+    },
+    {
+      "source": "张某",
+      "relation": "关联",
+      "target": "检察官"
+    },
+    {
+      "source": "王某",
+      "relation": "关联",
+      "target": "检察官"
+    },
+    {
+      "source": "杨",
+      "relation": "指派/安排",
+      "target": "刘力飚"
+    },
+    {
+      "source": "杨",
+      "relation": "关联",
+      "target": "舞王案子"
+    },
+    {
+      "source": "杨所",
+      "relation": "关联",
+      "target": "立案"
+    },
+    {
+      "source": "杨所",
+      "relation": "关联",
+      "target": "刑拘"
+    },
+    {
+      "source": "调解",
+      "relation": "关联",
+      "target": "立案"
+    },
+    {
+      "source": "调解",
+      "relation": "关联",
+      "target": "刑拘"
+    },
+    {
+      "source": "杨周武",
+      "relation": "关联",
+      "target": "徇私"
+    },
+    {
+      "source": "陈三一",
+      "relation": "关联",
+      "target": "罗宇"
+    },
+    {
+      "source": "承办人",
+      "relation": "关联",
+      "target": "调解处理"
+    },
+    {
+      "source": "杨周武",
+      "relation": "批准/决定",
+      "target": "调解结案"
+    },
+    {
+      "source": "杨周武",
+      "relation": "批准/决定",
+      "target": "放人"
+    },
+    {
+      "source": "罗贤涛",
+      "relation": "释放",
+      "target": "释放"
+    },
+    {
+      "source": "易承桂",
+      "relation": "释放",
+      "target": "释放"
+    },
+    {
+      "source": "张夏天",
+      "relation": "释放",
+      "target": "释放"
+    },
+    {
+      "source": "舞台",
+      "relation": "关联",
+      "target": "冷烟花"
+    },
+    {
+      "source": "杨周武",
+      "relation": "关联",
+      "target": "违法经营"
+    },
+    {
+      "source": "消防",
+      "relation": "介入",
+      "target": "事故调查"
+    },
+    {
+      "source": "张伟",
+      "relation": "关联",
+      "target": "王静"
+    },
+    {
+      "source": "王静",
+      "relation": "关联",
+      "target": "警方"
+    },
+    {
+      "source": "检察机关",
+      "relation": "关联",
+      "target": "侦查程序"
+    },
+    {
+      "source": "侦查程序",
+      "relation": "关联",
+      "target": "通话记录"
+    },
+    {
+      "source": "侦查程序",
+      "relation": "关联",
+      "target": "证人证言"
+    },
+    {
+      "source": "侦查程序",
+      "relation": "关联",
+      "target": "履职材料"
+    },
+    {
+      "source": "罗宇",
+      "relation": "关联",
+      "target": "王静"
+    },
+    {
+      "source": "陈三一",
+      "relation": "关联",
+      "target": "王静"
+    },
+    {
+      "source": "张夏天",
+      "relation": "关联",
+      "target": "王静"
+    },
+    {
+      "source": "何晓初",
+      "relation": "关联",
+      "target": "罗宇"
+    },
+    {
+      "source": "何晓初",
+      "relation": "关联",
+      "target": "陈三一"
+    },
+    {
+      "source": "何晓初",
+      "relation": "关联",
+      "target": "张夏天"
+    },
+    {
+      "source": "现金柜台",
+      "relation": "关联",
+      "target": "何晓初"
+    },
+    {
+      "source": "江军",
+      "relation": "关联",
+      "target": "杨周武"
+    },
+    {
+      "source": "汪春蓉",
+      "relation": "关联",
+      "target": "刘力飚"
+    },
+    {
+      "source": "赵志高",
+      "relation": "关联",
+      "target": "刘力飚"
+    },
+    {
+      "source": "易承桂",
+      "relation": "关联",
+      "target": "刘力飚"
+    }
+  ],
+  "clues": [
+    {
+      "category": "graph_path",
+      "title": "主观状态线索与处置行为相连"
+    },
+    {
+      "category": "communication_bridge",
+      "title": "通讯记录可能连接资金或处置节点"
+    },
+    {
+      "category": "ontology_gap",
+      "title": "存在未被 ontology 约束的开放关系"
+    },
+    {
+      "category": "timeline",
+      "title": "图谱关系已挂载时间戳"
+    },
+    {
+      "category": "basic_profile",
+      "title": "HippoRAG问答：第一层：基础信息聚合"
+    },
+    {
+      "category": "behavior_reconstruction",
+      "title": "HippoRAG问答：第二层：行为事实还原"
+    },
+    {
+      "category": "subjective_reasoning",
+      "title": "HippoRAG问答：第三层：主观方面推理"
+    }
+  ]
+}

@@ -6,11 +6,17 @@ from typing import Any
 
 from fastapi import HTTPException, status
 
+from app.adapters.algorithm import HippoRagBridge, _safe_sequence
+from app.core.config import settings
+from app.schemas.analysis import TracePassage, TraceResult
+
 
 class LegalKnowledgeService:
     def __init__(self, knowledge_dir: Path | None = None) -> None:
         repo_root = Path(__file__).resolve().parents[3]
+        self.repo_root = repo_root
         self.knowledge_dir = knowledge_dir or repo_root / "data" / "legal_knowledge"
+        self.hipporag = HippoRagBridge()
 
     def list_sources(self) -> list[dict[str, Any]]:
         return self._read_json("sources.json")
@@ -41,6 +47,53 @@ class LegalKnowledgeService:
             return self._build_skeleton_template(item)
         return self._read_json(f"offense_templates/{template_file}")
 
+    def retrieve(self, query: str, offense_id: str | None = None, top_k: int = 8) -> TraceResult:
+        docs, doc_titles = self._build_legal_docs(offense_id)
+        if not docs:
+            return TraceResult(case_id="legal_knowledge", query=query, provider="hipporag_legal", error="法律知识库为空。")
+
+        klass = self.hipporag.load_class()
+        config_class = self.hipporag.load_config_class()
+        if not klass or not config_class:
+            return TraceResult(
+                case_id="legal_knowledge",
+                query=query,
+                provider="hipporag_legal",
+                error=self.hipporag.error or "HippoRAG class is unavailable",
+            )
+
+        try:
+            config = config_class(
+                save_dir=str((Path(settings.hipporag_save_dir).parent / "hipporag_legal_knowledge").resolve()),
+                llm_name=settings.hipporag_llm_name,
+                llm_base_url=settings.hipporag_llm_base_url,
+                embedding_model_name=settings.hipporag_embedding_model,
+                retrieval_top_k=max(top_k, settings.hipporag_retrieval_top_k),
+                qa_top_k=settings.hipporag_qa_top_k,
+            )
+            hipporag = klass(global_config=config)
+            hipporag.index(docs)
+            raw_results = _safe_sequence(hipporag.retrieve([query], num_to_retrieve=top_k))
+            first = _safe_sequence(raw_results[0] if raw_results else [])
+            passages: list[TracePassage] = []
+            for rank, item in enumerate(first[:top_k], start=1):
+                doc = item[0] if isinstance(item, (tuple, list)) and item else item
+                score = item[1] if isinstance(item, (tuple, list)) and len(item) > 1 else 1.0
+                text = str(doc)
+                title = doc_titles.get(text)
+                passages.append(
+                    TracePassage(
+                        rank=rank,
+                        score=float(score) if isinstance(score, (int, float)) else 1.0,
+                        passage=text,
+                        evidence_id=None,
+                        evidence_title=title or "法律知识库",
+                    )
+                )
+            return TraceResult(case_id="legal_knowledge", query=query, provider="hipporag_legal", passages=passages)
+        except Exception as exc:  # noqa: BLE001
+            return TraceResult(case_id="legal_knowledge", query=query, provider="hipporag_legal", error=str(exc))
+
     def _read_json(self, relative_path: str) -> Any:
         path = self.knowledge_dir / relative_path
         if not path.exists():
@@ -55,6 +108,44 @@ class LegalKnowledgeService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Legal knowledge file '{relative_path}' is invalid JSON: {exc}",
             ) from exc
+
+    def _build_legal_docs(self, offense_id: str | None = None) -> tuple[list[str], dict[str, str]]:
+        docs: list[str] = []
+        titles: dict[str, str] = {}
+
+        def add_doc(title: str, text: str) -> None:
+            text = text.strip()
+            if not text:
+                return
+            doc = f"【{title}】\n{text}"
+            docs.append(doc)
+            titles[doc] = title
+
+        for relative in ["README.md", "sources.json", "evidence_type_mapping.json", "offense_templates/index.json"]:
+            path = self.knowledge_dir / relative
+            if path.exists():
+                add_doc(f"法律知识/{relative}", path.read_text(encoding="utf-8"))
+
+        template_ids: list[str] = []
+        if offense_id:
+            template_ids.append(offense_id)
+        else:
+            template_ids = [str(item.get("offense_id")) for item in self.list_offense_templates() if item.get("offense_id")]
+        for template_id in template_ids:
+            try:
+                template = self.get_offense_template(template_id)
+            except HTTPException:
+                continue
+            add_doc(
+                f"罪名模板/{template.get('name') or template_id}",
+                json.dumps(template, ensure_ascii=False, indent=2),
+            )
+
+        for path in [self.repo_root / "十四种犯罪的构成要件.md", self.repo_root / "初期进展" / "十四种犯罪的构成要件.md"]:
+            if path.exists():
+                add_doc(path.name, path.read_text(encoding="utf-8"))
+
+        return docs[: max(settings.hipporag_max_docs, 1)], titles
 
     @staticmethod
     def _build_skeleton_template(index_item: dict[str, Any]) -> dict[str, Any]:

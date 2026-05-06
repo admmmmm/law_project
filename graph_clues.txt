@@ -1,0 +1,15 @@
+=== 线索详情 ===
+
+[graph_path] 主观状态线索与处置行为相连
+
+[communication_bridge] 通讯记录可能连接资金或处置节点
+
+[ontology_gap] 存在未被 ontology 约束的开放关系
+
+[timeline] 图谱关系已挂载时间戳
+
+[basic_profile] HippoRAG问答：第一层：基础信息聚合
+
+[behavior_reconstruction] HippoRAG问答：第二层：行为事实还原
+
+[subjective_reasoning] HippoRAG问答：第三层：主观方面推理

@@ -1,8 +1,9 @@
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from app.core.dependencies import LegalKnowledgeServiceDep
+from app.schemas.analysis import TraceResult
 
 router = APIRouter()
 
@@ -30,6 +31,16 @@ def get_alias_resolution_rules(service: LegalKnowledgeServiceDep) -> dict[str, A
 @router.get("/offense-templates")
 def list_offense_templates(service: LegalKnowledgeServiceDep) -> list[dict[str, Any]]:
     return service.list_offense_templates()
+
+
+@router.get("/retrieve", response_model=TraceResult)
+def retrieve_legal_knowledge(
+    service: LegalKnowledgeServiceDep,
+    query: str = Query(min_length=1),
+    offense_id: str | None = None,
+    top_k: int = Query(default=8, ge=1, le=20),
+) -> TraceResult:
+    return service.retrieve(query=query, offense_id=offense_id or None, top_k=top_k)
 
 
 @router.get("/offense-templates/{offense_id}")

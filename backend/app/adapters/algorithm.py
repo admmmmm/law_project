@@ -1,3 +1,7 @@
+﻿# [2026-05-05 13:25] mimo模型编辑
+# 用户输入：错误信息 "HippoRAG analysis failed: No module named 'hipporag'"
+# 修改内容：修复hipporag导入路径，将 ackend/app/hipporag 改为 ackend/app 
+
 from __future__ import annotations
 
 import re
@@ -13,7 +17,6 @@ from app.schemas.common import new_id
 from app.schemas.graph import GraphEdge, GraphNode, InvestigationGraph, SuspiciousClue
 from app.schemas.ingestion import EvidenceRecord, ExtractionResult, ExtractedTriple
 from app.services.llm_context_debug import log_llm_context
-from app.services.ontology import CASE_ONTOLOGY, extract_timestamp
 
 
 class HippoRagBridge:
@@ -21,7 +24,7 @@ class HippoRagBridge:
 
     def __init__(self) -> None:
         self.repo_root = Path(__file__).resolve().parents[3]
-        self.hipporag_src = self.repo_root / "need" / "HippoRAG" / "src"
+        self.hipporag_src = self.repo_root / "backend" / "app"
         self.available = self.hipporag_src.exists()
         self.error: str | None = None
 
@@ -101,6 +104,7 @@ class AlgorithmAdapter:
                     node_id="algorithm:hipporag",
                     label="HippoRAG",
                     type="algorithm_provider",
+                    tags=["algorithm"],
                     properties=properties,
                     manually_verified=not bool(properties.get("error")),
                 )
@@ -387,6 +391,16 @@ class AlgorithmAdapter:
             if not evidence_id:
                 continue
             row_entities = [str(entity).strip() for entity in row.get("extracted_entities", []) if str(entity).strip()]
+            typed_entities = {
+                str(item.get("text", "")).strip(): item
+                for item in row.get("typed_entities", [])
+                if isinstance(item, dict) and str(item.get("text", "")).strip()
+            }
+            typed_triples = {
+                _triple_key(item.get("subject"), item.get("relation"), item.get("object")): item
+                for item in row.get("typed_triples", [])
+                if isinstance(item, dict)
+            }
             if _looks_like_prompt_example_leak(passage, row_entities, row.get("extracted_triples", [])):
                 continue
             entities.update(entity for entity in row_entities if _entity_grounded_in_passage(entity, passage))
@@ -400,6 +414,22 @@ class AlgorithmAdapter:
                     continue
                 if not (_entity_grounded_in_passage(subject, passage) or _entity_grounded_in_passage(obj, passage)):
                     continue
+                typed = typed_triples.get(_triple_key(subject, relation, obj), {})
+                subject_info = typed_entities.get(subject, {})
+                object_info = typed_entities.get(obj, {})
+                base_props = {
+                    "source_dataset": "hipporag_openie",
+                    "graph_eligible": True,
+                    "passage": passage[:300],
+                }
+                subject_type = _clean_node_type(typed.get("subject_type") or subject_info.get("type")) or _entity_type_for_label(
+                    subject, relation, base_props, "subject"
+                )
+                object_type = _clean_node_type(typed.get("object_type") or object_info.get("type")) or _entity_type_for_label(
+                    obj, relation, base_props, "object"
+                )
+                relation_category = _clean_relation_category(typed.get("relation_category")) or _relation_category_for(relation, base_props)
+                typed_tags = _clean_tags(typed.get("tags")) or _clean_tags(subject_info.get("tags")) + _clean_tags(object_info.get("tags"))
                 triples.append(
                     ExtractedTriple(
                         subject=subject,
@@ -407,9 +437,14 @@ class AlgorithmAdapter:
                         object=obj,
                         evidence_id=evidence_id,
                         properties={
-                            "source_dataset": "hipporag_openie",
-                            "graph_eligible": True,
-                            "passage": passage[:300],
+                            **base_props,
+                            "subject_type": subject_type,
+                            "object_type": object_type,
+                            "relation_category": relation_category,
+                            "subject_tags": ",".join(_clean_tags(subject_info.get("tags"))),
+                            "object_tags": ",".join(_clean_tags(object_info.get("tags"))),
+                            "tags": ",".join(_dedupe([*typed_tags, *_tags_for_type(subject_type), *_tags_for_type(object_type), *_tags_for_category(relation_category)])),
+                            "llm_typed": bool(typed or subject_info or object_info),
                         },
                     )
                 )
@@ -524,14 +559,19 @@ class AlgorithmAdapter:
                     for item in time_range or []:
                         if item and item not in node.time_range:
                             node.time_range.append(item)
+                    for tag in _node_tags(node_type, label, properties or {}):
+                        if tag not in node.tags:
+                            node.tags.append(tag)
                 return
             node_ids.add(node_id)
+            clean_properties = {key: value for key, value in (properties or {}).items() if value not in (None, "")}
             nodes.append(
                 GraphNode(
                     node_id=node_id,
                     label=label,
                     type=node_type,
-                    properties={key: value for key, value in (properties or {}).items() if value not in (None, "")},
+                    tags=_node_tags(node_type, label, clean_properties),
+                    properties=clean_properties,
                     evidence_ids=[evidence_id] if evidence_id else [],
                     timestamp=timestamp,
                     time_range=time_range or ([timestamp] if timestamp else []),
@@ -553,6 +593,8 @@ class AlgorithmAdapter:
                 for triple in extraction.triples:
                     self._collect_triple(grouped, triple, item.evidence_id)
 
+        self._add_collapsed_action_edges(grouped)
+
         for (subject_id, relation, object_id), data in grouped.items():
             evidence_ids = sorted(data["evidence_ids"])
             primary_evidence_id = evidence_ids[0] if evidence_ids else ""
@@ -562,12 +604,20 @@ class AlgorithmAdapter:
             first_time = times[0] if times else None
             add_node(
                 subject_id, data["source_label"], data["source_type"], primary_evidence_id,
-                {"ontology_type": data["source_type"], "canonical_label": data["source_label"]},
+                {
+                    "ontology_type": data["source_type"],
+                    "canonical_label": data["source_label"],
+                    "tags": ",".join(sorted(data["source_tags"])),
+                },
                 timestamp=first_time, time_range=times,
             )
             add_node(
                 object_id, data["target_label"], data["target_type"], primary_evidence_id,
-                {"ontology_type": data["target_type"], "canonical_label": data["target_label"]},
+                {
+                    "ontology_type": data["target_type"],
+                    "canonical_label": data["target_label"],
+                    "tags": ",".join(sorted(data["target_tags"])),
+                },
                 timestamp=first_time, time_range=times,
             )
             edge_properties = dict(data["properties"])
@@ -578,6 +628,7 @@ class AlgorithmAdapter:
                 "relation_category": data["relation_category"],
                 "raw_relations": " / ".join(sorted(data["raw_relations"])[:6]),
                 "ontology_constrained": data["ontology_constrained"],
+                "tags": ",".join(sorted(data["edge_tags"])),
             })
             edges.append(
                 GraphEdge(
@@ -585,6 +636,7 @@ class AlgorithmAdapter:
                     source_id=subject_id,
                     target_id=object_id,
                     relation=relation,
+                    tags=_edge_tags(relation, edge_properties, times),
                     confidence=min(0.96, float(data["confidence"]) + (0.04 if count > 1 else 0.0)),
                     properties={key: value for key, value in edge_properties.items() if value not in (None, "")},
                     evidence_ids=evidence_ids,
@@ -604,31 +656,131 @@ class AlgorithmAdapter:
     ) -> None:
         if triple.properties.get("graph_eligible") is False:
             return
-        if triple.relation in {"交易金额", "发生时间"}:
+        if triple.relation in {"交易金额", "发生时间", "äº¤æ˜“é‡‘é¢", "å‘ç”Ÿæ—¶é—´"}:
             return
-        normalized = CASE_ONTOLOGY.normalize_triple(triple.subject, triple.relation, triple.object, triple.properties)
-        key = (normalized.subject.node_id, normalized.relation.label, normalized.object.node_id)
+        props = dict(triple.properties or {})
+        relation_category = _relation_category_for(triple.relation) if _is_temporal_relation(triple.relation) else (
+            _clean_relation_category(props.get("relation_category")) or _relation_category_for(triple.relation, props)
+        )
+        relation_label = _normalize_relation_label(triple.relation, relation_category)
+        source_type = _clean_node_type(props.get("subject_type")) or _entity_type_for_label(triple.subject, triple.relation, props, "subject")
+        target_type = _clean_node_type(props.get("object_type")) or _entity_type_for_label(triple.object, triple.relation, props, "object")
+        if props.get("is_bank_flow") or props.get("amount") or props.get("source_dataset") in {"case_relevant_bank_flows.xlsx", "cleaned_bank_flows.csv", "cleaned_bank_flows.xlsx"}:
+            source_type = _bank_flow_endpoint_type(triple.subject, props, "subject")
+            target_type = _bank_flow_endpoint_type(triple.object, props, "object")
+        if props.get("is_call_record"):
+            source_type = "person"
+            target_type = "person"
+            relation_category = "communication"
+        source_label = _canonical_label(triple.subject, source_type, props, "subject")
+        target_label = _canonical_label(triple.object, target_type, props, "object")
+        timestamp = (
+            extract_timestamp(props.get("time"))
+            or extract_timestamp(props.get("mapped_case_time"))
+            or extract_timestamp(props.get("original_time"))
+            or extract_timestamp(triple.subject)
+            or extract_timestamp(triple.object)
+        )
+        if source_type == "time" or target_type == "time":
+            return
+        source_id = f"{source_type}:{_stable_key(source_label)}"
+        target_id = f"{target_type}:{_stable_key(target_label)}"
+        source_tags = _dedupe([*_clean_tags(props.get("subject_tags")), *_tags_for_type(source_type)])
+        target_tags = _dedupe([*_clean_tags(props.get("object_tags")), *_tags_for_type(target_type)])
+        edge_tags = _dedupe([*_clean_tags(props.get("tags")), *_tags_for_category(relation_category)])
+        props.update(
+            {
+                "relation_category": relation_category,
+                "subject_type": source_type,
+                "object_type": target_type,
+                "source_label": source_label,
+                "target_label": target_label,
+                "timestamp": timestamp,
+                "llm_typed": bool(props.get("llm_typed")),
+            }
+        )
+        key = (source_id, relation_label, target_id)
         item = grouped[key]
         item["count"] += 1
         item["evidence_ids"].add(evidence_id)
-        item["source_label"] = normalized.subject.canonical_label
-        item["target_label"] = normalized.object.canonical_label
-        item["source_type"] = normalized.subject.entity_type
-        item["target_type"] = normalized.object.entity_type
-        item["relation"] = normalized.relation.label
-        item["relation_category"] = normalized.relation.category
-        item["raw_relations"].add(normalized.raw_relation)
-        item["ontology_constrained"] = bool(item["ontology_constrained"] or normalized.properties.get("ontology_constrained"))
-        item["confidence"] = max(float(item["confidence"]), normalized.relation.confidence)
-        item["properties"].update({key: value for key, value in normalized.properties.items() if value not in (None, "")})
+        item["source_label"] = source_label
+        item["target_label"] = target_label
+        item["source_type"] = source_type
+        item["target_type"] = target_type
+        item["relation"] = relation_label
+        item["relation_category"] = relation_category
+        item["raw_relations"].add(str(triple.relation))
+        item["ontology_constrained"] = False
+        item["confidence"] = max(float(item["confidence"]), _relation_confidence(relation_category, bool(props.get("llm_typed"))))
+        item["source_tags"].update(source_tags)
+        item["target_tags"].update(target_tags)
+        item["edge_tags"].update(edge_tags)
+        item["properties"].update({key: value for key, value in props.items() if value not in (None, "")})
         amount = _to_float(triple.properties.get("amount"))
         if amount:
             item["amount_total"] += amount
-        if normalized.timestamp:
-            item["times"].add(normalized.timestamp)
+        if timestamp:
+            item["times"].add(timestamp)
         elif triple.properties.get("time"):
             item["times"].add(str(triple.properties["time"]))
 
+    def _add_collapsed_action_edges(self, grouped: dict[tuple[str, str, str], dict[str, Any]]) -> None:
+        """Add direct person-to-person edges for chains shaped as person -> action -> person."""
+
+        incoming: dict[str, list[tuple[tuple[str, str, str], dict[str, Any]]]] = defaultdict(list)
+        outgoing: dict[str, list[tuple[tuple[str, str, str], dict[str, Any]]]] = defaultdict(list)
+        for key, data in list(grouped.items()):
+            source_id, _, target_id = key
+            outgoing[source_id].append((key, data))
+            incoming[target_id].append((key, data))
+
+        action_types = {"duty_action", "event", "entity"}
+        for action_id, left_edges in incoming.items():
+            right_edges = outgoing.get(action_id, [])
+            if not right_edges:
+                continue
+            for left_key, left in left_edges:
+                if left.get("source_type") != "person" or left.get("target_type") not in action_types:
+                    continue
+                action_label = str(left.get("target_label") or left.get("relation") or "").strip()
+                if not _is_action_bridge_label(action_label, str(left.get("relation") or "")):
+                    continue
+                for _, right in right_edges:
+                    if right.get("target_type") != "person":
+                        continue
+                    source_id = left_key[0]
+                    target_label = str(right.get("target_label") or "").strip()
+                    target_id = f"person:{_stable_key(target_label)}"
+                    if source_id == target_id:
+                        continue
+                    relation = action_label or str(left.get("relation") or right.get("relation") or "关联")
+                    key = (source_id, relation, target_id)
+                    item = grouped[key]
+                    item["count"] += max(1, min(int(left.get("count", 1)), int(right.get("count", 1))))
+                    item["evidence_ids"].update(left.get("evidence_ids", set()))
+                    item["evidence_ids"].update(right.get("evidence_ids", set()))
+                    item["source_label"] = str(left.get("source_label") or "")
+                    item["target_label"] = target_label
+                    item["source_type"] = "person"
+                    item["target_type"] = "person"
+                    item["relation"] = relation
+                    item["relation_category"] = str(left.get("relation_category") or right.get("relation_category") or "duty_behavior")
+                    item["raw_relations"].update(left.get("raw_relations", set()))
+                    item["raw_relations"].update(right.get("raw_relations", set()))
+                    item["raw_relations"].add("collapsed_action_bridge")
+                    item["confidence"] = max(float(item["confidence"]), 0.68)
+                    item["source_tags"].add("person")
+                    item["target_tags"].add("person")
+                    item["edge_tags"].update(_tags_for_category(item["relation_category"]))
+                    item["properties"].update(
+                        {
+                            "collapsed_action_bridge": True,
+                            "bridge_action_node": action_id,
+                            "bridge_action_label": action_label,
+                        }
+                    )
+                    item["times"].update(left.get("times", set()))
+                    item["times"].update(right.get("times", set()))
     def _clues_from_graph(
         self,
         edges: list[GraphEdge],
@@ -740,6 +892,341 @@ class AlgorithmAdapter:
         return clues
 
 
+_ALLOWED_TAGS = {
+    "evidence",
+    "person",
+    "organization",
+    "account",
+    "bank_flow",
+    "call_record",
+    "law_document",
+    "duty_behavior",
+    "subjective_state",
+    "alias_candidate",
+    "time_mapped",
+    "manual",
+    "algorithm",
+    "other",
+}
+
+_KNOWN_PERSON_NAMES = {
+    "\u6768\u5468\u6b66",
+    "\u738b\u9759",
+    "\u4f55\u6653\u521d",
+    "\u5218\u529b\u98da",
+    "\u7f57\u8d24\u6d9b",
+    "\u6613\u627f\u6842",
+    "\u6c5f\u519b",
+    "\u6c6a\u6625\u84c9",
+    "\u8d75\u5fd7\u9ad8",
+    "\u5f20\u590f\u5929",
+    "\u9648\u4e09\u4e00",
+    "\u7f57\u5b87",
+    "\u5f20\u4e09",
+    "\u674e\u56db",
+    "\u66fe\u9ece",
+    "\u9976\u8776",
+    "\u5468\u82b7",
+}
+
+_PERSON_CONTEXT_WORDS = (
+    "\u88ab\u544a\u4eba", "\u72af\u7f6a\u5acc\u7591\u4eba", "\u5acc\u7591\u4eba", "\u8bc1\u4eba", "\u88ab\u5bb3\u4eba", "\u6c11\u8b66", "\u6240\u957f",
+    "\u526f\u6240\u957f", "\u7ecf\u8425\u8005", "\u6cd5\u533b", "\u627f\u529e\u4eba", "\u6279\u51c6\u4eba", "\u7533\u8bf7\u4eba",
+    "\u59d4\u6258\u4eba", "\u59bb", "\u4e08\u592b", "\u4eb2\u5c5e", "\u5458\u5de5", "\u4eba\u5458",
+)
+
+_PERSON_RELATION_WORDS = (
+    "\u8bf7\u6258", "\u53d7\u8bf7\u6258", "\u6307\u6d3e", "\u5b89\u6392", "\u627f\u8bfa", "\u6536\u53d7", "\u884c\u8d3f", "\u8d54\u507f",
+    "\u8054\u7cfb", "\u901a\u8bdd", "\u77ed\u4fe1", "\u62a5\u544a", "\u6c47\u62a5", "\u4efb\u804c", "\u804c\u52a1",
+    "\u4ecb\u5165", "\u8c03\u89e3", "\u91ca\u653e", "\u62d8\u7559", "\u6279\u51c6",
+)
+
+_NON_PERSON_TERMS = {
+    "登记材料",
+    "安全要求",
+    "超时经营",
+    "消防隐患",
+    "人员拥挤",
+    "酒后滋事",
+    "治安纠纷",
+    "拘留",
+    "释放",
+    "调解",
+    "结案",
+    "立案",
+    "审批",
+    "报告",
+    "整改",
+    "复查",
+    "现金柜台",
+    "ATM取现",
+    "柜台存款",
+    "交易流水",
+    "刑事案件",
+    "故意伤害",
+    "徇私枉法",
+    "玩忽职守",
+}
+
+
+def extract_timestamp(value: Any) -> str | None:
+    text = str(value or "")
+    match = re.search(r"((?:19|20)\d{2})\D{0,3}(\d{1,2})?\D{0,3}(\d{1,2})?", text)
+    if not match:
+        return None
+    year = match.group(1)
+    month = int(match.group(2) or 1)
+    day = int(match.group(3) or 1)
+    return f"{year}-{month:02d}-{day:02d}"
+
+
+def _is_time_label(value: Any) -> bool:
+    text = str(value or "").strip()
+    if not extract_timestamp(text):
+        return False
+    if len(text) > 18:
+        return False
+    return not _contains_any(text, ("行动", "小组", "专案", "专项", "机构", "单位", "俱乐部", "派出所"))
+
+
+def _triple_key(subject: Any, relation: Any, obj: Any) -> str:
+    return "\u241f".join(str(item or "").strip() for item in (subject, relation, obj))
+
+
+def _dedupe(items: list[Any]) -> list[str]:
+    seen: set[str] = set()
+    values: list[str] = []
+    for item in items:
+        text = str(item or "").strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        values.append(text)
+    return values
+
+
+def _clean_tags(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        raw_items = re.split(r"[,，;；\s]+", value)
+    elif isinstance(value, (list, tuple, set)):
+        raw_items = [str(item) for item in value]
+    else:
+        raw_items = [str(value)]
+    return [item for item in _dedupe(raw_items) if item in _ALLOWED_TAGS]
+
+
+def _clean_node_type(value: Any) -> str:
+    raw = str(value or "").strip()
+    mapping = {
+        "person": "person",
+        "\u4eba\u7269": "person",
+        "\u4eba": "person",
+        "\u4eba员": "person",
+        "人物": "person",
+        "organization": "organization",
+        "\u673a\u6784": "organization",
+        "\u516c\u53f8": "organization",
+        "\u5355\u4f4d": "organization",
+        "机构": "organization",
+        "机构/公司": "organization",
+        "account": "account",
+        "\u8d26\u6237": "account",
+        "\u8d44\u91d1\u5bf9\u8c61": "account",
+        "amount": "money",
+        "fund_method": "account",
+        "time": "time",
+        "location": "location",
+        "legal_document": "legal_document",
+        "\u6267\u6cd5\u6587\u4e66": "legal_document",
+        "\u6cd5\u5f8b\u6587\u4e66": "legal_document",
+        "duty_action": "duty_action",
+        "\u804c\u52a1\u884c\u4e3a": "duty_action",
+        "\u6267\u6cd5\u884c\u4e3a": "duty_action",
+        "procedure_action": "duty_action",
+        "legal_charge": "legal_charge",
+        "event": "event",
+        "entity": "entity",
+    }
+    return mapping.get(raw, "")
+
+
+def _clean_relation_category(value: Any) -> str:
+    category = str(value or "").strip()
+    allowed = {
+        "fund_flow",
+        "communication",
+        "duty_identity",
+        "duty_behavior",
+        "procedure",
+        "subjective_state",
+        "temporal",
+        "case_fact",
+        "evidence_link",
+        "related",
+    }
+    return category if category in allowed else ""
+
+
+def _tags_for_type(entity_type: str) -> list[str]:
+    mapping = {
+        "evidence": ["evidence"],
+        "algorithm_provider": ["algorithm"],
+        "person": ["person"],
+        "organization": ["organization"],
+        "account": ["account", "bank_flow"],
+        "money": ["bank_flow"],
+        "communication": ["call_record"],
+        "legal_document": ["law_document"],
+        "case": ["law_document"],
+        "duty_action": ["duty_behavior", "law_document"],
+        "event": ["duty_behavior"],
+        "time": ["time_mapped"],
+    }
+    return mapping.get(entity_type, [])
+
+
+def _tags_for_category(category: str) -> list[str]:
+    mapping = {
+        "fund_flow": ["bank_flow"],
+        "communication": ["call_record"],
+        "duty_identity": ["duty_behavior", "law_document"],
+        "duty_behavior": ["duty_behavior", "law_document"],
+        "procedure": ["duty_behavior", "law_document"],
+        "subjective_state": ["subjective_state"],
+        "temporal": ["time_mapped"],
+        "evidence_link": ["evidence"],
+    }
+    return mapping.get(category, [])
+
+
+def _relation_category_for(relation: str, properties: dict[str, Any] | None = None) -> str:
+    props = properties or {}
+    explicit = _clean_relation_category(props.get("relation_category"))
+    if explicit:
+        return explicit
+    label = str(relation or "").strip()
+
+    if props.get("is_call_record"):
+        return "communication"
+    if props.get("is_bank_flow") or props.get("amount"):
+        return "fund_flow"
+
+    if _contains_any(label, ("\u901a\u8bdd", "\u7535\u8bdd", "\u77ed\u4fe1", "\u8054\u7cfb", "\u5fae\u4fe1", "\u62e8\u6253")):
+        return "communication"
+    if _contains_any(label, ("\u4efb\u804c", "\u804c\u52a1", "\u8eab\u4efd", "\u6240\u957f", "\u6c11\u8b66", "\u5de5\u4f5c\u5355\u4f4d", "\u8d1f\u8d23")):
+        return "duty_identity"
+    if _contains_any(label, ("\u6279\u51c6", "\u5ba1\u6279", "\u7b7e\u6279", "\u51b3\u5b9a", "\u6307\u6d3e", "\u5b89\u6392", "\u4ecb\u5165", "\u7acb\u6848", "\u62d8\u7559", "\u91ca\u653e", "\u8c03\u89e3", "\u64a4\u6848", "\u64a4\u9500", "\u7ed3\u6848", "\u4fa6\u67e5", "\u5904\u7f6e", "\u62a5\u544a", "\u6c47\u62a5")):
+        return "procedure"
+    if _contains_any(label, ("\u8bf7\u6258", "\u597d\u5904", "\u5f87\u79c1", "\u660e\u77e5", "\u6545\u610f", "\u9690\u7792", "\u89c4\u907f", "\u53d7\u8bf7\u6258", "\u627f\u8bfa", "\u5229\u7528\u804c\u6743")):
+        return "subjective_state"
+    if _contains_any(label, ("\u8f6c\u8d26", "\u652f\u51fa", "\u6536\u5165", "\u4ed8\u6b3e", "\u6536\u6b3e", "\u652f\u4ed8", "\u6c47\u6b3e", "\u5165\u8d26", "\u91d1\u989d", "\u4ea4\u6613", "\u73b0\u91d1", "\u53d6\u73b0", "\u5b58\u5165", "\u67dc\u53f0", "ATM", "\u8d54\u507f", "\u6536\u53d7", "\u884c\u8d3f")):
+        return "fund_flow"
+    if _contains_any(label, ("\u53d1\u751f\u65f6\u95f4", "\u65f6\u95f4", "\u65e5\u671f", "precedes", "follows")):
+        return "temporal"
+    return "related"
+
+
+def _is_temporal_relation(relation: str) -> bool:
+    return str(relation or "").strip() in {"发生时间", "时间", "日期", "起始时间", "结束时间", "å‘ç”Ÿæ—¶é—´"}
+
+
+def _bank_flow_endpoint_type(label: str, properties: dict[str, Any], role: str) -> str:
+    text = str(label or "").strip()
+    if _contains_any(text, ("现金", "柜台", "ATM", "银行", "账户", "账号", "银行卡", "微信", "支付宝")):
+        return "account"
+    flag = properties.get("is_case_person") if role == "subject" else properties.get("is_core_counterparty")
+    if _truthy_value(flag):
+        return "person"
+    return "account"
+
+
+def _truthy_value(value: Any) -> bool:
+    return str(value or "").strip().lower() in {"true", "1", "yes", "y", "是", "核心"}
+
+
+
+def _is_action_bridge_label(label: str, relation: str = "") -> bool:
+    text = f"{label} {relation}"
+    return _contains_any(
+        text,
+        (
+            "\u6307\u6d3e", "\u5b89\u6392", "\u4ecb\u5165", "\u8c03\u89e3", "\u91ca\u653e", "\u62d8\u7559", "\u6279\u51c6", "\u8bf7\u6258",
+            "\u627f\u8bfa", "\u6536\u53d7", "\u5229\u7528\u804c\u6743", "\u660e\u77e5", "\u8054\u7cfb", "\u901a\u8bdd", "\u77ed\u4fe1", "\u62a5\u544a", "\u6c47\u62a5",
+        ),
+    )
+
+
+def _normalize_relation_label(relation: str, category: str) -> str:
+    label = str(relation or "").strip() or "关联"
+    if label == "出":
+        return "转账/支出"
+    if label == "入":
+        return "转账/收入"
+    if _contains_any(label, ("现金柜台", "柜台存款", "ATM取现", "取现", "存入")):
+        return "现金流转"
+    if category == "related" and label in {"提及", "相关", "关联", "涉及"}:
+        return "关联"
+    return label
+
+
+def _relation_confidence(category: str, llm_typed: bool) -> float:
+    if llm_typed and category != "related":
+        return 0.76
+    if category != "related":
+        return 0.64
+    return 0.42
+
+
+
+def _looks_like_case_person(label: str, relation: str = "", properties: dict[str, Any] | None = None) -> bool:
+    text = str(label or "").strip()
+    if text in _KNOWN_PERSON_NAMES:
+        return True
+    if re.fullmatch(r"[\u4e00-\u9fa5]{1,3}(?:\u6240\u957f|\u526f\u6240\u957f|\u6c11\u8b66|\u6cd5\u533b|\u68c0\u5bdf\u5b98|\u8b66\u5b98)", text):
+        return True
+    if any(name in text for name in _KNOWN_PERSON_NAMES) and re.fullmatch(r"[\u4e00-\u9fa5]{2,8}", text):
+        return True
+    return False
+
+def _entity_type_for_label(label: str, relation: str = "", properties: dict[str, Any] | None = None, role: str = "") -> str:
+    text = str(label or "").strip()
+    haystack = f"{text} {relation} {properties or {}}"
+    if not text:
+        return "entity"
+    if _is_time_label(text):
+        return "time"
+    if re.search(r"\d+(?:\.\d+)?\s*(?:元|万元|人民币)", text):
+        return "money"
+    if _contains_any(text, ("\u8bc1\u636e", ".md", ".csv", ".xlsx", "\u7b14\u5f55", "\u901a\u77e5\u4e66", "\u51b3\u5b9a\u4e66", "\u62a5\u544a\u4e66", "\u9274\u5b9a\u4e66", "\u767b\u8bb0\u8868", "\u8bb8\u53ef\u8bc1", "\u8425\u4e1a\u6267\u7167")):
+        return "legal_document"
+    if _contains_any(haystack, ("账户", "银行卡", "微信", "支付宝", "现金", "柜台", "ATM", "取现", "存入", "银行流水", "交易流水", "账号", "手机号")):
+        return "account"
+    if _contains_any(text, ("民警", "法医", "检察官", "警官", "办案人员", "承办人")) and not _contains_any(text, ("公安局", "派出所", "检察院", "法院", "医院", "政府", "公司")):
+        return "person"
+    if _contains_any(text, ("公安局", "派出所", "检察院", "法院", "医院", "政府", "俱乐部", "公司", "委员会", "消防", "公安", "民警")):
+        return "organization"
+    if _contains_any(text, ("徇私枉法", "玩忽职守", "故意伤害", "受贿", "行贿")):
+        return "legal_charge"
+    if _contains_any(text, ("立案", "拘留", "释放", "调解", "结案", "撤案", "整改", "审批", "批准", "指派", "安排", "侦查", "处置")):
+        return "duty_action"
+    if _contains_any(text, ("火灾", "事故", "纠纷", "斗殴", "伤害", "案件", "隐患", "经营")):
+        return "event"
+    if _looks_like_case_person(text, relation, properties):
+        return "person"
+    return "entity"
+
+
+def _canonical_label(label: str, entity_type: str, properties: dict[str, Any] | None = None, role: str = "") -> str:
+    return re.sub(r"\s+", " ", str(label or "").strip())
+
+
+def _stable_key(value: str) -> str:
+    text = _canonical_label(value, "entity")
+    return re.sub(r"[^0-9A-Za-z\u4e00-\u9fa5_.-]+", "_", text).strip("_")[:80] or "unknown"
+
+
 def _graph_group() -> dict[str, Any]:
     return {
         "count": 0,
@@ -755,8 +1242,100 @@ def _graph_group() -> dict[str, Any]:
         "raw_relations": set(),
         "ontology_constrained": False,
         "confidence": 0.42,
+        "source_tags": set(),
+        "target_tags": set(),
+        "edge_tags": set(),
         "properties": {},
     }
+
+
+def _node_tags(node_type: str, label: str, properties: dict[str, Any] | None = None) -> list[str]:
+    props = properties or {}
+    ontology_type = str(props.get("ontology_type") or node_type or "entity")
+    text = f"{label} {node_type} {ontology_type} {props}"
+    tags: set[str] = set(_clean_tags(props.get("tags")))
+    type_map = {
+        "evidence": "evidence",
+        "algorithm_provider": "algorithm",
+        "person": "person",
+        "organization": "organization",
+        "account": "account",
+        "money": "account",
+        "communication": "call_record",
+        "legal_document": "law_document",
+        "case": "law_document",
+        "duty_action": "duty_behavior",
+        "event": "duty_behavior",
+    }
+    if ontology_type in type_map:
+        tags.add(type_map[ontology_type])
+    if node_type in type_map:
+        tags.add(type_map[node_type])
+    if "time" in props or "date" in props or "timestamp" in props:
+        tags.add("time_mapped")
+    if _contains_any(text, ("账户", "银行卡", "微信", "支付宝", "现金", "交易", "流水", "bank", "account")):
+        tags.update({"account", "bank_flow"})
+    if _contains_any(text, ("电话", "通话", "短信", "微信聊天", "call", "sms")):
+        tags.add("call_record")
+    if _contains_any(text, ("立案", "拘留", "释放", "撤销", "调解", "报告", "笔录", "鉴定", "文书", "决定", "通知")):
+        tags.add("law_document")
+    if _contains_any(text, ("别名", "假名", "马甲", "曾用", "控制账户", "代持")):
+        tags.add("alias_candidate")
+    if props.get("manual") or node_type == "manual":
+        tags.add("manual")
+    if not tags:
+        tags.add("other")
+    return sorted(tags)
+
+
+def _edge_tags(relation: str, properties: dict[str, Any] | None = None, times: list[str] | set[str] | None = None) -> list[str]:
+    props = properties or {}
+    category = _clean_relation_category(props.get("relation_category")) or _relation_category_for(relation, props)
+    text = f"{relation} {category} {props}"
+    tags: set[str] = set(_clean_tags(props.get("tags")))
+    category_map = {
+        "fund_flow": {"bank_flow"},
+        "communication": {"call_record"},
+        "duty_behavior": {"duty_behavior", "law_document"},
+        "procedure": {"duty_behavior", "law_document"},
+        "subjective_state": {"subjective_state"},
+        "temporal": {"time_mapped"},
+        "evidence_link": {"evidence"},
+    }
+    tags.update(category_map.get(category, set()))
+    if _contains_any(text, ("账户", "别名", "假名", "马甲", "控制", "代持", "同一")):
+        tags.add("alias_candidate")
+    if category != "communication" and _contains_any(text, ("资金", "交易", "转账", "收款", "付款", "金额", "现金", "ATM", "取现", "存入", "流水", "bank", "flow")):
+        tags.add("bank_flow")
+    if category != "fund_flow" and _contains_any(text, ("电话", "通话", "短信", "联系", "微信")):
+        tags.add("call_record")
+    if _contains_any(text, ("明知", "故意", "徇私", "隐瞒", "放任", "授意", "串通", "请托", "动机")):
+        tags.add("subjective_state")
+    if times or props.get("time_sample") or props.get("time"):
+        tags.add("time_mapped")
+    if props.get("manual"):
+        tags.add("manual")
+    if not tags:
+        tags.add("other")
+    return sorted(tags)
+
+
+def enrich_graph_tags(graph: InvestigationGraph) -> InvestigationGraph:
+    for node in graph.nodes:
+        merged = set(node.tags or [])
+        merged.update(_node_tags(node.type, node.label, node.properties or {}))
+        if node.manually_verified:
+            merged.add("manual")
+        node.tags = sorted(merged)
+
+    for edge in graph.edges:
+        merged = set(edge.tags or [])
+        merged.update(_edge_tags(edge.relation, edge.properties or {}, edge.time_range or []))
+        if edge.manually_verified:
+            merged.add("manual")
+        edge.tags = sorted(merged)
+
+    return graph
 
 
 def _clues_from_ontology_graph(
@@ -881,7 +1460,7 @@ def _shared_endpoint_edges(left: list[GraphEdge], right: list[GraphEdge]) -> lis
 
 
 def _node_type_for(relation: str) -> str:
-    return CASE_ONTOLOGY.classify_relation(relation).category
+    return _relation_category_for(relation)
 
 
 def _entity_grounded_in_passage(entity: str, passage: str) -> bool:
@@ -1039,3 +1618,5 @@ def _to_float(value: Any) -> float:
 
 def get_algorithm_adapter() -> AlgorithmAdapter:
     return AlgorithmAdapter(provider=settings.algorithm_provider)
+
+

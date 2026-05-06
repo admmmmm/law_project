@@ -1,4 +1,4 @@
-from .ner import one_shot_ner_paragraph, one_shot_ner_output
+triple_extraction.py_shot_ner_paragraph, one_shot_ner_output
 from ...utils.llm_utils import convert_format_to_template
 
 ner_conditioned_re_system = """你的任务是根据段落和命名实体列表抽取中文事实三元组。

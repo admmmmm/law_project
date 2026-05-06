@@ -1,21 +1,22 @@
 <template>
   <div class="portrait-page">
     <section class="shell">
-      <header class="hero">
+      <header class="topbar">
         <div>
-          <h1>画像报告</h1>
-          <p>报告中的每一句结论都可以单独点击，查看证据原文与 HippoRAG PPR 溯源。</p>
+          <p class="eyebrow">HippoRAG 事实画像</p>
+          <h1>人物关系与行为还原</h1>
+          <p class="subtext">后端用 HippoRAG 多问题 PPR 检索召回证据，再整理成可点击事实。前端只负责展示。</p>
         </div>
-        <button class="primary-btn" :disabled="!activeCaseId || loading" @click="generateReport">
-          {{ loading ? '生成中...' : '生成画像报告' }}
+        <button class="primary-btn" :disabled="!activeCaseId || loading" @click="refreshFacts(true)">
+          {{ loading ? '检索中...' : '重新生成事实画像' }}
         </button>
       </header>
 
       <div class="case-line">
-        <span>当前案件：</span>
+        <span>当前案件</span>
         <code>{{ activeCaseId || '未选择案件' }}</code>
       </div>
-      <p v-if="!activeCaseId" class="warn">请先到“案件导入”页新建或选择案件。</p>
+      <p v-if="!activeCaseId" class="warn">请先在案件导入页创建或选择案件。</p>
       <p v-if="error" class="error">{{ error }}</p>
       <AsyncProgressBar
         v-if="progress.active.value"
@@ -25,162 +26,176 @@
         :detail="progress.detail.value"
       />
 
-      <section v-if="!report" class="empty-report">
-        暂无报告。运行智能分析后，再生成画像报告效果更完整。
+      <section class="summary-grid">
+        <div class="metric">
+          <span>人物关系</span>
+          <strong>{{ relationshipFacts.length }}</strong>
+        </div>
+        <div class="metric">
+          <span>行为事实</span>
+          <strong>{{ behaviorFacts.length }}</strong>
+        </div>
+        <div class="metric">
+          <span>检索问题</span>
+          <strong>{{ facts?.queries.length || 0 }}</strong>
+        </div>
+        <div class="metric">
+          <span>RAG 调用</span>
+          <strong>{{ facts?.tool_calls.length || 0 }}</strong>
+        </div>
       </section>
 
-      <section v-else class="report-card">
-        <div class="report-head">
-          <h2>{{ report.title }}</h2>
-          <p>报告 ID：{{ report.report_id }} / 生成时间：{{ formatTime(report.generated_at) }}</p>
+      <section class="fact-section">
+        <div class="section-head">
+          <div>
+            <h2>人物关系</h2>
+            <p>DeepSeek 基于 HippoRAG passage 与图谱三元组写成文段。点击下方依据句查看证据。</p>
+          </div>
         </div>
-
-        <article v-for="section in report.sections" :key="section.title" class="report-section">
-          <h3>{{ section.title }}</h3>
-          <div v-if="sectionClaims(section).length" class="items">
+        <div v-if="facts?.relationship_narrative" class="narrative-card" @mouseup="openSelectionTrace('relationship')">
+          <p v-for="(paragraph, pIndex) in narrativeSentenceParagraphs(facts.relationship_narrative, relationshipFacts)" :key="pIndex">
             <button
-              v-for="claim in sectionClaims(section)"
-              :key="claim.claim_id"
-              class="claim-sentence"
-              :class="[claim.status, { hover: hoveredClaim === claim.claim_id, active: traceText === cleanSourceSentence(claim.text) }]"
-              @mouseenter="hoveredClaim = claim.claim_id"
-              @mouseleave="hoveredClaim = ''"
-              @click="openClaimTrace(section.title, claim)"
+              v-for="(sentence, sIndex) in paragraph"
+              :key="`${pIndex}-${sIndex}`"
+              :class="['narrative-sentence', { sourceable: sentence.fact }]"
+              @click="openSentenceTrace(sentence)"
             >
-              <span v-html="renderMarkdown(cleanSourceSentence(claim.text))" />
-              <small>{{ claimStatusLabel(claim.status) }} / {{ Math.round((claim.confidence || 0) * 100) }}%</small>
+              {{ sentence.text }}
             </button>
+          </p>
+          <p v-if="facts?.tool_call_note" class="tool-note">{{ facts.tool_call_note }}</p>
+        </div>
+        <div v-else class="empty-box">暂无关系事实。点击“生成事实画像”后查看 HippoRAG 检索结果。</div>
+      </section>
+
+      <section class="fact-section">
+        <div class="section-head">
+          <div>
+            <h2>行为还原</h2>
+            <p>先用文段还原关键动作，之后再把复杂反侦察和异常资金作为深挖专题。</p>
           </div>
-          <div v-else class="items">
-            <div v-for="item in section.items" :key="item" class="claim-group">
-              <button
-                v-for="sentence in sourceableSentences(item)"
-                :key="sentence"
-                class="claim-sentence"
-                :class="{ hover: hoveredClaim === sentence, active: traceText === sentence }"
-                @mouseenter="hoveredClaim = sentence"
-                @mouseleave="hoveredClaim = ''"
-                @click="openTrace(section.title, sentence)"
-              >
-                <span v-html="renderMarkdown(sentence)" />
-              </button>
-            </div>
+        </div>
+        <div v-if="facts?.behavior_narrative" class="narrative-card" @mouseup="openSelectionTrace('behavior')">
+          <p v-for="(paragraph, pIndex) in narrativeSentenceParagraphs(facts.behavior_narrative, behaviorFacts)" :key="pIndex">
+            <button
+              v-for="(sentence, sIndex) in paragraph"
+              :key="`${pIndex}-${sIndex}`"
+              :class="['narrative-sentence', { sourceable: sentence.fact }]"
+              @click="openSentenceTrace(sentence)"
+            >
+              {{ sentence.text }}
+            </button>
+          </p>
+          <p v-if="facts?.tool_call_note" class="tool-note">{{ facts.tool_call_note }}</p>
+        </div>
+        <div v-else class="empty-box">暂无行为事实。若这里很少，说明 HippoRAG 召回或 OpenIE passage 切分还要继续调。</div>
+      </section>
+
+      <section class="deferred-section">
+        <h2>暂缓深挖</h2>
+        <p>反侦察、异常资金、主观明知仍然重要，但先不在本页混入推理。事实链稳定后，再进入智能分析页。</p>
+      </section>
+
+      <section class="suspicion-section">
+        <div class="section-head">
+          <div>
+            <h2>疑点画像</h2>
+            <p>这里显示检察官在智能分析页采纳的疑点候选。它们是待核查方向，不等同于事实结论。</p>
           </div>
+          <router-link to="/intelligence">进入智能分析</router-link>
+        </div>
+        <div v-if="adoptedSuspicion.length === 0" class="empty-box">暂无采纳疑点。</div>
+        <article v-for="item in adoptedSuspicion" :key="item.candidate_id" class="suspicion-item">
+          <div>
+            <strong>{{ item.title }}</strong>
+            <span>{{ suspicionCategoryLabel(item.category) }} / {{ item.risk_level }} / {{ Math.round(item.confidence * 100) }}%</span>
+          </div>
+          <p>{{ item.explanation }}</p>
+          <ul v-if="item.gaps.length">
+            <li v-for="gap in item.gaps.slice(0, 3)" :key="gap">缺口：{{ gap }}</li>
+          </ul>
         </article>
-
-        <section class="suggestions">
-          <h3>参考建议</h3>
-          <div v-for="item in report.suggestions" :key="item" class="claim-group">
-            <button
-              v-for="sentence in sourceableSentences(item)"
-              :key="sentence"
-              class="claim-sentence"
-              :class="{ hover: hoveredClaim === sentence, active: traceText === sentence }"
-              @mouseenter="hoveredClaim = sentence"
-              @mouseleave="hoveredClaim = ''"
-              @click="openTrace('参考建议', sentence)"
-            >
-              <span v-html="renderMarkdown(sentence)" />
-            </button>
-          </div>
-        </section>
       </section>
     </section>
 
     <aside v-if="traceOpen" class="trace-panel">
       <div class="trace-head">
         <div>
-          <h2>{{ traceLabel }}</h2>
-          <p>当前结论句的证据原文与 HippoRAG PPR 溯源。</p>
+          <p class="eyebrow">证据溯源</p>
+          <h2>{{ selectedFact?.subject }} {{ selectedFact?.relation }} {{ selectedFact?.object }}</h2>
         </div>
         <button @click="traceOpen = false">关闭</button>
       </div>
-      <div class="trace-section">
-        <h3>当前结论句</h3>
-        <div class="markdown" v-html="renderMarkdown(traceText)" />
-      </div>
-      <div class="trace-section">
-        <h3>HippoRAG PPR 检索结果</h3>
-        <div v-if="traceLoading" class="muted">正在检索证据...</div>
-        <AsyncProgressBar
-          v-if="traceProgress.active.value"
-          compact
-          :value="traceProgress.value.value"
-          :label="traceProgress.label.value"
-          :detail="traceProgress.detail.value"
-        />
-        <div v-if="traceResult?.error" class="trace-error">{{ traceResult.error }}</div>
-        <div v-if="!traceLoading && !traceResult?.passages.length" class="muted">暂无 PPR passage 结果。</div>
-        <article v-for="item in traceResult?.passages || []" :key="`${item.rank}-${item.evidence_id}-${item.score}`" class="ppr-card">
+
+      <section class="trace-block">
+        <h3>当前事实</h3>
+        <p>{{ selectedFact?.text }}</p>
+      </section>
+
+      <section class="trace-block">
+        <h3>HippoRAG PPR passage</h3>
+        <article v-for="item in selectedFact?.passages || []" :key="`${item.rank}-${item.evidence_id}-${item.score}`" class="passage">
           <div>
-            <strong>#{{ item.rank }} / score {{ item.score.toFixed(4) }}</strong>
-            <span>{{ item.evidence_title || item.evidence_id || '未映射证据' }}</span>
+            <strong>#{{ item.rank }} / {{ item.score.toFixed(3) }}</strong>
+            <span>{{ item.evidence_title || item.evidence_id || '未知证据' }}</span>
           </div>
-          <p>{{ displayPassage(item.passage) }}</p>
+          <p>{{ compactText(item.passage) }}</p>
         </article>
-      </div>
-      <div class="trace-section">
+        <p v-if="!selectedFact?.passages.length" class="muted">这条来自图谱补充，没有直接绑定 PPR passage。</p>
+      </section>
+
+      <section class="trace-block">
         <h3>证据原文</h3>
+        <div v-if="traceLoading" class="muted">正在读取证据原文...</div>
         <details v-for="item in traceEvidence" :key="item.evidence_id" class="evidence-doc">
           <summary>{{ item.title }}</summary>
           <pre>{{ item.content }}</pre>
         </details>
-      </div>
+        <p v-if="!traceLoading && !traceEvidence.length" class="muted">暂无直接证据原文。</p>
+      </section>
     </aside>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { backendApi, type EvidenceDetail, type PortraitReport, type TraceResult } from '../api/backend';
+import { computed, onMounted, ref } from 'vue';
+import { backendApi, type EvidenceDetail, type PortraitFact, type PortraitFactsResult, type SuspicionCandidate } from '../api/backend';
 import AsyncProgressBar from '../components/AsyncProgressBar.vue';
 import { useSimulatedProgress } from '../composables/useSimulatedProgress';
 
 const activeCaseId = ref(localStorage.getItem('active_case_id') || '');
+const facts = ref<PortraitFactsResult | null>(null);
 const loading = ref(false);
 const error = ref('');
-const report = ref<PortraitReport | null>(null);
 const progress = useSimulatedProgress();
 const traceOpen = ref(false);
 const traceLoading = ref(false);
-const traceProgress = useSimulatedProgress();
-const traceLabel = ref('');
-const traceText = ref('');
-const hoveredClaim = ref('');
-const traceResult = ref<TraceResult | null>(null);
+const selectedFact = ref<PortraitFact | null>(null);
 const traceEvidence = ref<EvidenceDetail[]>([]);
-type PortraitClaim = NonNullable<NonNullable<PortraitReport['sections'][number]['claims']>[number]>;
-type PortraitSection = PortraitReport['sections'][number];
+const adoptedSuspicion = ref<SuspicionCandidate[]>([]);
 
-onMounted(loadLatestReport);
+const relationshipFacts = computed(() => facts.value?.relationship_facts || []);
+const behaviorFacts = computed(() => facts.value?.behavior_facts || []);
 
-async function loadLatestReport() {
-  if (!activeCaseId.value) return;
-  try {
-    const latest = await backendApi.getLatestPortrait(activeCaseId.value);
-    if (latest.generation_method !== 'pending') {
-      report.value = latest;
-    } else if (!report.value) {
-      report.value = null;
-    }
-  } catch {
-    // 没有历史报告时保持空状态，不要求用户重新生成以外的页面状态。
-  }
-}
+onMounted(() => {
+  adoptedSuspicion.value = readAdoptedSuspicion();
+  if (activeCaseId.value) refreshFacts(false);
+});
 
-async function generateReport() {
+async function refreshFacts(force = false) {
   if (!activeCaseId.value) return;
   loading.value = true;
   error.value = '';
   progress.start({
-    label: '正在生成画像报告',
-    detail: '等待后端汇总分析结果并组织成报告结构',
+    label: 'HippoRAG 正在检索事实',
+    detail: '多角度查询人物关系、请托、指派、调解、释放和资金事实。',
   });
   try {
-    report.value = await backendApi.generatePortrait(activeCaseId.value);
+    facts.value = await backendApi.getPortraitFacts(activeCaseId.value, force);
+    if (facts.value.error) error.value = facts.value.error;
     await progress.finish({
-      label: '画像报告已生成',
-      detail: '报告内容已经刷新到当前页面',
+      label: '事实画像已生成',
+      detail: '人物关系和行为还原来自 HippoRAG 检索结果。',
     });
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
@@ -190,321 +205,508 @@ async function generateReport() {
   }
 }
 
-function displayPassage(value: string) {
-  const text = cleanSourceSentence(value || '');
-  if (looksLikeRawStructuredText(text)) {
-    const parts = text.split(',').map((item) => item.trim()).filter(Boolean);
-    const readable = parts.filter((item) => /[\u4e00-\u9fa5]/.test(item)).slice(0, 8).join(' / ');
-    return readable ? `结构化记录：${readable}` : '结构化记录，点击证据原文查看完整流水。';
-  }
-  return text;
-}
-
-function looksLikeRawStructuredText(value: string) {
-  const text = String(value || '');
-  if (text.split(',').length >= 6) return true;
-  return ['structured/', 'synthetic/', '.csv', '.xlsx', 'CALL00', 'FLOW', 'cdr.csv'].filter((marker) => text.includes(marker)).length >= 2;
-}
-
-async function openTrace(label: string, text: string) {
+async function openFact(fact: PortraitFact) {
   if (!activeCaseId.value) return;
-  const cleanText = cleanSourceSentence(text);
+  selectedFact.value = fact;
   traceOpen.value = true;
   traceLoading.value = true;
-  traceProgress.start({
-    label: '正在检索支撑证据',
-    detail: 'HippoRAG 正在回溯相关 passage 与证据原文',
-  });
-  traceLabel.value = label;
-  traceText.value = cleanText;
-  traceResult.value = null;
   traceEvidence.value = [];
   try {
-    traceResult.value = await backendApi.traceAnalysis(activeCaseId.value, `${label}\n${cleanText}`, [], 8);
     const ids = new Set<string>();
-    traceResult.value.passages.forEach((item) => {
-      if (item.evidence_id && ids.size < 5) ids.add(item.evidence_id);
+    fact.evidence_ids.forEach((id) => ids.add(id));
+    fact.passages.forEach((item) => {
+      if (item.evidence_id) ids.add(item.evidence_id);
     });
-    traceEvidence.value = await Promise.all([...ids].map((id) => backendApi.getEvidenceDetail(activeCaseId.value, id)));
-    await traceProgress.finish({
-      label: '证据回溯完成',
-      detail: '可以继续查看 passage 和原始材料',
-    });
+    traceEvidence.value = await Promise.all([...ids].slice(0, 5).map((id) => backendApi.getEvidenceDetail(activeCaseId.value, id)));
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
-    traceProgress.fail();
   } finally {
     traceLoading.value = false;
   }
 }
 
-async function openClaimTrace(label: string, claim: PortraitClaim) {
-  if (!activeCaseId.value) return;
-  const claimText = cleanSourceSentence(claim.text);
-  traceOpen.value = true;
-  traceLoading.value = true;
-  traceProgress.start({
-    label: '正在读取画像支撑证据',
-    detail: '整理 claim 对应的 evidence 与支撑 passage',
-  });
-  traceLabel.value = `${label}${claim.element ? ` / ${claim.element}` : ''}`;
-  traceText.value = claimText;
-  traceResult.value = {
-    case_id: activeCaseId.value,
-    query: claimText,
-    provider: 'claim_verifier',
-    passages: claim.supporting_passages.map((item, index) => ({
-      rank: index + 1,
-      score: item.score,
-      passage: item.passage,
-      evidence_id: item.evidence_id,
-      evidence_title: item.evidence_title,
-    })),
-    paths: [],
-  };
-  try {
-    const ids = Array.from(new Set(claim.supporting_passages.map((item) => item.evidence_id).filter(Boolean))).slice(0, 5);
-    traceEvidence.value = await Promise.all(ids.map((id) => backendApi.getEvidenceDetail(activeCaseId.value, id)));
-    await traceProgress.finish({
-      label: '画像证据已加载',
-      detail: '支撑 passage 和原文已准备好',
-    });
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : String(err);
-    traceProgress.fail();
-  } finally {
-    traceLoading.value = false;
-  }
+interface NarrativeSentence {
+  text: string;
+  fact: PortraitFact | null;
 }
 
-function sourceableSentences(value: string) {
-  const normalized = value.replace(/\r/g, '\n');
-  const chunks = normalized
+function narrativeSentenceParagraphs(value: string, candidates: PortraitFact[]): NarrativeSentence[][] {
+  return String(value || '')
     .split(/\n+/)
-    .flatMap((line) => line.split(/(?<=[。！？；;])/))
-    .map(cleanSourceSentence)
-    .filter(isSourceableSentence);
-  return Array.from(new Set(chunks));
+    .map((paragraph) =>
+      splitSentences(paragraph)
+        .map((text) => ({ text, fact: bestFactForText(text, candidates) }))
+        .filter((item) => item.text),
+    )
+    .filter((paragraph) => paragraph.length);
 }
 
-function sectionClaims(section: PortraitSection) {
-  return (section.claims || []).filter((claim) => isSourceableSentence(cleanSourceSentence(claim.text)));
+function splitSentences(value: string) {
+  return String(value || '')
+    .replace(/\s+/g, ' ')
+    .match(/[^。！？；;]+[。！？；;]?/g)?.map((item) => item.trim()).filter(Boolean) || [];
 }
 
-function cleanSourceSentence(value: string) {
-  return (value || '')
-    .replace(/^[-*•]\s*/, '')
-    .replace(/^\d+[.、]\s*/, '')
-    .replace(/\*\*/g, '')
-    .replace(/==/g, '')
-    .replace(/^["“”'‘’]+|["“”'‘’]+$/g, '')
-    .trim();
+function openSentenceTrace(sentence: NarrativeSentence) {
+  if (sentence.fact) openFact(sentence.fact);
 }
 
-function isSourceableSentence(value: string) {
-  const text = cleanSourceSentence(value);
-  const withoutColon = text.replace(/[：:]\s*$/, '').trim();
-  if (withoutColon.length < 8) return false;
-  if (/^[\s*#\-•：:]+$/.test(withoutColon)) return false;
-  if (/^(结论|支持证据|仍需补强|证明力|身份|任职|职权|关键人员关系|案件对象|批准人|发信人|收信人|证明事项|来源文件)$/.test(withoutColon)) return false;
-  if (/^(证据|材料|相关证据)\s*\d*(?:-\d+)?$/.test(withoutColon)) return false;
-  if (/^(第一层|第二层|第三层|主体要件|客观行为|主观方面|结果与因果|抗辩预判)$/.test(withoutColon)) return false;
-  return true;
+function openSelectionTrace(kind: 'relationship' | 'behavior') {
+  window.setTimeout(() => {
+    const selected = window.getSelection()?.toString().trim() || '';
+    if (selected.length < 4) return;
+    const fact = bestFactForText(selected, kind === 'relationship' ? relationshipFacts.value : behaviorFacts.value);
+    if (fact) openFact(fact);
+  }, 0);
 }
 
-function formatTime(value: string) {
-  return new Date(value).toLocaleString();
+function bestFactForText(text: string, candidates: PortraitFact[]) {
+  const terms = keyTerms(text);
+  if (!terms.length) return null;
+  let best: PortraitFact | null = null;
+  let bestScore = 0;
+  candidates.forEach((fact) => {
+    const haystack = `${fact.subject} ${fact.relation} ${fact.object} ${fact.text}`;
+    const score = terms.reduce((sum, term) => sum + (haystack.includes(term) ? Math.min(term.length, 6) : 0), 0);
+    if (score > bestScore) {
+      bestScore = score;
+      best = fact;
+    }
+  });
+  return bestScore >= 4 ? best : null;
 }
 
-function claimStatusLabel(status: string) {
-  if (status === 'supported') return '证据支撑';
-  if (status === 'weak') return '需复核';
-  if (status === 'unsupported') return '未证实';
-  if (status === 'conflict') return '证据冲突';
-  return status;
+function keyTerms(text: string) {
+  const raw = String(text || '');
+  const names = ['杨周武', '王静', '何晓初', '刘力飚', '罗贤涛', '易承桂', '江军', '汪春蓉', '赵志高', '张夏天', '陈三一', '罗宇', '同乐派出所', '舞王俱乐部'];
+  const verbs = ['请托', '收受', '指派', '安排', '介入', '调解', '释放', '拘留', '立案', '侦查', '转账', '通话', '赔偿', '批准', '承诺', '负责', '隐患', '取现', '存入'];
+  return [...names, ...verbs, ...(raw.match(/\d+(?:\.\d+)?万?元/g) || []), ...(raw.match(/20\d{2}年\d{1,2}月\d{1,2}日/g) || [])].filter((term) => raw.includes(term));
 }
 
-function renderMarkdown(value: string) {
-  const escaped = escapeHtml(cleanMarkdownText(value || ''));
-  return escaped
-    .replace(/^### (.*)$/gm, '<h4>$1</h4>')
-    .replace(/^## (.*)$/gm, '<h3>$1</h3>')
-    .replace(/^# (.*)$/gm, '<h2>$1</h2>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/==(.+?)==/g, '<mark>$1</mark>')
-    .replace(/^- (.*)$/gm, '<div class="md-list">- $1</div>')
-    .replace(/\n/g, '<br />');
+function compactText(value: string) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  if (text.split(',').length >= 6) {
+    return text
+      .split(',')
+      .map((part) => part.trim())
+      .filter((part) => /[\u4e00-\u9fa5]/.test(part))
+      .slice(0, 10)
+      .join(' / ');
+  }
+  return text.length > 280 ? `${text.slice(0, 280)}...` : text;
 }
 
-function cleanMarkdownText(value: string) {
-  return value
-    .replace(/^\s*[-*•]\s+/gm, '- ')
-    .replace(/\*{1,2}([^*\n：:]{1,24})\*{1,2}([：:])/g, '**$1**$2')
-    .trim();
+function sourceLabel(source: string) {
+  if (source === 'deepseek') return 'DeepSeek生成';
+  if (source === 'hipporag') return 'PPR召回';
+  return '图谱补充';
 }
 
-function escapeHtml(value: string) {
-  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+function readAdoptedSuspicion() {
+  try {
+    return JSON.parse(localStorage.getItem(`adopted_suspicion:${activeCaseId.value}`) || '[]') as SuspicionCandidate[];
+  } catch {
+    return [];
+  }
+}
+
+function suspicionCategoryLabel(category: string) {
+  return {
+    cross_case: '跨案件碰撞',
+    hypothesis: '假设验证',
+    financial_flow: '可疑资金流',
+  }[category] || category;
 }
 </script>
 
 <style scoped>
 .portrait-page {
-  height: 100%;
+  min-height: 100%;
   overflow: auto;
   background: #eef3f7;
   color: #0f172a;
   padding: 24px;
 }
+
 .shell {
-  max-width: 980px;
+  max-width: 1120px;
   margin: 0 auto;
+  display: grid;
+  gap: 16px;
 }
-.hero,
-.report-card,
-.empty-report {
+
+.topbar,
+.fact-section,
+.deferred-section,
+.suspicion-section,
+.metric {
   border: 1px solid #d8e1ea;
   border-radius: 10px;
   background: #ffffff;
 }
-.hero {
+
+.topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 18px;
   padding: 18px;
 }
-.hero h1 {
-  font-size: 22px;
+
+.eyebrow {
+  color: #0f766e;
+  font-size: 13px;
   font-weight: 900;
 }
-.hero p,
+
+h1,
+h2,
+h3 {
+  color: #0f172a;
+  font-weight: 900;
+}
+
+h1 {
+  margin-top: 4px;
+  font-size: 24px;
+}
+
+h2 {
+  font-size: 19px;
+}
+
+h3 {
+  font-size: 15px;
+}
+
+.subtext,
+.section-head p,
+.deferred-section p,
+.suspicion-section p,
 .case-line,
-.report-head p,
-.empty-report {
+.muted {
   color: #64748b;
   font-size: 14px;
 }
+
 .primary-btn {
+  min-width: 148px;
   border-radius: 8px;
   background: #0f766e;
   color: #ffffff;
   padding: 10px 16px;
   font-weight: 900;
 }
+
 .primary-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.55;
 }
+
 .case-line {
-  margin: 14px 0;
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
+
+.case-line code {
+  color: #334155;
+}
+
 .warn,
 .error {
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 14px;
-  margin-bottom: 14px;
 }
+
 .warn {
   border: 1px solid #fde68a;
   background: #fffbeb;
   color: #92400e;
 }
-.error {
+
+.error,
+.trace-error {
   border: 1px solid #fecdd3;
   background: #fff1f2;
   color: #be123c;
 }
-.empty-report {
-  padding: 36px;
-  text-align: center;
-  border-style: dashed;
-}
-.report-card {
-  padding: 22px;
-}
-.report-head {
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 14px;
-  margin-bottom: 18px;
-}
-.report-head h2 {
-  font-size: 20px;
-  font-weight: 900;
-}
-.report-section {
-  margin-top: 20px;
-}
-.report-section h3,
-.suggestions h3 {
-  font-size: 17px;
-  font-weight: 900;
-  margin-bottom: 10px;
-}
-.items {
+
+.summary-grid {
   display: grid;
-  gap: 9px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
 }
-.claim-group {
-  display: grid;
-  gap: 7px;
+
+.metric {
+  padding: 14px;
 }
-.claim-sentence {
-  width: 100%;
-  border: 1px solid #e2e8f0;
-  border-radius: 9px;
-  background: #f8fafc;
-  padding: 11px 12px;
-  color: #334155;
-  font-size: 14px;
-  line-height: 1.7;
-  text-align: left;
-}
-.claim-sentence small {
+
+.metric span {
   display: block;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.metric strong {
+  margin-top: 5px;
+  display: block;
+  font-size: 24px;
+  color: #0f766e;
+}
+
+.tool-note {
+  margin-top: 10px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.fact-section,
+.suspicion-section {
+  padding: 18px;
+}
+
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.section-head a {
+  color: #0f766e;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.suspicion-item {
+  border-top: 1px solid #e2e8f0;
+  padding: 12px 0;
+}
+
+.suspicion-item:first-of-type {
+  border-top: 0;
+}
+
+.suspicion-item > div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.suspicion-item strong {
+  font-weight: 900;
+}
+
+.suspicion-item span {
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.suspicion-item li {
   margin-top: 6px;
   color: #64748b;
-  font-size: 12px;
-  font-weight: 800;
+  font-size: 13px;
+  line-height: 1.6;
 }
-.claim-sentence:hover,
-.claim-sentence.hover {
-  border-color: #0f766e;
-  background: #f0fdfa;
-}
-.claim-sentence.supported {
-  border-left: 4px solid #0f766e;
-}
-.claim-sentence.weak {
-  border-left: 4px solid #f59e0b;
-}
-.claim-sentence.unsupported {
-  border-left: 4px solid #dc2626;
-  background: #fff7f7;
-}
-.claim-sentence.active {
-  border-color: #0f766e;
-  background: #ccfbf1;
-  box-shadow: inset 3px 0 0 #0f766e;
-}
-.suggestions {
-  margin-top: 22px;
-  border: 1px solid #99f6e4;
+
+.narrative-card {
+  border: 1px solid #d8e1ea;
   border-radius: 10px;
-  background: #f0fdfa;
+  background: #fbfdff;
   padding: 16px;
 }
-.suggestions .claim-sentence {
-  border-color: #ccfbf1;
-  background: #ffffff;
+
+.narrative-card p {
+  color: #243047;
+  font-size: 15px;
+  line-height: 1.9;
+  margin: 0;
 }
+
+.narrative-card p + p {
+  margin-top: 12px;
+}
+
+.narrative-sentence {
+  display: inline;
+  border-radius: 5px;
+  color: inherit;
+  line-height: inherit;
+  text-align: left;
+}
+
+.narrative-sentence.sourceable {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(15, 118, 110, 0.25);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+.narrative-sentence.sourceable:hover {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.relation-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.relation-group {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fbfdff;
+  padding: 12px;
+}
+
+.relation-group h3 {
+  margin-bottom: 10px;
+  color: #0f766e;
+}
+
+.relation-card {
+  width: 100%;
+  display: grid;
+  gap: 7px;
+  border-top: 1px solid #e2e8f0;
+  padding: 10px 0;
+  color: #0f172a;
+  text-align: left;
+}
+
+.relation-card:first-of-type {
+  border-top: 0;
+}
+
+.relation-card:hover .relation-line {
+  color: #0f766e;
+}
+
+.relation-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.relation-line em {
+  border-radius: 999px;
+  background: #ccfbf1;
+  color: #0f766e;
+  padding: 2px 9px;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.fact-note {
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.fact-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.timeline {
+  display: grid;
+  gap: 9px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.timeline-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  align-items: start;
+  gap: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #0f172a;
+  padding: 12px;
+  text-align: left;
+}
+
+.timeline-item:hover {
+  border-color: #0f766e;
+  background: #f0fdfa;
+}
+
+.index {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #ccfbf1;
+  color: #0f766e;
+  font-weight: 900;
+}
+
+.timeline-body {
+  display: grid;
+  gap: 5px;
+}
+
+.timeline-title {
+  font-weight: 900;
+  line-height: 1.55;
+}
+
+.timeline-detail {
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.time {
+  margin-right: 8px;
+  color: #b45309;
+  font-weight: 900;
+}
+
+.evidence-count {
+  color: #64748b;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.empty-box {
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  color: #64748b;
+  padding: 18px;
+  text-align: center;
+}
+
+.deferred-section {
+  padding: 16px 18px;
+}
+
 .trace-panel {
   position: fixed;
   top: 0;
   right: 0;
   bottom: 0;
   z-index: 20;
-  width: min(460px, 92vw);
+  width: min(440px, 92vw);
   overflow: auto;
   border-left: 1px solid #23324b;
   background: #0f172a;
@@ -512,97 +714,94 @@ function escapeHtml(value: string) {
   padding: 16px;
   box-shadow: -16px 0 40px rgba(15, 23, 42, 0.22);
 }
+
 .trace-head {
   display: flex;
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 14px;
 }
+
 .trace-head h2 {
+  color: #ffffff;
   font-size: 18px;
-  font-weight: 900;
 }
-.trace-head p,
-.muted {
-  color: #94a3b8;
-  font-size: 13px;
-}
+
 .trace-head button {
   align-self: start;
   border: 1px solid #334155;
   border-radius: 7px;
   padding: 6px 10px;
 }
-.trace-section {
+
+.trace-block {
   border: 1px solid #23324b;
   border-radius: 9px;
   background: #111c31;
   padding: 13px;
   margin-bottom: 12px;
 }
-.trace-section h3 {
-  font-weight: 900;
+
+.trace-block h3 {
+  color: #ffffff;
   margin-bottom: 8px;
 }
-.trace-error {
-  border: 1px solid #7f1d1d;
-  border-radius: 7px;
-  background: #450a0a;
-  color: #fecaca;
-  padding: 8px;
-  font-size: 12px;
-  line-height: 1.5;
-  margin-bottom: 8px;
+
+.trace-block p,
+.passage p,
+.evidence-doc pre {
+  color: #cbd5e1;
+  font-size: 13px;
+  line-height: 1.65;
 }
-.ppr-card,
+
+.passage,
 .evidence-doc {
   border-top: 1px solid #23324b;
   padding-top: 10px;
   margin-top: 10px;
 }
-.evidence-doc summary {
-  cursor: pointer;
-  font-weight: 900;
-}
-.ppr-card div {
+
+.passage div {
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  color: #ffffff;
-  font-size: 13px;
 }
-.ppr-card span {
+
+.passage span {
   color: #7dd3fc;
   font-size: 12px;
   text-align: right;
 }
-.ppr-card p,
-.evidence-doc pre {
-  margin-top: 6px;
-  color: #cbd5e1;
-  font-size: 12px;
-  line-height: 1.6;
+
+.evidence-doc summary {
+  cursor: pointer;
+  font-weight: 900;
 }
+
 .evidence-doc pre {
-  max-height: 360px;
+  max-height: 300px;
   overflow: auto;
   white-space: pre-wrap;
 }
-.markdown {
-  color: inherit;
-  font-size: 14px;
-  line-height: 1.7;
-}
-.markdown :deep(strong),
-.claim-sentence :deep(strong) {
-  color: #0f172a;
-  font-weight: 900;
-}
-.markdown :deep(mark),
-.claim-sentence :deep(mark) {
-  border-radius: 4px;
-  background: #fed7aa;
-  color: #9a3412;
-  padding: 0 3px;
+
+@media (max-width: 860px) {
+  .topbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .summary-grid,
+  .relation-groups {
+    grid-template-columns: 1fr;
+  }
+
+  .timeline-item {
+    grid-template-columns: 34px 1fr;
+  }
+
+  .evidence-count {
+    grid-column: 2;
+  }
 }
 </style>

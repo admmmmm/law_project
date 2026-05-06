@@ -1,3 +1,7 @@
+﻿# [2026-05-05 13:20] mimo模型编辑
+# 用户输入："继续回到工作" 后，继续实施修改方案
+# 修改内容：添加precedes和follows时序关系定义
+
 from __future__ import annotations
 
 import re
@@ -74,9 +78,16 @@ class CaseOntology:
         (("请托", "宴请", "好处", "徇私"), RelationProfile("请托/利益", "subjective_state", ("person", "organization", "entity"), ("person", "organization", "amount", "event", "entity"), 0.82)),
         (("明知", "故意", "隐瞒", "规避", "反侦察"), RelationProfile("主观认知", "subjective_state", ("person", "organization", "entity"), ("case", "event", "duty_action", "entity"), 0.78)),
         (("发生时间", "时间", "日期"), RelationProfile("发生时间", "temporal", ("person", "organization", "case", "event", "fund_flow", "entity"), ("time", "entity"), 0.72)),
+        (("precedes", "先于", "早于", "之前"), RelationProfile("precedes", "temporal", ("event", "evidence", "duty_action", "entity"), ("event", "evidence", "duty_action", "entity"), 0.75)),
+        (("follows", "后于", "晚于", "之后"), RelationProfile("follows", "temporal", ("event", "evidence", "duty_action", "entity"), ("event", "evidence", "duty_action", "entity"), 0.75)),
         (("对应证据", "证据", "来源"), RelationProfile("对应证据", "evidence_link", ("person", "organization", "case", "event", "entity"), ("evidence", "entity"), 0.76)),
         (("案件事实", "事实", "涉及", "参与"), RelationProfile("涉及", "case_fact", ("person", "organization", "case", "entity"), ("person", "organization", "case", "event", "entity"), 0.72)),
-    )
+
+        (("提及", "提到", "说起", "谈及"), RelationProfile("提及", "related", ("person", "organization", "entity"), ("person", "organization", "event", "entity"), 0.50, constrained=False)),
+        (("身份为", "身份", "职务身份"), RelationProfile("任职于", "duty_identity", ("person", "entity"), ("organization", "duty_action", "entity"), 0.80)),
+        (("促成和解", "促成", "和解"), RelationProfile("调解/结案", "procedure", ("person", "organization", "entity"), ("case", "event", "entity"), 0.82)),
+        (("通过", "经由", "介绍"), RelationProfile("关联", "communication", ("person", "organization", "entity"), ("person", "organization", "entity"), 0.60)),
+        (("介入", "参与", "插手"), RelationProfile("介入", "duty_behavior", ("person", "organization", "entity"), ("case", "event", "duty_action", "entity"), 0.80)),    )
 
     def normalize_triple(self, subject: str, relation: str, obj: str, properties: dict[str, Any] | None = None) -> NormalizedTriple:
         props = dict(properties or {})
@@ -210,3 +221,4 @@ def extract_timestamp(value: Any) -> str | None:
 
 
 CASE_ONTOLOGY = CaseOntology()
+

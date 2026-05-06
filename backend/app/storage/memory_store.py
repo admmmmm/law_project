@@ -11,6 +11,7 @@ from app.schemas.graph import InvestigationGraph
 from app.schemas.ingestion import EvidenceRecord, ExtractionResult
 from app.schemas.memory import MemoryRecord
 from app.schemas.report import PortraitReport
+from app.schemas.analysis import AnalysisMessage, AnalysisThread, PortraitFactsResult
 
 
 def _backend_root() -> Path:
@@ -32,6 +33,9 @@ class MemoryStore:
     graphs: dict[str, InvestigationGraph] = field(default_factory=dict)
     reports: dict[str, PortraitReport] = field(default_factory=dict)
     memories: dict[str, list[MemoryRecord]] = field(default_factory=dict)
+    analysis_threads: dict[str, list[AnalysisThread]] = field(default_factory=dict)
+    analysis_messages: dict[str, list[AnalysisMessage]] = field(default_factory=dict)
+    portrait_facts: dict[str, PortraitFactsResult] = field(default_factory=dict)
     raw_contents: dict[str, str] = field(default_factory=dict)
     db_path: Path = field(default_factory=lambda: _resolve_db_path(settings.storage_db_path))
     lock: RLock = field(default_factory=RLock)
@@ -56,6 +60,9 @@ class MemoryStore:
             conn.execute("DELETE FROM raw_contents WHERE case_id = ?", (case_id,))
             conn.execute("DELETE FROM extractions WHERE case_id = ?", (case_id,))
             conn.execute("DELETE FROM memories WHERE case_id = ?", (case_id,))
+            conn.execute("DELETE FROM analysis_threads WHERE case_id = ?", (case_id,))
+            conn.execute("DELETE FROM analysis_messages WHERE case_id = ?", (case_id,))
+            conn.execute("DELETE FROM portrait_facts WHERE case_id = ?", (case_id,))
 
             for item in self.evidence.get(case_id, []):
                 conn.execute(
@@ -79,6 +86,18 @@ class MemoryStore:
                     (case_id, record.memory_id, record.model_dump_json()),
                 )
 
+            for thread in self.analysis_threads.get(case_id, []):
+                conn.execute(
+                    "INSERT OR REPLACE INTO analysis_threads (case_id, thread_id, payload) VALUES (?, ?, ?)",
+                    (case_id, thread.thread_id, thread.model_dump_json()),
+                )
+
+            for message in self.analysis_messages.get(case_id, []):
+                conn.execute(
+                    "INSERT OR REPLACE INTO analysis_messages (case_id, thread_id, message_id, payload) VALUES (?, ?, ?, ?)",
+                    (case_id, message.thread_id, message.message_id, message.model_dump_json()),
+                )
+
             graph = self.graphs.get(case_id)
             if graph:
                 conn.execute(
@@ -96,6 +115,15 @@ class MemoryStore:
                 )
             else:
                 conn.execute("DELETE FROM reports WHERE case_id = ?", (case_id,))
+
+            portrait_facts = self.portrait_facts.get(case_id)
+            if portrait_facts:
+                conn.execute(
+                    "INSERT OR REPLACE INTO portrait_facts (case_id, payload) VALUES (?, ?)",
+                    (case_id, portrait_facts.model_dump_json()),
+                )
+            else:
+                conn.execute("DELETE FROM portrait_facts WHERE case_id = ?", (case_id,))
 
             conn.commit()
 
@@ -136,9 +164,27 @@ class MemoryStore:
                     payload TEXT NOT NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS portrait_facts (
+                    case_id TEXT PRIMARY KEY,
+                    payload TEXT NOT NULL
+                );
+
                 CREATE TABLE IF NOT EXISTS memories (
                     case_id TEXT NOT NULL,
                     memory_id TEXT PRIMARY KEY,
+                    payload TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS analysis_threads (
+                    case_id TEXT NOT NULL,
+                    thread_id TEXT PRIMARY KEY,
+                    payload TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS analysis_messages (
+                    case_id TEXT NOT NULL,
+                    thread_id TEXT NOT NULL,
+                    message_id TEXT PRIMARY KEY,
                     payload TEXT NOT NULL
                 );
                 """
@@ -178,13 +224,28 @@ class MemoryStore:
                 for row in conn.execute("SELECT case_id, payload FROM reports")
             }
 
+            self.portrait_facts = {
+                row["case_id"]: PortraitFactsResult.model_validate_json(row["payload"])
+                for row in conn.execute("SELECT case_id, payload FROM portrait_facts")
+            }
+
             self.memories = {case_id: [] for case_id in self.cases}
             for row in conn.execute("SELECT case_id, payload FROM memories ORDER BY rowid"):
                 self.memories.setdefault(row["case_id"], []).append(MemoryRecord.model_validate_json(row["payload"]))
 
+            self.analysis_threads = {case_id: [] for case_id in self.cases}
+            for row in conn.execute("SELECT case_id, payload FROM analysis_threads ORDER BY rowid"):
+                self.analysis_threads.setdefault(row["case_id"], []).append(AnalysisThread.model_validate_json(row["payload"]))
+
+            self.analysis_messages = {case_id: [] for case_id in self.cases}
+            for row in conn.execute("SELECT case_id, payload FROM analysis_messages ORDER BY rowid"):
+                self.analysis_messages.setdefault(row["case_id"], []).append(AnalysisMessage.model_validate_json(row["payload"]))
+
         for case_id in self.cases:
             self.evidence.setdefault(case_id, [])
             self.memories.setdefault(case_id, [])
+            self.analysis_threads.setdefault(case_id, [])
+            self.analysis_messages.setdefault(case_id, [])
             self.graphs.setdefault(case_id, InvestigationGraph(case_id=case_id))
 
 

@@ -2,11 +2,11 @@
   <aside class="w-56 bg-slate-950 text-slate-100 h-screen shrink-0 flex flex-col">
     <div class="px-5 h-14 flex items-center border-b border-slate-800 font-bold">侦查中台</div>
     <nav class="p-3 space-y-1 text-sm">
-      <router-link class="nav-link" active-class="nav-active" to="/">案件导入</router-link>
-      <router-link class="nav-link" active-class="nav-active" to="/graph">证据图谱</router-link>
-      <router-link class="nav-link" active-class="nav-active" to="/intelligence">智能分析</router-link>
-      <router-link class="nav-link" active-class="nav-active" to="/chat">RAG 对话</router-link>
-      <router-link class="nav-link" active-class="nav-active" to="/portrait">画像报告</router-link>
+      <router-link class="nav-link" active-class="nav-active" :to="linkTo('')">案件导入</router-link>
+      <router-link class="nav-link" active-class="nav-active" :to="linkTo('graph')">证据图谱</router-link>
+      <router-link class="nav-link" active-class="nav-active" :to="linkTo('portrait')">画像报告</router-link>
+      <router-link class="nav-link" active-class="nav-active" :to="linkTo('intelligence')">智能分析</router-link>
+      <router-link class="nav-link" active-class="nav-active" :to="linkTo('chat')">RAG 对话</router-link>
     </nav>
     <div class="mt-auto p-4 text-xs text-slate-400 border-t border-slate-800">
       adm 整合分支<br />
@@ -15,6 +15,20 @@
     </div>
   </aside>
 </template>
+
+<script setup lang="ts">
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+
+const route = useRoute();
+const workspaceId = computed(() => String(route.params.workspaceId || localStorage.getItem('active_workspace_id') || '').trim());
+
+function linkTo(page: string) {
+  const id = workspaceId.value;
+  if (!id) return page ? `/${page}` : '/';
+  return page ? `/${id}/${page}` : `/${id}`;
+}
+</script>
 
 <style scoped>
 .nav-link {

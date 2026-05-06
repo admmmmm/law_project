@@ -5,6 +5,7 @@ class GraphNode(BaseModel):
     node_id: str
     label: str
     type: str
+    tags: list[str] = Field(default_factory=list)
     properties: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
     evidence_ids: list[str] = Field(default_factory=list)
     timestamp: str | None = None
@@ -17,6 +18,7 @@ class GraphEdge(BaseModel):
     source_id: str
     target_id: str
     relation: str
+    tags: list[str] = Field(default_factory=list)
     confidence: float = Field(default=0.5, ge=0, le=1)
     properties: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
     evidence_ids: list[str] = Field(default_factory=list)
@@ -40,6 +42,10 @@ class InvestigationGraph(BaseModel):
     nodes: list[GraphNode] = Field(default_factory=list)
     edges: list[GraphEdge] = Field(default_factory=list)
     clues: list[SuspiciousClue] = Field(default_factory=list)
+
+
+class MergedGraphRequest(BaseModel):
+    selected_case_ids: list[str] = Field(default_factory=list)
 
 
 class GraphInterventionRequest(BaseModel):

@@ -388,7 +388,7 @@ def _select_report_passages_with_hipporag(
     evidence,
     raw_contents: dict[str, str],
     extractions: dict[str, Any],
-    limit: int = 80,
+    limit: int = 120,
 ) -> tuple[list[dict[str, Any]], str]:
     suspect = _guess_suspect(case_title, raw_contents)
     queries = [
@@ -398,6 +398,10 @@ def _select_report_passages_with_hipporag(
         f"{suspect}是否接受贿赂或好处",
         f"{suspect}是否明知应追究刑事责任而不追究",
         f"{suspect}的行为导致了什么后果",
+        f"{case_title} 完整时间线 接警 鉴定 拘留 请托 资金 调解 释放 立案侦查",
+        f"{case_title} 8月12日 8月16日 8月19日 8月21日 9月6日 9月20日 9月28日",
+        f"{case_title} 火灾 死亡 受伤 事故调查 履职情况专报 严重后果",
+        f"{case_title} 立案决定书 检察院 犯罪嫌疑人 涉嫌罪名",
         "案件中是否存在隐瞒规避、白手套、现金取存、倒签补录或反侦察行为",
     ]
     adapter = get_algorithm_adapter()
