@@ -91,6 +91,10 @@ class CaseService:
             self.store.graphs.pop(case_id, None)
             self.store.reports.pop(case_id, None)
             self.store.portrait_facts.pop(case_id, None)
+            self.store.retrieval_sessions.pop(case_id, None)
+            self.store.retrieval_steps.pop(case_id, None)
+            self.store.document_mother_nodes.pop(case_id, None)
+            self.store.rule_pack_runs.pop(case_id, None)
             self.store.memories.pop(case_id, None)
             self.store.analysis_threads.pop(case_id, None)
             self.store.analysis_messages.pop(case_id, None)
@@ -99,6 +103,6 @@ class CaseService:
                 self.store.extractions.pop(evidence_id, None)
 
             with sqlite3.connect(self.store.db_path) as conn:
-                for table in ["cases", "evidence", "raw_contents", "extractions", "graphs", "reports", "portrait_facts", "memories", "analysis_threads", "analysis_messages"]:
+                for table in ["cases", "evidence", "raw_contents", "extractions", "graphs", "reports", "portrait_facts", "memories", "analysis_threads", "analysis_messages", "retrieval_sessions", "retrieval_steps", "document_mother_nodes", "rule_pack_runs"]:
                     conn.execute(f"DELETE FROM {table} WHERE case_id = ?", (case_id,))
                 conn.commit()

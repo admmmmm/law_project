@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from app.schemas.graph import InvestigationGraph
+from app.schemas.analysis_skill import RuleFinding
 
 
 class AnalysisRunRequest(BaseModel):
@@ -89,6 +90,63 @@ class RagToolCall(BaseModel):
     note: str | None = None
 
 
+class RetrievalArtifact(BaseModel):
+    artifact_id: str
+    artifact_type: str = Field(pattern="^(passage|graph_fact|legal_passage|entity|summary)$")
+    title: str = ""
+    text: str
+    score: float = 0.0
+    evidence_id: str | None = None
+    source_id: str | None = None
+    metadata: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
+
+
+class RetrievalToolCall(BaseModel):
+    tool_call_id: str
+    tool_name: str
+    arguments: dict[str, str | int | float | bool | list[str] | None] = Field(default_factory=dict)
+    summary: str = ""
+    passages: list[TracePassage] = Field(default_factory=list)
+    graph_facts: list[str] = Field(default_factory=list)
+    legal_passages: list[TracePassage] = Field(default_factory=list)
+    rule_findings: list[RuleFinding] = Field(default_factory=list)
+    document_groups: list[dict[str, object]] = Field(default_factory=list)
+    new_entities: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+
+
+class RetrievalStep(BaseModel):
+    step_id: str
+    session_id: str
+    round_index: int
+    retrieval_goals: list[str] = Field(default_factory=list)
+    tool_calls: list[RetrievalToolCall] = Field(default_factory=list)
+    coverage_summary: str = ""
+    unresolved_gaps: list[str] = Field(default_factory=list)
+    ready_to_answer: bool = False
+    created_at: datetime
+
+
+class RetrievalSession(BaseModel):
+    session_id: str
+    case_id: str
+    mode: str
+    question: str
+    status: str = "running"
+    planner_model: str = ""
+    analysis_model: str = ""
+    tool_call_summary: str = ""
+    retrieval_steps_count: int = 0
+    created_at: datetime
+    updated_at: datetime
+    error: str | None = None
+
+
+class RetrievalSessionDetail(BaseModel):
+    session: RetrievalSession
+    steps: list[RetrievalStep] = Field(default_factory=list)
+
+
 class PortraitFactsResult(BaseModel):
     case_id: str
     provider: str
@@ -99,6 +157,9 @@ class PortraitFactsResult(BaseModel):
     queries: list[str] = Field(default_factory=list)
     tool_calls: list[RagToolCall] = Field(default_factory=list)
     tool_call_note: str = ""
+    tool_call_summary: str = ""
+    retrieval_session_id: str | None = None
+    retrieval_steps_count: int = 0
     error: str | None = None
 
 
@@ -169,6 +230,9 @@ class AnalysisMessage(BaseModel):
     graph_context: list[str] = Field(default_factory=list)
     legal_context: list[TracePassage] = Field(default_factory=list)
     mentioned_evidence_ids: list[str] = Field(default_factory=list)
+    tool_call_summary: str = ""
+    retrieval_session_id: str | None = None
+    retrieval_steps_count: int = 0
     error: str | None = None
 
 

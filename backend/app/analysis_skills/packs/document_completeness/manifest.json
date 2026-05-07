@@ -1,0 +1,10 @@
+{
+  "name": "document_completeness",
+  "title": "材料完整性分析",
+  "version": "0.1.0",
+  "description": "检查关键证据材料是否缺失、未入卷或来源不明。",
+  "case_types": ["司法工作人员职务犯罪", "徇私枉法", "玩忽职守"],
+  "task_types": ["事实画像", "假设验证", "详细报告"],
+  "triggers": ["材料缺失", "证据缺口", "伤情鉴定", "送检", "卷宗目录"],
+  "enabled": true
+}

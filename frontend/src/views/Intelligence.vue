@@ -65,6 +65,7 @@
           <article v-for="message in threadDetail.messages" :key="message.message_id" class="message" :class="message.role">
             <div class="message-role">{{ message.role === 'user' ? '检察官' : 'DeepSeek + RAG' }}</div>
             <div v-if="message.role === 'assistant'" class="answer-text">
+              <p v-if="message.tool_call_summary" class="tool-summary">{{ message.tool_call_summary }}</p>
               <button
                 v-for="sentence in message.claims.length ? message.claims : fallbackSentences(message.content)"
                 :key="sentence.sentence_id"
@@ -74,6 +75,69 @@
               >
                 <span v-html="renderInlineMarkdown(sentence.text)" />
               </button>
+              <details v-if="message.retrieval_session_id" class="retrieval-details" @toggle="onRetrievalToggle(message.retrieval_session_id, $event)">
+                <summary>检索与调用细节</summary>
+                <div v-if="retrievalLoading[message.retrieval_session_id]" class="muted">正在读取检索记录...</div>
+                <div v-else-if="retrievalDetails[message.retrieval_session_id]" class="retrieval-body">
+                  <div class="retrieval-meta">
+                    <span>{{ retrievalDetails[message.retrieval_session_id].session.planner_model }}</span>
+                    <span>{{ retrievalDetails[message.retrieval_session_id].session.analysis_model }}</span>
+                    <span>{{ retrievalDetails[message.retrieval_session_id].session.status }}</span>
+                  </div>
+                  <section v-for="step in retrievalDetails[message.retrieval_session_id].steps" :key="step.step_id" class="retrieval-step">
+                    <h4>第 {{ step.round_index }} 轮</h4>
+                    <p v-if="step.retrieval_goals.length"><strong>目标：</strong>{{ step.retrieval_goals.join('；') }}</p>
+                    <p v-if="step.coverage_summary"><strong>覆盖：</strong>{{ step.coverage_summary }}</p>
+                    <p v-if="step.unresolved_gaps.length"><strong>缺口：</strong>{{ step.unresolved_gaps.join('；') }}</p>
+                    <article v-for="call in step.tool_calls" :key="call.tool_call_id" class="tool-call">
+                      <div class="tool-call-head">
+                        <strong>{{ toolLabel(call.tool_name) }}</strong>
+                        <code>{{ formatArgs(call.arguments) }}</code>
+                      </div>
+                      <p>{{ call.summary || '无摘要' }}</p>
+                      <p v-if="call.errors.length" class="error tiny">错误：{{ call.errors.join('；') }}</p>
+                      <div v-if="call.graph_facts.length" class="tool-block">
+                        <b>图谱关系</b>
+                        <ul>
+                          <li v-for="fact in call.graph_facts.slice(0, 8)" :key="fact">{{ fact }}</li>
+                        </ul>
+                      </div>
+                      <div v-if="call.passages.length" class="tool-block">
+                        <b>证据 passage</b>
+                        <ul>
+                          <li v-for="passage in call.passages.slice(0, 5)" :key="`${passage.rank}-${passage.passage}`">
+                            Doc {{ passage.rank }}：{{ passage.evidence_title || passage.evidence_id || '未映射证据' }} - {{ compactText(passage.passage, 110) }}
+                          </li>
+                        </ul>
+                      </div>
+                      <div v-if="call.legal_passages.length" class="tool-block">
+                        <b>法律知识</b>
+                        <ul>
+                          <li v-for="passage in call.legal_passages.slice(0, 4)" :key="`${passage.rank}-${passage.passage}`">
+                            {{ passage.evidence_title || '法律知识' }} - {{ compactText(passage.passage, 100) }}
+                          </li>
+                        </ul>
+                      </div>
+                      <div v-if="call.rule_findings.length" class="tool-block">
+                        <b>规则命中</b>
+                        <ul>
+                          <li v-for="finding in call.rule_findings" :key="finding.finding_id">
+                            {{ finding.title }}（{{ finding.severity }}）：{{ compactText(finding.reason, 120) }}
+                          </li>
+                        </ul>
+                      </div>
+                      <div v-if="call.document_groups.length" class="tool-block">
+                        <b>文件母图聚合</b>
+                        <ul>
+                          <li v-for="group in call.document_groups.slice(0, 8)" :key="String(group.doc_id || group.name || group.title)">
+                            {{ group.doc_id || group.name || '文件' }}：{{ group.process_stage || group.title || '' }} {{ compactText(String(group.proof_purpose || group.document_summary || group.description || ''), 100) }}
+                          </li>
+                        </ul>
+                      </div>
+                    </article>
+                  </section>
+                </div>
+              </details>
             </div>
             <div v-else class="message-text">{{ message.content }}</div>
             <p v-if="message.error" class="muted">提示：{{ message.error }}</p>
@@ -100,16 +164,28 @@
         <p v-if="!selectedSentence" class="empty">点击答案中的句子查看来源。</p>
         <template v-else>
           <div class="source-status" :class="selectedSentence.status">
-            {{ statusLabel(selectedSentence.status) }} / {{ Math.round(selectedSentence.confidence * 100) }}%
+            {{ supportStrength(selectedSentence) }}
           </div>
           <p class="selected-text">{{ selectedSentence.text }}</p>
-          <h3>证据 passage</h3>
+          <p v-if="threadDetail?.messages.find((item) => item.role === 'assistant' && item.claims.some((claim) => claim.sentence_id === selectedSentence?.sentence_id))?.retrieval_session_id" class="muted">
+            本句来源于已保存的 agentic RAG 检索会话。
+          </p>
+          <h3>证据关系路径</h3>
+          <article v-for="path in selectedSentence.supporting_graph_paths" :key="`${path.source}-${path.relation}-${path.target}`" class="graph-path">
+            <span>{{ path.source }}</span>
+            <strong>—[{{ path.relation }}]→</strong>
+            <span>{{ path.target }}</span>
+          </article>
+          <p v-if="!selectedSentence.supporting_graph_paths.length" class="muted">暂无直接图谱路径。</p>
+          <h3>证明文档</h3>
           <article v-for="passage in selectedSentence.supporting_passages" :key="`${passage.rank}-${passage.passage}`" class="passage">
-            <strong>#{{ passage.rank }} / {{ passage.score.toFixed(3) }}</strong>
+            <strong>Doc {{ passage.rank }}</strong>
             <span>{{ passage.evidence_title || passage.evidence_id || '未映射证据' }}</span>
             <p>{{ passage.passage }}</p>
           </article>
-          <p v-if="!selectedSentence.supporting_passages.length" class="empty">暂无可靠 passage 支撑。</p>
+          <p v-if="!selectedSentence.supporting_passages.length" class="empty">
+            暂未绑定可靠 passage。该句只能作为待核查判断，不能作为正式事实结论；建议缩小问题或重新追问。
+          </p>
         </template>
       </aside>
     </section>
@@ -118,7 +194,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { backendApi, type AnalysisThread, type AnalysisThreadDetail, type EvidenceRecord, type GroundedSentence } from '../api/backend';
+import { backendApi, type AnalysisThread, type AnalysisThreadDetail, type EvidenceRecord, type GroundedSentence, type RetrievalSessionDetail } from '../api/backend';
 import AsyncProgressBar from '../components/AsyncProgressBar.vue';
 import { useSimulatedProgress } from '../composables/useSimulatedProgress';
 
@@ -138,6 +214,8 @@ const newQuestion = ref('');
 const followup = ref('');
 const mentionSuggestions = ref<EvidenceRecord[]>([]);
 const selectedSentence = ref<GroundedSentence | null>(null);
+const retrievalDetails = ref<Record<string, RetrievalSessionDetail>>({});
+const retrievalLoading = ref<Record<string, boolean>>({});
 const progress = useSimulatedProgress();
 
 const effectiveNewQuestion = computed(() => {
@@ -269,6 +347,48 @@ function statusLabel(status: string) {
   return { supported: '证据支撑', weak: '支撑较弱', unsupported: '暂无支撑' }[status] || status;
 }
 
+function supportStrength(sentence: GroundedSentence) {
+  if (sentence.status === 'unsupported') return '待核查';
+  if (sentence.status === 'weak') return '弱';
+  if (sentence.confidence >= 0.65) return '强';
+  return '中';
+}
+
+async function onRetrievalToggle(sessionId: string | null | undefined, event: Event) {
+  const target = event.target as HTMLDetailsElement;
+  if (!target.open || !sessionId || retrievalDetails.value[sessionId] || retrievalLoading.value[sessionId]) return;
+  retrievalLoading.value = { ...retrievalLoading.value, [sessionId]: true };
+  try {
+    const detail = await backendApi.getRetrievalSession(activeCaseId.value, sessionId);
+    retrievalDetails.value = { ...retrievalDetails.value, [sessionId]: detail };
+  } catch (exc) {
+    error.value = exc instanceof Error ? exc.message : String(exc);
+  } finally {
+    retrievalLoading.value = { ...retrievalLoading.value, [sessionId]: false };
+  }
+}
+
+function toolLabel(name: string) {
+  const labels: Record<string, string> = {
+    search_documents: '文档检索',
+    search_graph: '图谱检索',
+    expand_node: '节点扩展',
+    search_time_range: '时间检索',
+    search_legal: '法律知识',
+  };
+  return labels[name] || name;
+}
+
+function formatArgs(args: Record<string, unknown>) {
+  const text = JSON.stringify(args || {}, null, 0);
+  return text.length > 160 ? `${text.slice(0, 160)}...` : text;
+}
+
+function compactText(value: string, limit: number) {
+  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  return text.length > limit ? `${text.slice(0, limit)}...` : text;
+}
+
 function renderInlineMarkdown(value: string) {
   const escaped = String(value || '')
     .replace(/&/g, '&amp;')
@@ -298,7 +418,9 @@ async function runTask(label: string, task: () => Promise<void>) {
 
 <style scoped>
 .analysis-page {
-  min-height: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
   background: #eef3f7;
   color: #0f172a;
   padding: 24px;
@@ -398,6 +520,11 @@ textarea {
   grid-template-columns: 340px minmax(0, 1fr) 360px;
   gap: 14px;
   align-items: start;
+  min-height: 0;
+}
+.thread-panel,
+.detail-panel {
+  min-width: 0;
 }
 .panel-head,
 .detail-head {
@@ -452,6 +579,85 @@ textarea {
 .answer-text {
   white-space: pre-wrap;
   line-height: 1.9;
+}
+.tool-summary {
+  display: inline-block;
+  border: 1px solid #99f6e4;
+  border-radius: 999px;
+  background: #f0fdfa;
+  color: #0f766e;
+  padding: 5px 10px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 900;
+}
+.retrieval-details {
+  margin-top: 14px;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 10px 12px;
+}
+.retrieval-details summary {
+  cursor: pointer;
+  font-weight: 900;
+  color: #0f766e;
+}
+.retrieval-body {
+  margin-top: 10px;
+  display: grid;
+  gap: 12px;
+}
+.retrieval-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.retrieval-meta span {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #fff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+}
+.retrieval-step {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 10px;
+}
+.retrieval-step h4 {
+  margin: 0 0 6px;
+}
+.tool-call {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px;
+  margin-top: 8px;
+}
+.tool-call-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+.tool-call-head code {
+  overflow-wrap: anywhere;
+  color: #475569;
+}
+.tool-block {
+  margin-top: 8px;
+}
+.tool-block ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.tool-block li {
+  margin-bottom: 4px;
+}
+.tiny {
+  font-size: 12px;
 }
 .sentence {
   display: inline;
@@ -560,6 +766,22 @@ textarea {
   border-top: 1px solid #e2e8f0;
   padding: 10px 0;
   line-height: 1.6;
+}
+.graph-path {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  border-radius: 10px;
+  padding: 10px;
+  margin: 8px 0;
+  color: #1e3a8a;
+  line-height: 1.5;
+}
+.graph-path strong {
+  color: #0f766e;
 }
 .passage span {
   display: block;

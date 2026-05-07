@@ -1,0 +1,14 @@
+{
+  "skill": "process_turning_point",
+  "checks": [
+    {
+      "id": "criminal_filing_to_mediation_or_release",
+      "title": "刑事立案/拘留后转向调解或释放",
+      "finding_type": "process_turning_point_risk",
+      "severity": "high",
+      "trigger": {"all_stages": ["立案"], "any_stage": ["调解/撤案", "释放"]},
+      "missing_documents": ["撤案审批", "释放依据", "审批流日志"],
+      "next_actions": ["核查释放审批流", "调取撤案或调解审批材料", "比对立案、拘留、释放、调解的形成时间"]
+    }
+  ]
+}

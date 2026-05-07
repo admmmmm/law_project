@@ -11,6 +11,7 @@ from app.schemas.analysis import (
     ChatRequest,
     ChatResult,
     PortraitFactsResult,
+    RetrievalSessionDetail,
     SuspicionAnalysisRequest,
     SuspicionAnalysisResult,
     TraceRequest,
@@ -68,3 +69,8 @@ def add_analysis_thread_message(case_id: str, thread_id: str, payload: AnalysisT
 @router.delete("/{case_id}/analysis/threads/{thread_id}", status_code=204)
 def delete_analysis_thread(case_id: str, thread_id: str, service: AnalysisServiceDep) -> None:
     service.delete_thread(case_id, thread_id)
+
+
+@router.get("/{case_id}/analysis/retrieval-sessions/{session_id}", response_model=RetrievalSessionDetail)
+def get_retrieval_session(case_id: str, session_id: str, service: AnalysisServiceDep) -> RetrievalSessionDetail:
+    return service.get_retrieval_session(case_id, session_id)

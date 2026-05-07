@@ -12,14 +12,20 @@ from app.core.config import settings
 from app.core.errors import not_found
 from app.adapters.algorithm import get_algorithm_adapter
 from app.schemas.common import new_id, now_utc
+from app.schemas.analysis import TracePassage
 from app.schemas.report import ClaimPassage, PortraitClaim, PortraitReport, PortraitSection
 from app.services.llm_context_debug import log_llm_context
+from app.services.legal_knowledge_service import LegalKnowledgeService
+from app.services.retrieval_planner_service import RetrievalPlannerService, collect_session_artifacts
 from app.storage.memory_store import MemoryStore
 
 
 class ReportService:
     def __init__(self, store: MemoryStore) -> None:
         self.store = store
+        self.algorithm = get_algorithm_adapter()
+        self.legal_knowledge = LegalKnowledgeService()
+        self.retrieval_planner = RetrievalPlannerService(store, self.algorithm, self.legal_knowledge)
 
     def get_latest_portrait(self, case_id: str) -> PortraitReport:
         with self.store.lock:
@@ -121,6 +127,21 @@ class ReportService:
                 "对别名、假名、马甲账户只输出合并建议和置信度，最终合并必须人工确认。",
                 "当前报告是侦查参考，不替代人工审查、证据合法性判断和法律定性。",
             ]
+            agentic_detail = self.retrieval_planner.run(
+                case_id=case_id,
+                mode="portrait_report",
+                question=f"{case.title}：生成完整画像报告，覆盖主体身份、行为事实、主观方面、结果因果、证据缺口和抗辩预判。",
+                case_title=case.title,
+                offense_id=case.offense_id,
+                evidence=list(evidence),
+                raw_contents=raw_contents,
+                extractions=extractions,
+                graph=graph,
+                initial_goals=["主体身份", "行为事实", "主观方面", "结果因果", "证据缺口", "抗辩预判"],
+            )
+            agentic_passages, agentic_graph_context, agentic_legal_passages = collect_session_artifacts(agentic_detail)
+            if sections:
+                sections[0].items.append(f"**检索说明**：{agentic_detail.session.tool_call_summary}")
             claim_sections, generation_method = _generate_grounded_claim_sections(
                 case_id=case_id,
                 case_title=case.title,
@@ -129,6 +150,9 @@ class ReportService:
                 raw_contents=raw_contents,
                 extractions=extractions,
                 graph=graph,
+                agentic_passages=agentic_passages,
+                agentic_graph_context=agentic_graph_context,
+                agentic_legal_passages=agentic_legal_passages,
             )
 
             report = PortraitReport(
@@ -305,8 +329,18 @@ def _generate_grounded_claim_sections(
     raw_contents: dict[str, str],
     extractions: dict[str, Any],
     graph,
+    agentic_passages: list[TracePassage] | None = None,
+    agentic_graph_context: list[str] | None = None,
+    agentic_legal_passages: list[TracePassage] | None = None,
 ) -> tuple[list[PortraitSection], str]:
-    passages, source = _select_report_passages_with_hipporag(case_id, case_title, evidence, raw_contents, extractions)
+    passages = [_trace_passage_to_report_passage(item) for item in (agentic_passages or [])]
+    for index, fact in enumerate((agentic_graph_context or [])[:80], start=1):
+        passages.append({"evidence_id": None, "evidence_title": "Agentic 图谱检索", "passage": fact, "score": 0.72, "query": "agentic_graph", "rank": 900 + index})
+    for item in (agentic_legal_passages or [])[:10]:
+        passages.append(_trace_passage_to_report_passage(item))
+    source = "agentic_rag"
+    if not passages:
+        passages, source = _select_report_passages_with_hipporag(case_id, case_title, evidence, raw_contents, extractions)
     if not passages:
         passages = _build_evidence_passages(evidence, raw_contents)
         source = "keyword_fallback"
@@ -380,6 +414,17 @@ def _try_deepseek_claims(case_title: str, sections: list[PortraitSection], passa
         return claims if isinstance(claims, list) else []
     except (urllib.error.URLError, TimeoutError, KeyError, json.JSONDecodeError, TypeError, ValueError):
         return []
+
+
+def _trace_passage_to_report_passage(item: TracePassage) -> dict[str, Any]:
+    return {
+        "evidence_id": item.evidence_id,
+        "evidence_title": item.evidence_title,
+        "passage": item.passage,
+        "score": item.score,
+        "query": "agentic_rag",
+        "rank": item.rank,
+    }
 
 
 def _select_report_passages_with_hipporag(

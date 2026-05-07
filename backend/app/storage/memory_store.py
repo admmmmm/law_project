@@ -11,7 +11,9 @@ from app.schemas.graph import InvestigationGraph
 from app.schemas.ingestion import EvidenceRecord, ExtractionResult
 from app.schemas.memory import MemoryRecord
 from app.schemas.report import PortraitReport
-from app.schemas.analysis import AnalysisMessage, AnalysisThread, PortraitFactsResult
+from app.schemas.analysis import AnalysisMessage, AnalysisThread, PortraitFactsResult, RetrievalSession, RetrievalStep
+from app.schemas.analysis_skill import RulePackRunResult, SkillRegistryEntry
+from app.schemas.document_mother import DocumentMotherNode
 
 
 def _backend_root() -> Path:
@@ -36,6 +38,11 @@ class MemoryStore:
     analysis_threads: dict[str, list[AnalysisThread]] = field(default_factory=dict)
     analysis_messages: dict[str, list[AnalysisMessage]] = field(default_factory=dict)
     portrait_facts: dict[str, PortraitFactsResult] = field(default_factory=dict)
+    retrieval_sessions: dict[str, list[RetrievalSession]] = field(default_factory=dict)
+    retrieval_steps: dict[str, list[RetrievalStep]] = field(default_factory=dict)
+    document_mother_nodes: dict[str, list[DocumentMotherNode]] = field(default_factory=dict)
+    rule_pack_runs: dict[str, list[RulePackRunResult]] = field(default_factory=dict)
+    analysis_skill_registry: dict[str, SkillRegistryEntry] = field(default_factory=dict)
     raw_contents: dict[str, str] = field(default_factory=dict)
     db_path: Path = field(default_factory=lambda: _resolve_db_path(settings.storage_db_path))
     lock: RLock = field(default_factory=RLock)
@@ -63,6 +70,10 @@ class MemoryStore:
             conn.execute("DELETE FROM analysis_threads WHERE case_id = ?", (case_id,))
             conn.execute("DELETE FROM analysis_messages WHERE case_id = ?", (case_id,))
             conn.execute("DELETE FROM portrait_facts WHERE case_id = ?", (case_id,))
+            conn.execute("DELETE FROM retrieval_sessions WHERE case_id = ?", (case_id,))
+            conn.execute("DELETE FROM retrieval_steps WHERE case_id = ?", (case_id,))
+            conn.execute("DELETE FROM document_mother_nodes WHERE case_id = ?", (case_id,))
+            conn.execute("DELETE FROM rule_pack_runs WHERE case_id = ?", (case_id,))
 
             for item in self.evidence.get(case_id, []):
                 conn.execute(
@@ -96,6 +107,31 @@ class MemoryStore:
                 conn.execute(
                     "INSERT OR REPLACE INTO analysis_messages (case_id, thread_id, message_id, payload) VALUES (?, ?, ?, ?)",
                     (case_id, message.thread_id, message.message_id, message.model_dump_json()),
+                )
+
+            for session in self.retrieval_sessions.get(case_id, []):
+                conn.execute(
+                    "INSERT OR REPLACE INTO retrieval_sessions (case_id, session_id, payload) VALUES (?, ?, ?)",
+                    (case_id, session.session_id, session.model_dump_json()),
+                )
+
+            for step in self.retrieval_steps.get(case_id, []):
+                conn.execute(
+                    "INSERT OR REPLACE INTO retrieval_steps (case_id, session_id, step_id, payload) VALUES (?, ?, ?, ?)",
+                    (case_id, step.session_id, step.step_id, step.model_dump_json()),
+                )
+
+            for node in self.document_mother_nodes.get(case_id, []):
+                conn.execute(
+                    "INSERT OR REPLACE INTO document_mother_nodes (case_id, doc_id, evidence_id, payload) VALUES (?, ?, ?, ?)",
+                    (case_id, node.doc_id, node.evidence_id, node.model_dump_json()),
+                )
+
+            for run in self.rule_pack_runs.get(case_id, []):
+                run_id = f"{run.rule_pack}:{run.created_at.isoformat()}"
+                conn.execute(
+                    "INSERT OR REPLACE INTO rule_pack_runs (case_id, run_id, payload) VALUES (?, ?, ?)",
+                    (case_id, run_id, run.model_dump_json()),
                 )
 
             graph = self.graphs.get(case_id)
@@ -187,6 +223,37 @@ class MemoryStore:
                     message_id TEXT PRIMARY KEY,
                     payload TEXT NOT NULL
                 );
+
+                CREATE TABLE IF NOT EXISTS retrieval_sessions (
+                    case_id TEXT NOT NULL,
+                    session_id TEXT PRIMARY KEY,
+                    payload TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS retrieval_steps (
+                    case_id TEXT NOT NULL,
+                    session_id TEXT NOT NULL,
+                    step_id TEXT PRIMARY KEY,
+                    payload TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS document_mother_nodes (
+                    case_id TEXT NOT NULL,
+                    doc_id TEXT PRIMARY KEY,
+                    evidence_id TEXT NOT NULL,
+                    payload TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS analysis_skill_registry (
+                    name TEXT PRIMARY KEY,
+                    payload TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS rule_pack_runs (
+                    case_id TEXT NOT NULL,
+                    run_id TEXT PRIMARY KEY,
+                    payload TEXT NOT NULL
+                );
                 """
             )
             conn.commit()
@@ -229,6 +296,19 @@ class MemoryStore:
                 for row in conn.execute("SELECT case_id, payload FROM portrait_facts")
             }
 
+            self.document_mother_nodes = {case_id: [] for case_id in self.cases}
+            for row in conn.execute("SELECT case_id, payload FROM document_mother_nodes ORDER BY rowid"):
+                self.document_mother_nodes.setdefault(row["case_id"], []).append(DocumentMotherNode.model_validate_json(row["payload"]))
+
+            self.analysis_skill_registry = {
+                row["name"]: SkillRegistryEntry.model_validate_json(row["payload"])
+                for row in conn.execute("SELECT name, payload FROM analysis_skill_registry")
+            }
+
+            self.rule_pack_runs = {case_id: [] for case_id in self.cases}
+            for row in conn.execute("SELECT case_id, payload FROM rule_pack_runs ORDER BY rowid"):
+                self.rule_pack_runs.setdefault(row["case_id"], []).append(RulePackRunResult.model_validate_json(row["payload"]))
+
             self.memories = {case_id: [] for case_id in self.cases}
             for row in conn.execute("SELECT case_id, payload FROM memories ORDER BY rowid"):
                 self.memories.setdefault(row["case_id"], []).append(MemoryRecord.model_validate_json(row["payload"]))
@@ -241,11 +321,21 @@ class MemoryStore:
             for row in conn.execute("SELECT case_id, payload FROM analysis_messages ORDER BY rowid"):
                 self.analysis_messages.setdefault(row["case_id"], []).append(AnalysisMessage.model_validate_json(row["payload"]))
 
+            self.retrieval_sessions = {case_id: [] for case_id in self.cases}
+            for row in conn.execute("SELECT case_id, payload FROM retrieval_sessions ORDER BY rowid"):
+                self.retrieval_sessions.setdefault(row["case_id"], []).append(RetrievalSession.model_validate_json(row["payload"]))
+
+            self.retrieval_steps = {case_id: [] for case_id in self.cases}
+            for row in conn.execute("SELECT case_id, payload FROM retrieval_steps ORDER BY rowid"):
+                self.retrieval_steps.setdefault(row["case_id"], []).append(RetrievalStep.model_validate_json(row["payload"]))
+
         for case_id in self.cases:
             self.evidence.setdefault(case_id, [])
             self.memories.setdefault(case_id, [])
             self.analysis_threads.setdefault(case_id, [])
             self.analysis_messages.setdefault(case_id, [])
+            self.retrieval_sessions.setdefault(case_id, [])
+            self.retrieval_steps.setdefault(case_id, [])
             self.graphs.setdefault(case_id, InvestigationGraph(case_id=case_id))
 
 

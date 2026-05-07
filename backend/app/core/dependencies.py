@@ -3,8 +3,10 @@ from typing import Annotated
 from fastapi import Depends
 
 from app.adapters.algorithm import AlgorithmAdapter, get_algorithm_adapter
+from app.services.analysis_skill_service import AnalysisSkillService
 from app.services.analysis_service import AnalysisService
 from app.services.case_service import CaseService
+from app.services.document_mother_service import DocumentMotherService
 from app.services.graph_service import GraphService
 from app.services.ingestion_service import IngestionService
 from app.services.legal_knowledge_service import LegalKnowledgeService
@@ -25,11 +27,19 @@ def get_graph_service(store: MemoryStore = Depends(get_store)) -> GraphService:
     return GraphService(store)
 
 
+def get_document_mother_service(store: MemoryStore = Depends(get_store)) -> DocumentMotherService:
+    return DocumentMotherService(store)
+
+
 def get_analysis_service(
     store: MemoryStore = Depends(get_store),
     algorithm: AlgorithmAdapter = Depends(get_algorithm_adapter),
 ) -> AnalysisService:
     return AnalysisService(store, algorithm)
+
+
+def get_analysis_skill_service(store: MemoryStore = Depends(get_store)) -> AnalysisSkillService:
+    return AnalysisSkillService(store)
 
 
 def get_memory_service(store: MemoryStore = Depends(get_store)) -> MemoryService:
@@ -47,7 +57,9 @@ def get_legal_knowledge_service() -> LegalKnowledgeService:
 CaseServiceDep = Annotated[CaseService, Depends(get_case_service)]
 IngestionServiceDep = Annotated[IngestionService, Depends(get_ingestion_service)]
 GraphServiceDep = Annotated[GraphService, Depends(get_graph_service)]
+DocumentMotherServiceDep = Annotated[DocumentMotherService, Depends(get_document_mother_service)]
 AnalysisServiceDep = Annotated[AnalysisService, Depends(get_analysis_service)]
+AnalysisSkillServiceDep = Annotated[AnalysisSkillService, Depends(get_analysis_skill_service)]
 MemoryServiceDep = Annotated[MemoryService, Depends(get_memory_service)]
 ReportServiceDep = Annotated[ReportService, Depends(get_report_service)]
 LegalKnowledgeServiceDep = Annotated[LegalKnowledgeService, Depends(get_legal_knowledge_service)]

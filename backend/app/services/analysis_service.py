@@ -23,6 +23,7 @@ from app.schemas.analysis import (
     PortraitFact,
     PortraitFactsResult,
     RagToolCall,
+    RetrievalSessionDetail,
     SuspicionAnalysisRequest,
     SuspicionAnalysisResult,
     SuspicionCandidate,
@@ -33,6 +34,7 @@ from app.schemas.analysis import (
 )
 from app.services.legal_knowledge_service import LegalKnowledgeService
 from app.services.llm_context_debug import log_llm_context
+from app.services.retrieval_planner_service import RetrievalPlannerService, collect_session_artifacts
 from app.storage.memory_store import MemoryStore
 
 
@@ -41,6 +43,13 @@ class AnalysisService:
         self.store = store
         self.algorithm = algorithm
         self.legal_knowledge = LegalKnowledgeService()
+        self.retrieval_planner = RetrievalPlannerService(store, algorithm, self.legal_knowledge)
+
+    def get_retrieval_session(self, case_id: str, session_id: str) -> RetrievalSessionDetail:
+        detail = self.retrieval_planner.get_session_detail(case_id, session_id)
+        if not detail:
+            raise not_found("retrieval session not found")
+        return detail
 
     def run(self, case_id: str, payload: AnalysisRunRequest) -> AnalysisRunResult:
         with self.store.lock:
@@ -132,48 +141,24 @@ class AnalysisService:
 
         suspect = _guess_focus_person(case.title, raw_contents)
         offense_name = _offense_name(self.legal_knowledge, case.offense_id)
-        relationship_queries = _portrait_queries(case.title, suspect, offense_name, "relationship")
-        behavior_queries = _portrait_queries(case.title, suspect, offense_name, "behavior")
-
-        passages_by_key: dict[str, TracePassage] = {}
         errors: list[str] = []
-        tool_calls: list[RagToolCall] = []
-        for query in relationship_queries + behavior_queries:
-            passages, error = self.algorithm.retrieve_trace(
-                case_id=case_id,
-                query=query,
-                evidence=evidence,
-                raw_contents=raw_contents,
-                extractions=extractions,
-                top_k=10,
-            )
-            mode = "time_oriented_ppr" if _query_has_time_signal(query) else "semantic_ppr"
-            tool_calls.append(
-                RagToolCall(
-                    query=query,
-                    mode=mode,
-                    top_k=10,
-                    returned=len(passages),
-                    note=error,
-                )
-            )
-            if error:
-                errors.append(error)
-            for passage in passages:
-                key = f"{passage.evidence_id}::{passage.passage}"
-                current = passages_by_key.get(key)
-                if current is None or passage.score > current.score:
-                    passages_by_key[key] = passage
-
-        passages = sorted(passages_by_key.values(), key=lambda item: item.score, reverse=True)
-        passages = _merge_required_filing_passages(passages, evidence, raw_contents)
-        legal_passages = _retrieve_legal_context(
-            self.legal_knowledge,
-            case.offense_id,
-            f"{offense_name or case.title} 人物关系 行为事实 证据缺口 办案模板",
-            8,
+        retrieval_detail = self.retrieval_planner.run(
+            case_id=case_id,
+            mode="portrait",
+            question=f"{case.title}：围绕{suspect}还原人物关系、行为事实、时间线、结果后果和关键缺口。",
+            case_title=case.title,
+            offense_id=case.offense_id,
+            evidence=evidence,
+            raw_contents=raw_contents,
+            extractions=extractions,
+            graph=graph,
+            initial_goals=["人物关系", "行为事实", "时间线", "结果后果", "关键证据缺口"],
         )
+        passages, graph_context, legal_passages = collect_session_artifacts(retrieval_detail)
+        passages = _merge_required_filing_passages(passages, evidence, raw_contents)
+        tool_calls = _rag_calls_from_session(retrieval_detail)
         graph_facts = _facts_from_graph(graph, "relationship") + _facts_from_graph(graph, "behavior") if graph else []
+        graph_facts.extend(_facts_from_graph_context(graph_context))
         llm_relationship_facts, llm_behavior_facts, relationship_narrative, behavior_narrative, llm_error = _deepseek_grounded_portrait_facts(
             case_title=case.title,
             suspect=suspect,
@@ -202,9 +187,12 @@ class AnalysisService:
             behavior_narrative=behavior_narrative or _narrative_from_facts(behavior_facts, "关键行为还原"),
             relationship_facts=relationship_facts,
             behavior_facts=behavior_facts,
-            queries=relationship_queries + behavior_queries,
+            queries=[call.query for call in tool_calls],
             tool_calls=tool_calls,
-            tool_call_note=_tool_call_note(tool_calls),
+            tool_call_note=retrieval_detail.session.tool_call_summary or _tool_call_note(tool_calls),
+            tool_call_summary=retrieval_detail.session.tool_call_summary,
+            retrieval_session_id=retrieval_detail.session.session_id,
+            retrieval_steps_count=retrieval_detail.session.retrieval_steps_count,
             error="；".join(errors[:3]) if errors and not passages else None,
         )
         with self.store.lock:
@@ -374,20 +362,31 @@ class AnalysisService:
 
         evidence_subset = [item for item in evidence if not mentioned_ids or item.evidence_id in mentioned_ids]
         suspect = _guess_focus_person(case.title, raw_contents)
-        graph_context = _select_graph_context_for_question(payload.question, graph, {node.node_id: node.label for node in graph.nodes}, thread.mode) if graph else []
         history_context = _thread_history_context(history)
-        answer, passages, error = _deepseek_tool_loop_answer(
+        planner_question = f"{history_context}\n本轮问题：{payload.question}".strip()
+        retrieval_detail = self.retrieval_planner.run(
             case_id=case_id,
-            case_title=case.title,
             mode=thread.mode,
-            question=f"{history_context}\n本轮问题：{payload.question}".strip(),
-            graph_context=graph_context,
+            question=planner_question,
+            case_title=case.title,
             evidence=evidence_subset,
             raw_contents=raw_contents,
             extractions=extractions,
-            algorithm=self.algorithm,
-            legal_knowledge=self.legal_knowledge,
             offense_id=case.offense_id,
+            graph=graph,
+            forced_evidence_ids=mentioned_ids,
+        )
+        passages, graph_context, legal_passages = collect_session_artifacts(retrieval_detail)
+        answer, error = _deepseek_write_analysis(
+            case.title,
+            thread.mode,
+            planner_question,
+            [call.query for call in _rag_calls_from_session(retrieval_detail)],
+            passages,
+            graph_context,
+            legal_passages,
+            _offense_name(self.legal_knowledge, case.offense_id),
+            retrieval_detail.session.tool_call_summary,
         )
         legal_passages = _retrieve_legal_context(
             self.legal_knowledge,
@@ -407,6 +406,9 @@ class AnalysisService:
             graph_context=graph_context[:80],
             legal_context=legal_passages,
             mentioned_evidence_ids=mentioned_ids,
+            tool_call_summary=retrieval_detail.session.tool_call_summary,
+            retrieval_session_id=retrieval_detail.session.session_id,
+            retrieval_steps_count=retrieval_detail.session.retrieval_steps_count,
             error=error,
         )
         self._append_thread_messages(case_id, thread_id, [user_message, assistant_message], summary=_thread_summary(answer))
@@ -505,6 +507,55 @@ def _tool_call_note(tool_calls: list[RagToolCall]) -> str:
     return f"本段依据后端代 DeepSeek 执行的 {len(tool_calls)} 次 HippoRAG PPR 检索，覆盖：{'、'.join(labels[:6])}。"
 
 
+def _rag_calls_from_session(detail: RetrievalSessionDetail) -> list[RagToolCall]:
+    calls: list[RagToolCall] = []
+    for step in detail.steps:
+        for call in step.tool_calls:
+            query = str(call.arguments.get("query") or call.arguments.get("node_label") or call.arguments.get("start") or call.summary or call.tool_name)
+            returned = len(call.passages) + len(call.graph_facts) + len(call.legal_passages)
+            calls.append(
+                RagToolCall(
+                    name=call.tool_name,
+                    query=query,
+                    mode="agentic_tool",
+                    top_k=int(call.arguments.get("top_k") or call.arguments.get("k") or 0) or 10,
+                    returned=returned,
+                    note="；".join(call.errors) if call.errors else None,
+                )
+            )
+    return calls
+
+
+def _facts_from_graph_context(graph_context: list[str]) -> list[PortraitFact]:
+    facts: list[PortraitFact] = []
+    for index, text in enumerate(graph_context[:80]):
+        match = re.match(r"(.+?)\s+--(.+?)-->\s+(.+?)(?:（(.+)）)?$", text)
+        if not match:
+            continue
+        subject = _clean_fact_text(match.group(1))
+        relation = _clean_fact_text(match.group(2))
+        obj = _clean_fact_text(match.group(3))
+        if not subject or not relation or not obj:
+            continue
+        facts.append(
+            PortraitFact(
+                fact_id=f"pf_graphctx_{index}",
+                category="behavior" if _has_any(relation, ("释放", "调解", "立案", "拘留", "处置", "侦查")) else "relationship",
+                group=_relation_group(relation),
+                subject=subject,
+                relation=relation,
+                object=obj,
+                text=text,
+                time=_extract_time(text),
+                evidence_ids=[],
+                passages=[],
+                confidence=0.58,
+                source="agentic_graph",
+            )
+        )
+    return facts
+
+
 def _thread_title(question: str, mode: str) -> str:
     prefix = "资金" if mode == "financial_flow" else "假设"
     clean = re.sub(r"\s+", " ", question).strip()
@@ -556,6 +607,7 @@ def _resolve_evidence_mentions(question: str, evidence: list[Any]) -> tuple[list
 def _ground_answer_sentences(answer: str, passages: list[TracePassage], graph_context: list[str]) -> list[GroundedSentence]:
     claims: list[GroundedSentence] = []
     cursor = 0
+    passage_by_display_rank = {index + 1: passage for index, passage in enumerate(passages)}
     for idx, sentence in enumerate(_split_fact_sentences(answer), start=1):
         text = sentence.strip()
         if not text:
@@ -565,16 +617,51 @@ def _ground_answer_sentences(answer: str, passages: list[TracePassage], graph_co
             start = cursor
         end = start + len(sentence)
         cursor = end
+        explicit_refs = _extract_explicit_passage_refs(text)
+        if explicit_refs:
+            support = [
+                _with_display_rank(passage_by_display_rank[rank], rank)
+                for rank in explicit_refs
+                if rank in passage_by_display_rank
+            ]
+            if support:
+                claims.append(
+                    GroundedSentence(
+                        sentence_id=f"sent_{idx}",
+                        text=text,
+                        start=start,
+                        end=end,
+                        status="supported",
+                        confidence=0.86,
+                        supporting_passages=support[:4],
+                        supporting_graph_paths=[],
+                    )
+                )
+                continue
         scored = sorted(
             ((_score_sentence_against_passage(text, passage.passage), passage) for passage in passages),
             key=lambda item: item[0],
             reverse=True,
         )
         support = [passage for score, passage in scored[:4] if score > 0.08]
+        graph_scored = sorted(
+            ((_score_sentence_against_passage(text, fact), fact) for fact in graph_context),
+            key=lambda item: item[0],
+            reverse=True,
+        )
+        graph_paths = [
+            path
+            for score, fact in graph_scored[:4]
+            if score > 0.12
+            for path in [_graph_fact_to_trace_path(fact, score)]
+            if path is not None
+        ]
         confidence = min(0.95, scored[0][0]) if scored else 0.0
+        graph_confidence = min(0.9, graph_scored[0][0]) if graph_scored else 0.0
+        confidence = max(confidence, graph_confidence)
         if confidence >= 0.35:
             status = "supported"
-        elif support:
+        elif support or graph_paths:
             status = "weak"
         else:
             status = "unsupported"
@@ -587,10 +674,42 @@ def _ground_answer_sentences(answer: str, passages: list[TracePassage], graph_co
                 status=status,
                 confidence=round(float(confidence), 3),
                 supporting_passages=support,
-                supporting_graph_paths=[],
+                supporting_graph_paths=graph_paths,
             )
         )
     return claims
+
+
+def _extract_explicit_passage_refs(text: str) -> list[int]:
+    refs: list[int] = []
+    for raw in re.findall(r"passage\s*#?\s*(\d+)", text, flags=re.IGNORECASE):
+        value = int(raw)
+        if value not in refs:
+            refs.append(value)
+    return refs
+
+
+def _with_display_rank(passage: TracePassage, rank: int) -> TracePassage:
+    return TracePassage(
+        rank=rank,
+        score=passage.score,
+        passage=passage.passage,
+        evidence_id=passage.evidence_id,
+        evidence_title=passage.evidence_title,
+    )
+
+
+def _graph_fact_to_trace_path(fact: str, score: float) -> TracePath | None:
+    match = re.match(r"(.+?)\s+--(.+?)-->\s+(.+?)(?:（(.+)）)?$", str(fact or ""))
+    if not match:
+        return None
+    return TracePath(
+        source=_clean_fact_text(match.group(1)),
+        relation=_clean_fact_text(match.group(2)),
+        target=_clean_fact_text(match.group(3)),
+        score=round(float(min(score, 0.9)), 3),
+        evidence_ids=[],
+    )
 
 
 def _score_sentence_against_passage(sentence: str, passage: str) -> float:
@@ -691,6 +810,8 @@ def _deepseek_multiround_analysis(
     legal_knowledge: LegalKnowledgeService,
     offense_id: str | None,
 ) -> tuple[list[SuspicionCandidate], str | None]:
+    # Legacy suspicion endpoint keeps the existing deterministic fallback. The persisted thread flow
+    # above uses RetrievalPlannerService for real agentic retrieval sessions.
     labels = {node.node_id: node.label for node in graph.nodes}
     graph_context = _select_graph_context_for_question(question, graph, labels, mode)
     answer, passages, error = _deepseek_tool_loop_answer(
@@ -818,6 +939,7 @@ def _deepseek_write_analysis(
     graph_context: list[str],
     legal_passages: list[TracePassage] | None = None,
     offense_name: str | None = None,
+    tool_call_summary: str = "",
 ) -> tuple[str, str | None]:
     api_key = getenv("DEEPSEEK_API_KEY")
     if not settings.deepseek_analysis_enabled or not api_key:
@@ -828,6 +950,7 @@ def _deepseek_write_analysis(
         "selected_offense": offense_name or "未选择罪名，按证据事实分析",
         "prosecutor_question": question,
         "tool_use_description": "你不能直接调用工具。后端已经代你进行了多轮 HippoRAG 检索，下面给出每轮查询、召回 passage 和图谱三元组/边上下文。请像完成 tool-use 分析一样，先说明检索发现，再判断支撑、矛盾和缺口。",
+        "tool_call_summary": tool_call_summary,
         "queries": queries,
         "passages": [
             {
@@ -851,6 +974,7 @@ def _deepseek_write_analysis(
         ],
         "requirements": [
             "用中文写成连续分析文本，不要写成碎卡片。",
+            "开头用一句短句说明本轮检索过程，直接使用 tool_call_summary，不要展开内部推理。",
             "如果 selected_offense 不是“未选择罪名”，可以参考 legal_knowledge_passages 组织分析框架；如果未选择罪名，不要强行套法条。",
             "法律知识只提供分析框架，不能当作本案事实来源。本案事实必须来自 passages 或 graph_context。",
             "明确区分：已由证据支持、仅为疑点、尚需补强。",
@@ -1336,7 +1460,7 @@ def _deepseek_grounded_portrait_facts(
             "每条 claim 只表达一个事实。",
             "人物关系关注谁与谁之间发生了请托、收受、指派、通话、转账、亲属、上下级等关系。",
             "行为还原关注时间顺序和动作：接警、鉴定、拘留、请托、收钱、指派、调解、释放、后续火灾/事故后果、检察院立案侦查。",
-            "如果 passages 中出现火灾、死亡、受伤、事故调查、履职专报，行为还原必须纳入；若未出现，明确写“本轮未召回后续火灾材料”。",
+            "如果 passages 中出现火灾、死亡、受伤、事故调查、履职专报，行为还原必须纳入；若未出现，不要在正文中写检索失败提示，只在 next_queries 中提出继续检索方向。",
             "每条 claim 必须引用 source_passage_ranks 或 source_triple_ids；没有来源就不要输出。",
             "如果无法确定 passage rank，也必须填写 evidence_ids，且 evidence_ids 必须来自 passages 或 triples。",
             "不要把 passage 中的证明事项当成最终结论，除非有文书原文、证言、短信、流水或通话记录支撑。",
@@ -1435,8 +1559,8 @@ def _deepseek_grounded_portrait_facts(
             behavior.append(fact)
         else:
             relationship.append(fact)
-    relationship_text = _clean_fact_text(str(parsed.get("relationship_narrative") or ""))
-    behavior_text = _clean_fact_text(str(parsed.get("behavior_narrative") or ""))
+    relationship_text = _strip_retrieval_warnings(_clean_fact_text(str(parsed.get("relationship_narrative") or "")))
+    behavior_text = _strip_retrieval_warnings(_clean_fact_text(str(parsed.get("behavior_narrative") or "")))
     return relationship, behavior, relationship_text, behavior_text, None
 
 
@@ -1650,6 +1774,18 @@ def _split_fact_sentences(text: str) -> list[str]:
 
 def _clean_fact_text(value: str) -> str:
     return re.sub(r"\s+", " ", str(value or "").strip().lstrip("-*# "))
+
+
+def _strip_retrieval_warnings(value: str) -> str:
+    text = str(value or "")
+    patterns = [
+        r"\*{0,2}\s*本轮未召回后续火灾材料\s*[。\.]\s*\*{0,2}",
+        r"\*{0,2}\s*本轮未召回[^。\.]{0,40}材料\s*[。\.]\s*\*{0,2}",
+        r"\*{0,2}\s*未召回后续火灾材料\s*[。\.]\s*\*{0,2}",
+    ]
+    for pattern in patterns:
+        text = re.sub(pattern, "", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def _extract_time(text: str) -> str | None:

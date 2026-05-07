@@ -1,11 +1,18 @@
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, File, Form, Query, UploadFile
+from pydantic import BaseModel, Field
 
 from app.core.dependencies import LegalKnowledgeServiceDep
 from app.schemas.analysis import TraceResult
 
 router = APIRouter()
+
+
+class ProcedureFlowCreate(BaseModel):
+    title: str = Field(min_length=1)
+    content: str = Field(min_length=1)
+    kind: str = "user_knowledge"
 
 
 @router.get("/sources")
@@ -31,6 +38,32 @@ def get_alias_resolution_rules(service: LegalKnowledgeServiceDep) -> dict[str, A
 @router.get("/offense-templates")
 def list_offense_templates(service: LegalKnowledgeServiceDep) -> list[dict[str, Any]]:
     return service.list_offense_templates()
+
+
+@router.get("/procedure-flows")
+def list_procedure_flows(service: LegalKnowledgeServiceDep) -> list[dict[str, Any]]:
+    return service.list_procedure_flows()
+
+
+@router.get("/procedure-flows/{knowledge_id}")
+def get_procedure_flow(knowledge_id: str, service: LegalKnowledgeServiceDep) -> dict[str, Any]:
+    return service.get_procedure_flow(knowledge_id)
+
+
+@router.post("/procedure-flows")
+def create_procedure_flow(payload: ProcedureFlowCreate, service: LegalKnowledgeServiceDep) -> dict[str, Any]:
+    return service.create_procedure_flow(title=payload.title, content=payload.content, kind=payload.kind)
+
+
+@router.post("/procedure-flows/upload")
+async def upload_procedure_flow(
+    service: LegalKnowledgeServiceDep,
+    file: UploadFile = File(...),
+    title: str | None = Form(default=None),
+    kind: str = Form(default="user_knowledge"),
+) -> dict[str, Any]:
+    content = (await file.read()).decode("utf-8")
+    return service.create_procedure_flow(title=title or file.filename or "上传办案知识", content=content, kind=kind)
 
 
 @router.get("/retrieve", response_model=TraceResult)

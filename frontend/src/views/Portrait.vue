@@ -45,6 +45,116 @@
         </div>
       </section>
 
+      <details v-if="facts?.retrieval_session_id" class="retrieval-details" @toggle="onRetrievalToggle(facts.retrieval_session_id, $event)">
+        <summary>检索与调用细节</summary>
+        <div v-if="retrievalLoading" class="muted">正在读取检索记录...</div>
+        <div v-else-if="retrievalDetail" class="retrieval-body">
+          <div class="retrieval-meta">
+            <span>{{ retrievalDetail.session.planner_model }}</span>
+            <span>{{ retrievalDetail.session.analysis_model }}</span>
+            <span>{{ retrievalDetail.session.status }}</span>
+          </div>
+          <section v-for="step in retrievalDetail.steps" :key="step.step_id" class="retrieval-step">
+            <h4>第 {{ step.round_index }} 轮</h4>
+            <p v-if="step.retrieval_goals.length"><strong>目标：</strong>{{ step.retrieval_goals.join('；') }}</p>
+            <p v-if="step.coverage_summary"><strong>覆盖：</strong>{{ step.coverage_summary }}</p>
+            <p v-if="step.unresolved_gaps.length"><strong>缺口：</strong>{{ step.unresolved_gaps.join('；') }}</p>
+            <article v-for="call in step.tool_calls" :key="call.tool_call_id" class="tool-call">
+              <div class="tool-call-head">
+                <strong>{{ toolLabel(call.tool_name) }}</strong>
+                <code>{{ formatArgs(call.arguments) }}</code>
+              </div>
+              <p>{{ call.summary || '无摘要' }}</p>
+              <p v-if="call.errors.length" class="error tiny">错误：{{ call.errors.join('；') }}</p>
+              <div v-if="call.graph_facts.length" class="tool-block">
+                <b>图谱关系</b>
+                <ul>
+                  <li v-for="fact in call.graph_facts.slice(0, 8)" :key="fact">{{ fact }}</li>
+                </ul>
+              </div>
+              <div v-if="call.passages.length" class="tool-block">
+                <b>证据 passage</b>
+                <ul>
+                  <li v-for="passage in call.passages.slice(0, 5)" :key="`${passage.rank}-${passage.passage}`">
+                    Doc {{ passage.rank }}：{{ passage.evidence_title || passage.evidence_id || '未映射证据' }} - {{ compactText(passage.passage, 110) }}
+                  </li>
+                </ul>
+              </div>
+              <div v-if="call.legal_passages.length" class="tool-block">
+                <b>法律知识</b>
+                <ul>
+                  <li v-for="passage in call.legal_passages.slice(0, 4)" :key="`${passage.rank}-${passage.passage}`">
+                    {{ passage.evidence_title || '法律知识' }} - {{ compactText(passage.passage, 100) }}
+                  </li>
+                </ul>
+              </div>
+              <div v-if="call.rule_findings.length" class="tool-block">
+                <b>规则命中</b>
+                <ul>
+                  <li v-for="finding in call.rule_findings" :key="finding.finding_id">
+                    {{ finding.title }}（{{ finding.severity }}）：{{ compactText(finding.reason, 110) }}
+                  </li>
+                </ul>
+              </div>
+              <div v-if="call.document_groups.length" class="tool-block">
+                <b>文件母图聚合</b>
+                <ul>
+                  <li v-for="group in call.document_groups.slice(0, 8)" :key="String(group.doc_id || group.name || group.title)">
+                    {{ group.doc_id || group.name || '文件' }}：{{ group.process_stage || group.title || '' }} {{ compactText(String(group.proof_purpose || group.document_summary || group.description || ''), 100) }}
+                  </li>
+                </ul>
+              </div>
+            </article>
+          </section>
+        </div>
+      </details>
+
+      <section class="fact-section">
+        <div class="section-head">
+          <div>
+            <h2>文件母图概览</h2>
+            <p>每份证据作为一个局部母图节点，保留流程阶段、证明事项和 verified claims。</p>
+          </div>
+          <button class="secondary" :disabled="loading || !activeCaseId" @click="rebuildMotherGraph">重建母图</button>
+        </div>
+        <div v-if="documentMother.nodes.length" class="doc-grid">
+          <button v-for="node in documentMother.nodes" :key="node.doc_id" class="doc-card" @click="openMotherNode(node)">
+            <strong>{{ node.doc_id }} · {{ node.doc_type }}</strong>
+            <span>{{ node.process_stage }} / {{ node.quality_status }}</span>
+            <p>{{ compactText(node.proof_purpose || node.summary, 120) }}</p>
+            <small>{{ node.risk_tags.slice(0, 4).join('、') }}</small>
+          </button>
+        </div>
+        <div v-else class="empty-box">暂无文件母图。点击“重建母图”生成。</div>
+      </section>
+
+      <section class="fact-section">
+        <div class="section-head">
+          <div>
+            <h2>规则命中</h2>
+            <p>规则包只输出 finding、材料缺口和核查建议，不做犯罪定性。</p>
+          </div>
+          <button class="secondary" :disabled="loading || !activeCaseId" @click="runDefaultRules">运行默认规则</button>
+        </div>
+        <div v-if="ruleRuns.length">
+          <article v-for="run in ruleRuns" :key="`${run.rule_pack}-${run.created_at}`" class="rule-run">
+            <h3>{{ run.rule_pack }}：{{ run.findings.length }} 条 finding</h3>
+            <div v-for="finding in run.findings" :key="finding.finding_id" class="finding-card" @click="selectedFinding = finding">
+              <strong>{{ finding.title }}</strong>
+              <span>{{ finding.severity }} / {{ finding.evidence_level }}</span>
+              <p>{{ finding.reason }}</p>
+              <small v-if="finding.missing_documents.length">缺失/待核查：{{ finding.missing_documents.join('、') }}</small>
+            </div>
+            <details v-if="!run.findings.length || run.not_triggered.length || run.data_gaps.length" class="not-triggered">
+              <summary>未命中原因 / 数据缺口</summary>
+              <p v-for="item in run.not_triggered" :key="item.rule_id">{{ item.rule_id }}：{{ item.reason }}</p>
+              <p v-for="gap in run.data_gaps" :key="gap">数据缺口：{{ gap }}</p>
+            </details>
+          </article>
+        </div>
+        <div v-else class="empty-box">暂无规则运行结果。点击“运行默认规则”。</div>
+      </section>
+
       <section class="fact-section">
         <div class="section-head">
           <div>
@@ -63,7 +173,7 @@
               {{ sentence.text }}
             </button>
           </p>
-          <p v-if="facts?.tool_call_note" class="tool-note">{{ facts.tool_call_note }}</p>
+          <p v-if="facts?.tool_call_summary || facts?.tool_call_note" class="tool-note">{{ facts.tool_call_summary || facts.tool_call_note }}</p>
         </div>
         <div v-else class="empty-box">暂无关系事实。点击“生成事实画像”后查看 HippoRAG 检索结果。</div>
       </section>
@@ -86,7 +196,7 @@
               {{ sentence.text }}
             </button>
           </p>
-          <p v-if="facts?.tool_call_note" class="tool-note">{{ facts.tool_call_note }}</p>
+          <p v-if="facts?.tool_call_summary || facts?.tool_call_note" class="tool-note">{{ facts.tool_call_summary || facts.tool_call_note }}</p>
         </div>
         <div v-else class="empty-box">暂无行为事实。若这里很少，说明 HippoRAG 召回或 OpenIE passage 切分还要继续调。</div>
       </section>
@@ -154,12 +264,62 @@
         <p v-if="!traceLoading && !traceEvidence.length" class="muted">暂无直接证据原文。</p>
       </section>
     </aside>
+
+    <aside v-if="selectedMotherNode || selectedFinding" class="trace-panel">
+      <div class="trace-head">
+        <div>
+          <p class="eyebrow">{{ selectedFinding ? '规则 Finding' : '文件母图' }}</p>
+          <h2>{{ selectedFinding?.title || selectedMotherNode?.title }}</h2>
+        </div>
+        <button @click="selectedMotherNode = null; selectedFinding = null">关闭</button>
+      </div>
+      <template v-if="selectedMotherNode">
+        <section class="trace-block">
+          <h3>证明事项</h3>
+          <p>{{ selectedMotherNode.proof_purpose }}</p>
+        </section>
+        <section class="trace-block">
+          <h3>Verified Claims</h3>
+          <article v-for="claim in selectedMotherNode.key_claims.filter((item) => item.status === 'verified')" :key="claim.claim_id" class="passage">
+            <strong>{{ claim.claim_type }}</strong>
+            <p>{{ claim.claim }}</p>
+          </article>
+          <p v-if="!selectedMotherNode.key_claims.some((item) => item.status === 'verified')" class="muted">暂无 verified claim。</p>
+        </section>
+      </template>
+      <template v-if="selectedFinding">
+        <section class="trace-block">
+          <h3>规则依据</h3>
+          <p>{{ selectedFinding.reason }}</p>
+          <p>{{ selectedFinding.legal_caution }}</p>
+        </section>
+        <section class="trace-block">
+          <h3>支撑文件 / Verified Claims</h3>
+          <p>{{ selectedFinding.supporting_documents.join('、') || '暂无' }}</p>
+          <article v-for="claim in selectedFinding.supporting_claims" :key="claim.claim_id" class="passage">
+            <strong>{{ claim.claim_type }}</strong>
+            <p>{{ claim.claim }}</p>
+          </article>
+        </section>
+        <section class="trace-block">
+          <h3>缺失材料与建议</h3>
+          <p v-if="selectedFinding.missing_documents.length">缺失/待核查：{{ selectedFinding.missing_documents.join('、') }}</p>
+          <ul>
+            <li v-for="action in selectedFinding.next_actions" :key="action">{{ action }}</li>
+          </ul>
+          <details>
+            <summary>debug trace</summary>
+            <pre>{{ selectedFinding.debug_trace.join('\n') }}</pre>
+          </details>
+        </section>
+      </template>
+    </aside>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { backendApi, type EvidenceDetail, type PortraitFact, type PortraitFactsResult, type SuspicionCandidate } from '../api/backend';
+import { backendApi, type DocumentMotherGraph, type DocumentMotherNode, type EvidenceDetail, type PortraitFact, type PortraitFactsResult, type RetrievalSessionDetail, type RuleFinding, type RulePackRunResult, type SuspicionCandidate } from '../api/backend';
 import AsyncProgressBar from '../components/AsyncProgressBar.vue';
 import { useSimulatedProgress } from '../composables/useSimulatedProgress';
 
@@ -173,13 +333,22 @@ const traceLoading = ref(false);
 const selectedFact = ref<PortraitFact | null>(null);
 const traceEvidence = ref<EvidenceDetail[]>([]);
 const adoptedSuspicion = ref<SuspicionCandidate[]>([]);
+const retrievalDetail = ref<RetrievalSessionDetail | null>(null);
+const retrievalLoading = ref(false);
+const documentMother = ref<DocumentMotherGraph>({ case_id: '', nodes: [], rebuilt_count: 0, warnings: [] });
+const ruleRuns = ref<RulePackRunResult[]>([]);
+const selectedMotherNode = ref<DocumentMotherNode | null>(null);
+const selectedFinding = ref<RuleFinding | null>(null);
 
 const relationshipFacts = computed(() => facts.value?.relationship_facts || []);
 const behaviorFacts = computed(() => facts.value?.behavior_facts || []);
 
 onMounted(() => {
   adoptedSuspicion.value = readAdoptedSuspicion();
-  if (activeCaseId.value) refreshFacts(false);
+  if (activeCaseId.value) {
+    refreshFacts(false);
+    loadMotherGraph();
+  }
 });
 
 async function refreshFacts(force = false) {
@@ -192,6 +361,7 @@ async function refreshFacts(force = false) {
   });
   try {
     facts.value = await backendApi.getPortraitFacts(activeCaseId.value, force);
+    retrievalDetail.value = null;
     if (facts.value.error) error.value = facts.value.error;
     await progress.finish({
       label: '事实画像已生成',
@@ -202,6 +372,64 @@ async function refreshFacts(force = false) {
     progress.fail();
   } finally {
     loading.value = false;
+  }
+}
+
+async function loadMotherGraph() {
+  if (!activeCaseId.value) return;
+  try {
+    documentMother.value = await backendApi.getDocumentMotherGraph(activeCaseId.value);
+  } catch {
+    documentMother.value = { case_id: activeCaseId.value, nodes: [], rebuilt_count: 0, warnings: [] };
+  }
+}
+
+async function rebuildMotherGraph() {
+  loading.value = true;
+  error.value = '';
+  try {
+    documentMother.value = await backendApi.rebuildDocumentMotherGraph(activeCaseId.value);
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function runDefaultRules() {
+  loading.value = true;
+  error.value = '';
+  try {
+    if (!documentMother.value.nodes.length) {
+      await rebuildMotherGraph();
+    }
+    const names = ['document_completeness', 'process_turning_point', 'authority_control'];
+    ruleRuns.value = [];
+    for (const name of names) {
+      ruleRuns.value.push(await backendApi.runRulePack(activeCaseId.value, name));
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    loading.value = false;
+  }
+}
+
+function openMotherNode(node: DocumentMotherNode) {
+  selectedMotherNode.value = node;
+  selectedFinding.value = null;
+}
+
+async function onRetrievalToggle(sessionId: string | null | undefined, event: Event) {
+  const target = event.target as HTMLDetailsElement;
+  if (!target.open || !sessionId || retrievalDetail.value || retrievalLoading.value) return;
+  retrievalLoading.value = true;
+  try {
+    retrievalDetail.value = await backendApi.getRetrievalSession(activeCaseId.value, sessionId);
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    retrievalLoading.value = false;
   }
 }
 
@@ -283,7 +511,7 @@ function keyTerms(text: string) {
   return [...names, ...verbs, ...(raw.match(/\d+(?:\.\d+)?万?元/g) || []), ...(raw.match(/20\d{2}年\d{1,2}月\d{1,2}日/g) || [])].filter((term) => raw.includes(term));
 }
 
-function compactText(value: string) {
+function compactText(value: string, limit = 280) {
   const text = String(value || '').replace(/\s+/g, ' ').trim();
   if (text.split(',').length >= 6) {
     return text
@@ -293,7 +521,23 @@ function compactText(value: string) {
       .slice(0, 10)
       .join(' / ');
   }
-  return text.length > 280 ? `${text.slice(0, 280)}...` : text;
+  return text.length > limit ? `${text.slice(0, limit)}...` : text;
+}
+
+function toolLabel(name: string) {
+  const labels: Record<string, string> = {
+    search_documents: '文档检索',
+    search_graph: '图谱检索',
+    expand_node: '节点扩展',
+    search_time_range: '时间检索',
+    search_legal: '法律知识',
+  };
+  return labels[name] || name;
+}
+
+function formatArgs(args: Record<string, unknown>) {
+  const text = JSON.stringify(args || {}, null, 0);
+  return text.length > 160 ? `${text.slice(0, 160)}...` : text;
 }
 
 function sourceLabel(source: string) {
@@ -462,9 +706,140 @@ h3 {
   font-weight: 700;
 }
 
+.retrieval-details {
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 12px 14px;
+}
+
+.retrieval-details summary {
+  cursor: pointer;
+  font-weight: 900;
+  color: #0f766e;
+}
+
+.retrieval-body {
+  margin-top: 10px;
+  display: grid;
+  gap: 12px;
+}
+
+.retrieval-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.retrieval-meta span {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #fff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.retrieval-step {
+  border-top: 1px solid #e2e8f0;
+  padding-top: 10px;
+}
+
+.retrieval-step h4 {
+  margin: 0 0 6px;
+}
+
+.tool-call {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px;
+  margin-top: 8px;
+}
+
+.tool-call-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.tool-call-head code {
+  overflow-wrap: anywhere;
+  color: #475569;
+}
+
+.tool-block {
+  margin-top: 8px;
+}
+
+.tool-block ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.tool-block li {
+  margin-bottom: 4px;
+}
+
+.tiny {
+  font-size: 12px;
+}
+
 .fact-section,
 .suspicion-section {
   padding: 18px;
+}
+
+.doc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.doc-card,
+.finding-card {
+  width: 100%;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  border: 1px solid #dbe3ee;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 12px;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.doc-card span,
+.finding-card span,
+.doc-card small,
+.finding-card small {
+  color: #64748b;
+}
+
+.rule-run {
+  border: 1px solid #dbe3ee;
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 10px;
+  background: #fff;
+}
+
+.rule-run h3 {
+  margin-bottom: 10px;
+}
+
+.finding-card {
+  margin-top: 8px;
+  border-color: #fbbf24;
+  background: #fffbeb;
+}
+
+.not-triggered {
+  margin-top: 10px;
+  color: #475569;
 }
 
 .section-head {

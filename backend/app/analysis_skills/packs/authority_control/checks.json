@@ -1,0 +1,13 @@
+{
+  "skill": "authority_control",
+  "checks": [
+    {
+      "id": "suspect_in_approval_or_command_node",
+      "title": "核心人员出现在审批/指派/释放节点",
+      "finding_type": "authority_control_risk",
+      "severity": "medium",
+      "trigger": {"claim_keywords": ["批准", "审批", "指派", "安排", "同意", "释放", "调解"]},
+      "next_actions": ["核查岗位职责和审批权限", "调取审批流日志", "询问经办人与审批人"]
+    }
+  ]
+}

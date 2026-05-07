@@ -1,0 +1,15 @@
+{
+  "skill": "document_completeness",
+  "checks": [
+    {
+      "id": "missing_forensic_report",
+      "title": "伤害案件关键鉴定/送检材料缺口",
+      "finding_type": "material_gap",
+      "severity": "high",
+      "trigger": {"any_stage": ["接警", "立案", "强制措施"], "keywords": ["伤", "故意伤害", "拘留"]},
+      "expected_doc_types": ["伤情鉴定/送检"],
+      "missing_documents": ["伤情鉴定意见", "送检记录", "鉴定意见通知书"],
+      "next_actions": ["调取鉴定机构原始档案", "核查送检记录", "比对案卷目录与系统附件"]
+    }
+  ]
+}

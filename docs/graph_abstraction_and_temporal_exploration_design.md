@@ -405,3 +405,125 @@ DeepSeek 每轮最多调用 3 到 5 次工具。每次只返回 top 5 到 top 10
 5. 节点合并只做建议，最终必须人工确认。
 6. 画像报告的每句话都必须能回到 passage 或图谱边。
 
+
+------
+# Agentic RAG 检索计划器改造方案
+
+## Summary
+把当前“后端固定 query → 检索 → DeepSeek 一次生成”改成“模型规划检索 → 后端执行工具 → 模型评估缺口 → 循环检索 → Pro 模型生成报告”的 agentic RAG。第一版用于智能分析页和画像报告页，重点解决：故事不全、固定 prompt 治标不治本、上下文一次性过长、检索过程不可解释。
+
+## Key Changes
+
+### 1. 新增检索计划器
+- 新增 `RetrievalPlannerService`，负责一次分析任务的循环：
+  1. 构造初始 brief：案件标题、罪名、立案书摘要、当前问题、已有图谱摘要。
+  2. 调用规划模型生成下一轮工具调用计划。
+  3. 执行工具并记录结果。
+  4. 让模型评估“信息缺口是否已足够覆盖”。
+  5. 达到终止条件后，调用 Pro 模型生成最终画像/分析文本。
+- 模型分工：
+  - 规划模型：新增 `DEEPSEEK_PLANNER_MODEL`，默认 `deepseek-chat`，负责便宜快速地产生工具调用。
+  - 生成模型：沿用 `DEEPSEEK_ANALYSIS_MODEL`，默认 `deepseek-reasoner`，负责最终报告、假设验证、资金分析。
+- 终止条件：
+  - 默认最多 4 轮。
+  - 每轮最多 5 个工具调用。
+  - 连续一轮没有新增 passage/graph fact 时停止。
+  - 模型输出 `ready_to_answer=true` 时停止。
+  - 超时或工具错误时降级为已有上下文生成，但标明检索不完整。
+
+### 2. 封装可调用工具
+- 后端提供内部工具，不直接暴露给前端：
+  - `search_documents(query, top_k=8)`：调用现有 HippoRAG `retrieve_trace`，返回 passage。
+  - `search_graph(query, k=20)`：从当前图谱中按关键词、节点名、关系名召回边和节点。
+  - `expand_node(node_label, depth=2, relation_filter=null)`：从某节点出发取局部子图。
+  - `search_time_range(start, end, keywords=[])`：按 edge timestamp / time_range / passage 时间文本召回事件；第一版若普通边无 timestamp，则用已有 `time` properties 和文本时间兜底。
+  - `search_legal(query, top_k=6)`：调用 `LegalKnowledgeService.retrieve`。
+- 工具结果统一压缩为：
+  - `tool_call_id`
+  - `tool_name`
+  - `arguments`
+  - `summary`
+  - `passages`
+  - `graph_facts`
+  - `legal_passages`
+  - `new_entities`
+  - `errors`
+- 每条最终生成句子只能绑定实际出现过的 `tool_call_id + passage/edge`。
+
+### 3. 新增会话状态和持久化
+- 新增 schema：
+  - `RetrievalSession`
+  - `RetrievalStep`
+  - `RetrievalToolCall`
+  - `RetrievalArtifact`
+- 存储到现有 SQLite：
+  - `retrieval_sessions`
+  - `retrieval_steps`
+- 每次智能分析会话和画像报告都保存：
+  - 模型提出的检索目标
+  - 每轮工具调用
+  - 返回的 passage / graph facts / legal facts
+  - 模型对缺口的评估
+  - 最终使用的证据集合
+- 前端不展示完整思维链，只展示简短说明：
+  - “本报告经过 3 轮检索，调用文档检索 7 次、图谱扩展 3 次、法律知识 2 次。”
+  - 详细调用记录折叠展示。
+
+### 4. 接入智能分析页和画像报告页
+- 智能分析页：
+  - 新建/追问时调用 agentic RAG，而不是 `_analysis_queries()` 固定问题列表。
+  - 保留现有会话卡片、删除、@证据机制。
+  - `@证据` 会成为 planner 的强约束：首轮必须检索指定证据。
+- 事实画像页：
+  - 替换 `_portrait_queries()` 固定列表。
+  - 初始 brief 必须包含立案书/案件基础信息。
+  - 目标固定为：人物关系、行为事实、时间线、结果后果、关键缺口。
+- 详细画像报告：
+  - 替换 `_select_report_passages_with_hipporag()` 的固定 query。
+  - 报告段落生成前先跑 agentic retrieval session。
+  - 每个段落附简短工具调用摘要，每句话仍走现有句子级溯源。
+
+### 5. 上下文控制策略
+- 每轮只把上一轮摘要、未解决缺口、top artifacts 传回模型，不 dump 全量历史。
+- Artifact 去重规则：
+  - 同 `evidence_id + passage` 只保留最高分。
+  - 同一工具连续召回高度重复内容时，保留摘要不再传全文。
+- 最终生成输入限制：
+  - passages 最多 40 条。
+  - graph facts 最多 80 条。
+  - legal passages 最多 10 条。
+  - tool call summaries 全量保留，但正文压缩到每条 120 字以内。
+
+## Public Interfaces / Types
+- 新增后端内部配置：
+  - `DEEPSEEK_PLANNER_MODEL=deepseek-chat`
+  - `AGENTIC_RAG_MAX_ROUNDS=4`
+  - `AGENTIC_RAG_MAX_TOOL_CALLS_PER_ROUND=5`
+- 扩展前端 API 返回字段：
+  - `tool_call_summary`
+  - `retrieval_session_id`
+  - `retrieval_steps_count`
+- 新增只读调试接口：
+  - `GET /api/v1/cases/{case_id}/analysis/retrieval-sessions/{session_id}`
+  - 返回工具调用记录、召回摘要、错误，不返回模型隐藏推理。
+
+## Test Plan
+- 单元测试：
+  - planner JSON 解析失败时能重试/降级。
+  - 工具调用参数非法时被拒绝并记录错误。
+  - passage 去重、top-k 限制、时间范围过滤正确。
+- 集成测试：
+  - 假设验证：模型至少产生 `search_documents` 和 `search_graph` 调用。
+  - 可疑资金流：模型至少产生资金相关 `search_documents` 和 `expand_node` 调用。
+  - 事实画像：包含立案书、人物关系、行为事实、结果后果四类检索目标。
+  - 画像报告切页后不重新生成，读取已保存 `retrieval_session_id`。
+- 前端验收：
+  - 智能分析答案仍可按句点击溯源。
+  - 报告显示简短“检索轮次/工具调用”说明。
+  - 调试抽屉可查看每轮工具调用，但默认折叠。
+
+## Assumptions
+- “Flash”在本项目中落地为 `deepseek-chat` 规划模型；“Pro”落地为 `deepseek-reasoner` 分析模型。
+- 第一版不使用 DeepSeek 官方函数调用协议，而采用 JSON tool-plan 协议，由后端解析执行，更容易和现有 `urllib` 调用兼容。
+- 第一版 `search_time_range` 先使用现有结构化时间和文本时间兜底；普通 OpenIE 边全面 timestamp 化放到下一步图谱时间化改造。
+- 不暴露模型内部推理，只保存和展示检索计划、工具调用、召回结果、缺口评估摘要。

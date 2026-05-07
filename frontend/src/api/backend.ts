@@ -240,6 +240,9 @@ export interface PortraitFactsResult {
   queries: string[];
   tool_calls: RagToolCall[];
   tool_call_note: string;
+  tool_call_summary: string;
+  retrieval_session_id?: string | null;
+  retrieval_steps_count: number;
   error?: string | null;
 }
 
@@ -303,12 +306,148 @@ export interface AnalysisMessage {
   graph_context: string[];
   legal_context: TraceResult['passages'];
   mentioned_evidence_ids: string[];
+  tool_call_summary: string;
+  retrieval_session_id?: string | null;
+  retrieval_steps_count: number;
   error?: string | null;
 }
 
 export interface AnalysisThreadDetail {
   thread: AnalysisThread;
   messages: AnalysisMessage[];
+}
+
+export interface RetrievalToolCall {
+  tool_call_id: string;
+  tool_name: string;
+  arguments: Record<string, string | number | boolean | string[] | null>;
+  summary: string;
+  passages: TraceResult['passages'];
+  graph_facts: string[];
+  legal_passages: TraceResult['passages'];
+  rule_findings: RuleFinding[];
+  document_groups: Array<Record<string, unknown>>;
+  new_entities: string[];
+  errors: string[];
+}
+
+export interface RetrievalStep {
+  step_id: string;
+  session_id: string;
+  round_index: number;
+  retrieval_goals: string[];
+  tool_calls: RetrievalToolCall[];
+  coverage_summary: string;
+  unresolved_gaps: string[];
+  ready_to_answer: boolean;
+  created_at: string;
+}
+
+export interface RetrievalSession {
+  session_id: string;
+  case_id: string;
+  mode: string;
+  question: string;
+  status: string;
+  planner_model: string;
+  analysis_model: string;
+  tool_call_summary: string;
+  retrieval_steps_count: number;
+  created_at: string;
+  updated_at: string;
+  error?: string | null;
+}
+
+export interface RetrievalSessionDetail {
+  session: RetrievalSession;
+  steps: RetrievalStep[];
+}
+
+export interface ProcedureFlowSummary {
+  id: string;
+  title: string;
+  kind: string;
+  relative_path: string;
+  size: number;
+}
+
+export interface DocumentClaim {
+  claim_id: string;
+  claim: string;
+  claim_type: string;
+  supporting_passage_refs: Array<{ passage_index: number; evidence_id?: string | null; text: string }>;
+  confidence: number;
+  status: 'verified' | 'unverified_claim' | 'rejected';
+}
+
+export interface DocumentMotherNode {
+  doc_id: string;
+  evidence_id: string;
+  title: string;
+  doc_type: string;
+  process_stage: string;
+  formation_time?: string | null;
+  event_time?: string | null;
+  source_quality: string;
+  summary: string;
+  proof_purpose: string;
+  key_claims: DocumentClaim[];
+  key_entities: string[];
+  risk_tags: string[];
+  quality_status: string;
+  warnings: string[];
+}
+
+export interface DocumentMotherGraph {
+  case_id: string;
+  nodes: DocumentMotherNode[];
+  rebuilt_count: number;
+  warnings: string[];
+}
+
+export interface RuleFinding {
+  finding_id: string;
+  skill_name: string;
+  rule_id: string;
+  finding_type: string;
+  severity: string;
+  title: string;
+  reason: string;
+  supporting_documents: string[];
+  supporting_claims: DocumentClaim[];
+  missing_documents: string[];
+  process_stage?: string | null;
+  next_actions: string[];
+  legal_caution: string;
+  confidence: number;
+  evidence_level: string;
+  data_completeness: string;
+  related_hypotheses: string[];
+  debug_trace: string[];
+  created_from: string;
+  status: string;
+}
+
+export interface RulePackRunResult {
+  case_id: string;
+  rule_pack: string;
+  status: string;
+  findings: RuleFinding[];
+  not_triggered: Array<{ rule_id: string; reason: string }>;
+  data_gaps: string[];
+  created_at: string;
+}
+
+export interface RulePackSummary {
+  name: string;
+  title: string;
+  version: string;
+  description: string;
+  enabled: boolean;
+  case_types: string[];
+  task_types: string[];
+  triggers: string[];
+  content_hash: string;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -426,6 +565,14 @@ export const backendApi = {
     fetch(`${API_PREFIX}/cases/${caseId}/analysis/threads/${threadId}`, { method: 'DELETE' }).then(async (response) => {
       if (!response.ok) throw new Error((await response.text()) || `Request failed: ${response.status}`);
     }),
+  getRetrievalSession: (caseId: string, sessionId: string) =>
+    request<RetrievalSessionDetail>(`/cases/${caseId}/analysis/retrieval-sessions/${sessionId}`),
+  getDocumentMotherGraph: (caseId: string) => request<DocumentMotherGraph>(`/cases/${caseId}/document-mother-graph`),
+  rebuildDocumentMotherGraph: (caseId: string) =>
+    request<DocumentMotherGraph>(`/cases/${caseId}/document-mother-graph/rebuild`, { method: 'POST' }),
+  listRulePacks: () => request<RulePackSummary[]>('/analysis-skills/rule-packs'),
+  runRulePack: (caseId: string, packName: string) =>
+    request<RulePackRunResult>(`/cases/${caseId}/analysis/rule-packs/${packName}/run`, { method: 'POST' }),
   getGraph: (caseId: string) => request<InvestigationGraph>(`/cases/${caseId}/graph`),
   getMergedGraph: (caseId: string, selectedCaseIds: string[]) =>
     request<InvestigationGraph>(`/cases/${caseId}/graph/merged`, {
@@ -445,6 +592,22 @@ export const backendApi = {
     request<PortraitReport>(`/cases/${caseId}/reports/portrait/latest`),
   listOffenseTemplates: () => request<OffenseTemplateSummary[]>('/legal-knowledge/offense-templates'),
   getOffenseTemplate: (offenseId: string) => request<Record<string, unknown>>(`/legal-knowledge/offense-templates/${offenseId}`),
+  listProcedureFlows: () => request<ProcedureFlowSummary[]>('/legal-knowledge/procedure-flows'),
+  createProcedureFlow: (payload: { title: string; content: string; kind?: string }) =>
+    request<ProcedureFlowSummary>('/legal-knowledge/procedure-flows', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  uploadProcedureFlow: (file: File, title?: string, kind = 'user_knowledge') => {
+    const form = new FormData();
+    form.append('file', file);
+    if (title) form.append('title', title);
+    form.append('kind', kind);
+    return request<ProcedureFlowSummary>('/legal-knowledge/procedure-flows/upload', {
+      method: 'POST',
+      body: form,
+    });
+  },
   retrieveLegalKnowledge: (query: string, offenseId?: string | null, topK = 8) => {
     const params = new URLSearchParams({ query, top_k: String(topK) });
     if (offenseId) params.set('offense_id', offenseId);

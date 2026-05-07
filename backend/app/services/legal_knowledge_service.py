@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,62 @@ class LegalKnowledgeService:
 
     def list_offense_templates(self) -> list[dict[str, Any]]:
         return self._read_json("offense_templates/index.json")
+
+    def list_procedure_flows(self) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for folder_name in ["procedure_flows", "user_knowledge"]:
+            folder = self.knowledge_dir / folder_name
+            if not folder.exists():
+                continue
+            for path in sorted(folder.glob("*.md")):
+                text = path.read_text(encoding="utf-8")
+                title = _title_from_markdown(text) or path.stem
+                rows.append({
+                    "id": path.stem,
+                    "title": title,
+                    "kind": folder_name,
+                    "relative_path": str(path.relative_to(self.knowledge_dir)).replace("\\", "/"),
+                    "size": path.stat().st_size,
+                })
+        return rows
+
+    def get_procedure_flow(self, knowledge_id: str) -> dict[str, Any]:
+        for folder_name in ["procedure_flows", "user_knowledge"]:
+            path = self.knowledge_dir / folder_name / f"{_safe_filename(knowledge_id)}.md"
+            if path.exists():
+                text = path.read_text(encoding="utf-8")
+                return {
+                    "id": path.stem,
+                    "title": _title_from_markdown(text) or path.stem,
+                    "kind": folder_name,
+                    "content": text,
+                    "relative_path": str(path.relative_to(self.knowledge_dir)).replace("\\", "/"),
+                }
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Knowledge '{knowledge_id}' not found.")
+
+    def create_procedure_flow(self, title: str, content: str, kind: str = "user_knowledge") -> dict[str, Any]:
+        clean_title = title.strip() or _title_from_markdown(content) or "未命名办案知识"
+        clean_content = content.strip()
+        if not clean_content:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="content must not be empty.")
+        folder_name = "procedure_flows" if kind == "procedure_flows" else "user_knowledge"
+        folder = self.knowledge_dir / folder_name
+        folder.mkdir(parents=True, exist_ok=True)
+        base = _safe_filename(clean_title)
+        path = folder / f"{base}.md"
+        index = 2
+        while path.exists():
+            path = folder / f"{base}_{index}.md"
+            index += 1
+        text = clean_content if clean_content.lstrip().startswith("#") else f"# {clean_title}\n\n{clean_content}\n"
+        path.write_text(text, encoding="utf-8")
+        return {
+            "id": path.stem,
+            "title": clean_title,
+            "kind": folder_name,
+            "relative_path": str(path.relative_to(self.knowledge_dir)).replace("\\", "/"),
+            "size": path.stat().st_size,
+        }
 
     def get_offense_template(self, offense_id: str) -> dict[str, Any]:
         index = self.list_offense_templates()
@@ -126,6 +183,12 @@ class LegalKnowledgeService:
             if path.exists():
                 add_doc(f"法律知识/{relative}", path.read_text(encoding="utf-8"))
 
+        for folder_name in ["procedure_flows", "user_knowledge"]:
+            folder = self.knowledge_dir / folder_name
+            if folder.exists():
+                for path in sorted(folder.glob("*.md")):
+                    add_doc(f"系统先验/{path.stem}", path.read_text(encoding="utf-8"))
+
         template_ids: list[str] = []
         if offense_id:
             template_ids.append(offense_id)
@@ -179,3 +242,16 @@ class LegalKnowledgeService:
                 {"section": "要件核查结论", "must_include": ["证据支撑", "证据缺口", "法律来源"]},
             ],
         }
+
+
+def _title_from_markdown(text: str) -> str | None:
+    for line in str(text or "").splitlines():
+        line = line.strip()
+        if line.startswith("#"):
+            return line.lstrip("#").strip() or None
+    return None
+
+
+def _safe_filename(value: str) -> str:
+    text = re.sub(r"[^\w\u4e00-\u9fa5-]+", "_", str(value or "").strip(), flags=re.UNICODE).strip("_")
+    return text[:80] or "knowledge"

@@ -28,6 +28,24 @@
             <span>{{ item.category || '未分类' }} · {{ item.status || 'skeleton' }}</span>
             <small>{{ item.article_hint || item.offense_id }}</small>
           </button>
+
+          <div class="procedure-box">
+            <div class="panel-head compact">
+              <div>
+                <h2>系统先验</h2>
+                <p>{{ procedureFlows.length }} 份</p>
+              </div>
+            </div>
+            <button
+              v-for="item in procedureFlows"
+              :key="item.relative_path"
+              class="knowledge-row"
+              @click="query = `${item.title} 应有材料 流程异常 证据缺口`"
+            >
+              <strong>{{ item.title }}</strong>
+              <span>{{ item.kind }} · {{ item.relative_path }}</span>
+            </button>
+          </div>
         </aside>
 
         <main class="panel">
@@ -42,6 +60,22 @@
             <input v-model="query" class="field" placeholder="例如：徇私枉法罪需要核查哪些证据缺口" @keydown.enter="retrieve" />
             <button class="primary" :disabled="loading || !query.trim()" @click="retrieve">HippoRAG 检索</button>
           </div>
+
+          <section class="knowledge-ingest">
+            <details>
+              <summary>添加系统级办案先验 / 法律知识</summary>
+              <p>这里保存的是全系统知识，不属于单个案件。保存后会进入法律知识 HippoRAG 检索。</p>
+              <input v-model="newKnowledge.title" class="field" placeholder="标题，例如：刑事案件办理标准流程" />
+              <textarea v-model="newKnowledge.content" rows="8" placeholder="粘贴流程图、应有材料、证据标准、专家补充意见等 Markdown/文本内容。" />
+              <div class="upload-line">
+                <button class="primary" :disabled="loading || !newKnowledge.title.trim() || !newKnowledge.content.trim()" @click="saveKnowledge">保存文本</button>
+                <label class="secondary file-label">
+                  上传 md/txt
+                  <input type="file" accept=".md,.txt,.json" @change="uploadKnowledge" />
+                </label>
+              </div>
+            </details>
+          </section>
 
           <div v-if="selectedTemplate" class="template-detail">
             <h3>优先核查项</h3>
@@ -76,15 +110,17 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { backendApi, type OffenseTemplateSummary, type TraceResult } from '../api/backend';
+import { backendApi, type OffenseTemplateSummary, type ProcedureFlowSummary, type TraceResult } from '../api/backend';
 
 const router = useRouter();
 const offenseTemplates = ref<OffenseTemplateSummary[]>([]);
+const procedureFlows = ref<ProcedureFlowSummary[]>([]);
 const selectedOffenseId = ref('');
 const query = ref('');
 const result = ref<TraceResult | null>(null);
 const loading = ref(false);
 const error = ref('');
+const newKnowledge = ref({ title: '', content: '' });
 
 const selectedTemplate = computed(() => offenseTemplates.value.find((item) => item.offense_id === selectedOffenseId.value) || null);
 const selectedTemplateName = computed(() => selectedTemplate.value?.name || '法律知识检索');
@@ -92,6 +128,7 @@ const selectedTemplateName = computed(() => selectedTemplate.value?.name || '法
 onMounted(async () => {
   try {
     offenseTemplates.value = await backendApi.listOffenseTemplates();
+    procedureFlows.value = await backendApi.listProcedureFlows();
     selectedOffenseId.value = offenseTemplates.value[0]?.offense_id || '';
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
@@ -104,6 +141,41 @@ function selectTemplate(offenseId: string) {
   if (!query.value.trim()) {
     const item = selectedTemplate.value;
     query.value = `${item?.name || ''} 需要核查哪些证据和缺口`.trim();
+  }
+}
+
+async function saveKnowledge() {
+  loading.value = true;
+  error.value = '';
+  try {
+    await backendApi.createProcedureFlow({
+      title: newKnowledge.value.title.trim(),
+      content: newKnowledge.value.content.trim(),
+      kind: 'user_knowledge',
+    });
+    newKnowledge.value = { title: '', content: '' };
+    procedureFlows.value = await backendApi.listProcedureFlows();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function uploadKnowledge(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  loading.value = true;
+  error.value = '';
+  try {
+    await backendApi.uploadProcedureFlow(file);
+    procedureFlows.value = await backendApi.listProcedureFlows();
+    input.value = '';
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err);
+  } finally {
+    loading.value = false;
   }
 }
 
@@ -142,6 +214,10 @@ async function retrieve() {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+}
+
+.panel-head.compact {
+  margin-top: 18px;
 }
 
 .page-head {
@@ -195,6 +271,30 @@ p {
   background: #ecfdf5;
 }
 
+.procedure-box {
+  margin-top: 18px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.knowledge-row {
+  width: 100%;
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.knowledge-row span {
+  color: #64748b;
+  font-size: 12px;
+}
+
 .field {
   width: 100%;
   min-height: 42px;
@@ -227,8 +327,58 @@ p {
 }
 
 .template-detail,
-.results {
+.results,
+.knowledge-ingest {
   margin-top: 18px;
+}
+
+.knowledge-ingest {
+  border: 1px solid #dbe3ee;
+  border-radius: 12px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.knowledge-ingest summary {
+  cursor: pointer;
+  font-weight: 900;
+  color: #0f766e;
+}
+
+.knowledge-ingest p {
+  margin-top: 8px;
+  color: #64748b;
+}
+
+.knowledge-ingest textarea {
+  width: 100%;
+  margin-top: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #0f172a;
+  background: #fff;
+  resize: vertical;
+}
+
+.knowledge-ingest .field {
+  margin-top: 10px;
+}
+
+.upload-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.file-label {
+  display: inline-flex;
+  align-items: center;
+}
+
+.file-label input {
+  display: none;
 }
 
 .chips {
