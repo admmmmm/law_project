@@ -3,8 +3,8 @@
     <section class="chat-shell">
       <header class="hero">
         <div>
-          <h1>RAG 对话</h1>
-          <p>基于当前案件证据问问题。回答由 HippoRAG 检索增强生成，并展示相关 passage。</p>
+          <h1>证据问答</h1>
+          <p>基于当前案件证据直接提问。系统会召回相关证据片段并组织回答。</p>
         </div>
         <div class="case-line">
           <span>当前案件</span>
@@ -31,10 +31,10 @@
             <div class="markdown" v-html="renderMarkdown(message.content)" />
           </div>
           <div v-if="message.passages?.length" class="sources">
-            <h3>相关证据 passage</h3>
+            <h3>相关证据片段</h3>
             <article v-for="item in message.passages" :key="`${message.id}-${item.rank}-${item.evidence_id}`" class="source-card">
               <div>
-                <strong>#{{ item.rank }} / score {{ item.score.toFixed(4) }}</strong>
+                <strong>证据 {{ item.rank }}</strong>
                 <span>{{ item.evidence_title || item.evidence_id || '未映射证据' }}</span>
               </div>
               <p>{{ item.passage }}</p>
@@ -88,7 +88,7 @@ async function sendQuestion() {
   error.value = '';
   progress.start({
     label: '正在检索并生成回答',
-    detail: 'HippoRAG 正在召回证据 passage 并组织答案',
+    detail: '正在召回证据片段并组织答案',
   });
   try {
     const result = await backendApi.chatAnalysis(activeCaseId.value, question, [], 8);
@@ -96,12 +96,12 @@ async function sendQuestion() {
     messages.value.push({
       id: `assistant-${Date.now()}`,
       role: 'assistant',
-      content: result.answer || '没有生成回答。请确认已导入证据，并且 HippoRAG/DeepSeek 配置可用。',
+      content: result.answer || '没有生成回答。请确认已导入证据，并且模型检索配置可用。',
       passages: result.passages,
     });
     await progress.finish({
       label: '回答已生成',
-      detail: '相关证据 passage 已附在消息下方',
+      detail: '相关证据片段已附在消息下方',
     });
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);

@@ -12,6 +12,14 @@ adm143.xyz, www.adm143.xyz {
 		Referrer-Policy "same-origin"
 	}
 
+	handle / {
+		redir /jcmx/ 302
+	}
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8000
+	}
+
 	handle /jcmx/api/* {
 		uri strip_prefix /jcmx
 		reverse_proxy 127.0.0.1:8000

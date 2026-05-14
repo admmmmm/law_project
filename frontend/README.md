@@ -43,3 +43,25 @@
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+## 页面截图
+
+启动前端后，可以用 Playwright 脚本把页面或某个区域保存为 PNG：
+
+```powershell
+cd C:\Users\adm14\Desktop\law_project\frontend
+npm run screenshot -- --url http://127.0.0.1:5173/graph --selector ".graph-shell" --out ../outputs/screenshots/graph-shell.png --wait 5000
+```
+
+如果要指定当前案件并切到演示视图：
+
+```powershell
+npm run screenshot -- --url http://127.0.0.1:5173/graph --local-storage active_case_id=case_xxx --click 原始图谱层 --click 邻域扩展 --selector ".graph-shell" --out ../outputs/screenshots/neighborhood.png --wait 5000
+```
+
+首次使用如果提示缺少 Playwright：
+
+```powershell
+npm i -D playwright
+npx playwright install chromium
+```

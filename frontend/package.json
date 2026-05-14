@@ -7,10 +7,13 @@
     "dev": "vite --port=5173 --host=127.0.0.1 --strictPort",
     "build": "vite build",
     "preview": "vite preview",
+    "screenshot": "node scripts/screenshot-page.mjs",
+    "screenshots:path3": "node scripts/capture-path3-agentic-rag-screenshots.mjs",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@antv/g6": "^5.1.1",
     "@google/genai": "^1.29.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
@@ -33,6 +36,7 @@
     "@vitejs/plugin-vue": "^6.0.6",
     "autoprefixer": "^10.4.21",
     "cheerio": "^1.2.0",
+    "playwright": "^1.59.1",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",

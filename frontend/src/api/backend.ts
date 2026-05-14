@@ -77,6 +77,95 @@ export interface InvestigationGraph {
   clues: SuspiciousClue[];
 }
 
+export interface EvidenceMapDocument {
+  id: string;
+  type: 'document';
+  evidence_id: string;
+  title: string;
+  doc_type: string;
+  process_stage: string;
+  summary: string;
+  proof_purpose: string;
+  map_tags: string[];
+  passage_count: number;
+  triple_count: number;
+  finding_count: number;
+  quality_status: string;
+  event_time?: string | null;
+  formation_time?: string | null;
+}
+
+export interface EvidenceMapPassage {
+  id: string;
+  type: 'passage';
+  parent_doc_id: string;
+  evidence_id: string;
+  passage_index: number;
+  summary: string;
+  text_preview: string;
+  text: string;
+  triple_count: number;
+  entities: string[];
+  referenced_by_report: boolean;
+}
+
+export interface EvidenceMapTriple {
+  id: string;
+  type: 'triple';
+  parent_passage_id: string;
+  subject: string;
+  predicate: string;
+  object: string;
+  confidence: 'high' | 'medium' | 'low' | string;
+  supporting_text: string;
+  source_doc_id: string;
+  evidence_id: string;
+}
+
+export interface EvidenceMapContainmentEdge {
+  id: string;
+  source: string;
+  target: string;
+  type: 'CONTAINS' | 'EXTRACTS' | string;
+}
+
+export interface EvidenceMapDocumentEdge {
+  id: string;
+  source: string;
+  target: string;
+  type: 'PROCESS_NEXT' | 'SHARED_ENTITY' | 'SUPPORTS_SAME_FINDING' | 'AUTHORITY_CHAIN' | string;
+  label: string;
+  reason: string;
+  supporting_passage_ids: string[];
+  supporting_triple_ids: string[];
+  shared_entities: string[];
+  weight: number;
+  visible_by_default: boolean;
+}
+
+export interface EvidenceMapPassageEdge {
+  id: string;
+  source: string;
+  target: string;
+  type: 'SAME_DOCUMENT_ORDER' | 'SHARED_ENTITY' | 'SUPPORTS_SAME_FINDING' | string;
+  label: string;
+  supporting_triple_ids: string[];
+  shared_entities: string[];
+  weight: number;
+  visible_by_default: boolean;
+}
+
+export interface EvidenceMap {
+  case_id: string;
+  documents: EvidenceMapDocument[];
+  passages: EvidenceMapPassage[];
+  triples: EvidenceMapTriple[];
+  document_edges: EvidenceMapDocumentEdge[];
+  passage_edges: EvidenceMapPassageEdge[];
+  containment_edges: EvidenceMapContainmentEdge[];
+  warnings: string[];
+}
+
 export type GraphInterventionAction = 'upsert_node' | 'upsert_edge' | 'delete_node' | 'delete_edge' | 'verify_node' | 'verify_edge';
 
 export interface GraphInterventionRequest {
@@ -448,6 +537,51 @@ export interface RulePackSummary {
   task_types: string[];
   triggers: string[];
   content_hash: string;
+  rules_count?: number;
+  findings_count?: number;
+  last_run_at?: string | null;
+}
+
+export interface RulePackDetail extends RulePackSummary {
+  skill_md?: string;
+  manifest?: Record<string, unknown>;
+  checks?: unknown[];
+  finding_templates?: Record<string, unknown>;
+  examples?: unknown[];
+  test_cases?: unknown[];
+  run_history?: Array<Record<string, unknown>>;
+}
+
+export interface LegalKnowledgeIndex {
+  crimes?: OffenseTemplateSummary[];
+  processes?: ProcedureFlowSummary[];
+  material_lists?: Array<Record<string, unknown>>;
+  evidence_standards?: Array<Record<string, unknown>>;
+  legal_sources?: Array<Record<string, unknown>>;
+}
+
+export interface AnalysisContextSummary {
+  context_id: string;
+  case_id: string;
+  title: string;
+  kind: string;
+  created_at: string;
+  used_evidence_map: boolean;
+  used_rule_packs: boolean;
+  used_findings: boolean;
+  used_hipporag: boolean;
+  used_legal_knowledge: boolean;
+  unsupported_claims_count: number;
+}
+
+export interface AnalysisContextDetail extends AnalysisContextSummary {
+  evidence_map?: Partial<EvidenceMap>;
+  rule_findings?: RuleFinding[];
+  hipporag_passages?: TraceResult['passages'];
+  hipporag_paths?: TraceResult['paths'];
+  legal_passages?: TraceResult['passages'];
+  prompt?: string;
+  answer_constraints?: string[];
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -571,9 +705,31 @@ export const backendApi = {
   rebuildDocumentMotherGraph: (caseId: string) =>
     request<DocumentMotherGraph>(`/cases/${caseId}/document-mother-graph/rebuild`, { method: 'POST' }),
   listRulePacks: () => request<RulePackSummary[]>('/analysis-skills/rule-packs'),
+  getRulePack: (skillName: string) => request<RulePackDetail>(`/analysis-skills/rule-packs/${skillName}`),
+  importRulePack: (file: File) => {
+    const body = new FormData();
+    body.append('file', file);
+    return request<RulePackDetail>('/analysis-skills/import', { method: 'POST', body });
+  },
+  exportRulePack: (skillName: string) =>
+    fetch(`${API_PREFIX}/analysis-skills/${skillName}/export`).then(async (response) => {
+      if (!response.ok) throw new Error((await response.text()) || `Request failed: ${response.status}`);
+      return response.blob();
+    }),
   runRulePack: (caseId: string, packName: string) =>
     request<RulePackRunResult>(`/cases/${caseId}/analysis/rule-packs/${packName}/run`, { method: 'POST' }),
+  getLegalKnowledgeIndex: () => request<LegalKnowledgeIndex>('/legal-knowledge/index'),
+  listLegalCrimes: () => request<OffenseTemplateSummary[]>('/legal-knowledge/crimes'),
+  listLegalProcesses: () => request<ProcedureFlowSummary[]>('/legal-knowledge/processes'),
+  uploadLegalKnowledge: (file: File) => {
+    const body = new FormData();
+    body.append('file', file);
+    return request<ProcedureFlowSummary>('/legal-knowledge/upload', { method: 'POST', body });
+  },
+  listAnalysisContexts: (caseId: string) => request<AnalysisContextSummary[]>(`/cases/${caseId}/analysis/contexts`),
+  getAnalysisContext: (caseId: string, contextId: string) => request<AnalysisContextDetail>(`/cases/${caseId}/analysis/contexts/${contextId}`),
   getGraph: (caseId: string) => request<InvestigationGraph>(`/cases/${caseId}/graph`),
+  getEvidenceMap: (caseId: string) => request<EvidenceMap>(`/cases/${caseId}/evidence-map`),
   getMergedGraph: (caseId: string, selectedCaseIds: string[]) =>
     request<InvestigationGraph>(`/cases/${caseId}/graph/merged`, {
       method: 'POST',

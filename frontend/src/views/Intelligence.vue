@@ -1,5 +1,5 @@
 <template>
-  <div class="analysis-page">
+  <div class="analysis-page" data-testid="analysis-page">
     <header class="hero">
       <div>
         <h1>智能分析</h1>
@@ -16,9 +16,9 @@
     <AsyncProgressBar v-if="progress.active.value" compact :value="progress.value.value" :label="progress.label.value" :detail="progress.detail.value" />
 
     <section class="mode-tabs">
-      <button :class="{ active: activeMode === 'hypothesis' }" @click="switchMode('hypothesis')">假设验证</button>
+      <button data-testid="hypothesis-tab" :class="{ active: activeMode === 'hypothesis' }" @click="switchMode('hypothesis')">假设验证</button>
       <button :class="{ active: activeMode === 'financial_flow' }" @click="switchMode('financial_flow')">可疑资金流</button>
-      <button class="secondary" @click="showNewThread = !showNewThread">新建对话</button>
+      <button class="secondary" data-testid="new-analysis-thread" @click="showNewThread = !showNewThread">新建对话</button>
     </section>
 
     <section v-if="showNewThread" class="new-thread">
@@ -26,10 +26,11 @@
       <input v-model="newTitle" class="field" placeholder="可选：给这轮分析起个标题" />
       <textarea
         v-model="newQuestion"
+        data-testid="analysis-input"
         rows="5"
         :placeholder="activeMode === 'hypothesis' ? '输入检察官假设，例如：某些执法文书可能存在倒签或补录。' : '输入资金流问题，留空也可以让系统按默认方向分析。'"
       />
-      <button class="primary-btn" :disabled="loading || !activeCaseId || !effectiveNewQuestion.trim()" @click="createThread">创建并分析</button>
+      <button class="primary-btn" data-testid="send-analysis" :disabled="loading || !activeCaseId || !effectiveNewQuestion.trim()" @click="createThread">创建并分析</button>
     </section>
 
     <section class="conversation-layout">
@@ -42,7 +43,7 @@
           <button class="secondary small" :disabled="loading" @click="loadThreads">刷新</button>
         </div>
         <div v-if="threads.length === 0" class="empty">暂无会话。点击“新建对话”开始。</div>
-        <button v-for="thread in threads" :key="thread.thread_id" class="thread-card" :class="{ active: selectedThreadId === thread.thread_id }" @click="selectThread(thread.thread_id)">
+        <button v-for="thread in threads" :key="thread.thread_id" class="thread-card" data-testid="analysis-thread-card" :class="{ active: selectedThreadId === thread.thread_id }" @click="selectThread(thread.thread_id)">
           <div>
             <strong>{{ thread.title }}</strong>
             <span>{{ labelForMode(thread.mode) }} · {{ thread.message_count }} 条消息</span>
@@ -52,7 +53,7 @@
         </button>
       </aside>
 
-      <main class="detail-panel">
+      <main class="detail-panel" data-testid="analysis-result">
         <div v-if="!threadDetail" class="empty detail-empty">选择左侧会话，或新建一个分析对话。</div>
         <template v-else>
           <div class="detail-head">
@@ -63,25 +64,26 @@
           </div>
 
           <article v-for="message in threadDetail.messages" :key="message.message_id" class="message" :class="message.role">
-            <div class="message-role">{{ message.role === 'user' ? '检察官' : 'DeepSeek + RAG' }}</div>
+            <div class="message-role">{{ message.role === 'user' ? '检察官' : '智能分析助手' }}</div>
             <div v-if="message.role === 'assistant'" class="answer-text">
-              <p v-if="message.tool_call_summary" class="tool-summary">{{ message.tool_call_summary }}</p>
+              <p v-if="message.tool_call_summary" class="tool-summary" data-testid="tool-call-summary">{{ message.tool_call_summary }}</p>
               <button
                 v-for="sentence in message.claims.length ? message.claims : fallbackSentences(message.content)"
                 :key="sentence.sentence_id"
                 class="sentence"
+                data-testid="evidence-citation"
                 :class="sentence.status"
                 @click="selectedSentence = sentence"
               >
                 <span v-html="renderInlineMarkdown(sentence.text)" />
               </button>
-              <details v-if="message.retrieval_session_id" class="retrieval-details" @toggle="onRetrievalToggle(message.retrieval_session_id, $event)">
+              <details v-if="message.retrieval_session_id" class="retrieval-details" data-testid="retrieval-session" @toggle="onRetrievalToggle(message.retrieval_session_id, $event)">
                 <summary>检索与调用细节</summary>
                 <div v-if="retrievalLoading[message.retrieval_session_id]" class="muted">正在读取检索记录...</div>
                 <div v-else-if="retrievalDetails[message.retrieval_session_id]" class="retrieval-body">
                   <div class="retrieval-meta">
-                    <span>{{ retrievalDetails[message.retrieval_session_id].session.planner_model }}</span>
-                    <span>{{ retrievalDetails[message.retrieval_session_id].session.analysis_model }}</span>
+                    <span>检索规划</span>
+                    <span>答案生成</span>
                     <span>{{ retrievalDetails[message.retrieval_session_id].session.status }}</span>
                   </div>
                   <section v-for="step in retrievalDetails[message.retrieval_session_id].steps" :key="step.step_id" class="retrieval-step">
@@ -103,10 +105,10 @@
                         </ul>
                       </div>
                       <div v-if="call.passages.length" class="tool-block">
-                        <b>证据 passage</b>
+                        <b>证据片段</b>
                         <ul>
                           <li v-for="passage in call.passages.slice(0, 5)" :key="`${passage.rank}-${passage.passage}`">
-                            Doc {{ passage.rank }}：{{ passage.evidence_title || passage.evidence_id || '未映射证据' }} - {{ compactText(passage.passage, 110) }}
+                            证据 {{ passage.rank }}：{{ passage.evidence_title || passage.evidence_id || '未映射证据' }} - {{ compactText(passage.passage, 110) }}
                           </li>
                         </ul>
                       </div>
@@ -127,7 +129,7 @@
                         </ul>
                       </div>
                       <div v-if="call.document_groups.length" class="tool-block">
-                        <b>文件母图聚合</b>
+                        <b>文件聚合</b>
                         <ul>
                           <li v-for="group in call.document_groups.slice(0, 8)" :key="String(group.doc_id || group.name || group.title)">
                             {{ group.doc_id || group.name || '文件' }}：{{ group.process_stage || group.title || '' }} {{ compactText(String(group.proof_purpose || group.document_summary || group.description || ''), 100) }}
@@ -158,7 +160,7 @@
         </template>
       </main>
 
-      <aside class="source-drawer" :class="{ open: selectedSentence }">
+      <aside class="source-drawer" data-testid="provenance-modal" :class="{ open: selectedSentence }">
         <button class="close-btn" @click="selectedSentence = null">关闭</button>
         <h2>句子溯源</h2>
         <p v-if="!selectedSentence" class="empty">点击答案中的句子查看来源。</p>
@@ -168,7 +170,7 @@
           </div>
           <p class="selected-text">{{ selectedSentence.text }}</p>
           <p v-if="threadDetail?.messages.find((item) => item.role === 'assistant' && item.claims.some((claim) => claim.sentence_id === selectedSentence?.sentence_id))?.retrieval_session_id" class="muted">
-            本句来源于已保存的 agentic RAG 检索会话。
+            本句来源于已保存的多轮检索会话。
           </p>
           <h3>证据关系路径</h3>
           <article v-for="path in selectedSentence.supporting_graph_paths" :key="`${path.source}-${path.relation}-${path.target}`" class="graph-path">
@@ -179,12 +181,12 @@
           <p v-if="!selectedSentence.supporting_graph_paths.length" class="muted">暂无直接图谱路径。</p>
           <h3>证明文档</h3>
           <article v-for="passage in selectedSentence.supporting_passages" :key="`${passage.rank}-${passage.passage}`" class="passage">
-            <strong>Doc {{ passage.rank }}</strong>
+            <strong>证据 {{ passage.rank }}</strong>
             <span>{{ passage.evidence_title || passage.evidence_id || '未映射证据' }}</span>
             <p>{{ passage.passage }}</p>
           </article>
           <p v-if="!selectedSentence.supporting_passages.length" class="empty">
-            暂未绑定可靠 passage。该句只能作为待核查判断，不能作为正式事实结论；建议缩小问题或重新追问。
+            暂未绑定可靠证据片段。该句只能作为待核查判断，不能作为正式事实结论；建议缩小问题或重新追问。
           </p>
         </template>
       </aside>
@@ -403,7 +405,7 @@ function renderInlineMarkdown(value: string) {
 async function runTask(label: string, task: () => Promise<void>) {
   loading.value = true;
   error.value = '';
-  progress.start({ label, detail: '后端正在检索证据、调用 DeepSeek 并保存会话' });
+  progress.start({ label, detail: '后端正在检索证据、组织答案并保存会话' });
   try {
     await task();
     await progress.finish({ label: `${label}完成`, detail: '结果已保存到后端' });

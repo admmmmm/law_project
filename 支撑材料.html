@@ -1,0 +1,664 @@
+<!DOCTYPE html><html><head>
+      <title>支撑材料</title>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      
+      <link rel="stylesheet" href="file:///c:\Users\adm14\.vscode\extensions\shd101wyy.markdown-preview-enhanced-0.8.25\crossnote\dependencies\katex\katex.min.css">
+      
+      
+      
+      
+      
+      
+      
+      <style>
+      code[class*=language-],pre[class*=language-]{color:#333;background:0 0;font-family:Consolas,"Liberation Mono",Menlo,Courier,monospace;text-align:left;white-space:pre;word-spacing:normal;word-break:normal;word-wrap:normal;line-height:1.4;-moz-tab-size:8;-o-tab-size:8;tab-size:8;-webkit-hyphens:none;-moz-hyphens:none;-ms-hyphens:none;hyphens:none}pre[class*=language-]{padding:.8em;overflow:auto;border-radius:3px;background:#f5f5f5}:not(pre)>code[class*=language-]{padding:.1em;border-radius:.3em;white-space:normal;background:#f5f5f5}.token.blockquote,.token.comment{color:#969896}.token.cdata{color:#183691}.token.doctype,.token.macro.property,.token.punctuation,.token.variable{color:#333}.token.builtin,.token.important,.token.keyword,.token.operator,.token.rule{color:#a71d5d}.token.attr-value,.token.regex,.token.string,.token.url{color:#183691}.token.atrule,.token.boolean,.token.code,.token.command,.token.constant,.token.entity,.token.number,.token.property,.token.symbol{color:#0086b3}.token.prolog,.token.selector,.token.tag{color:#63a35c}.token.attr-name,.token.class,.token.class-name,.token.function,.token.id,.token.namespace,.token.pseudo-class,.token.pseudo-element,.token.url-reference .token.variable{color:#795da3}.token.entity{cursor:help}.token.title,.token.title .token.punctuation{font-weight:700;color:#1d3e81}.token.list{color:#ed6a43}.token.inserted{background-color:#eaffea;color:#55a532}.token.deleted{background-color:#ffecec;color:#bd2c00}.token.bold{font-weight:700}.token.italic{font-style:italic}.language-json .token.property{color:#183691}.language-markup .token.tag .token.punctuation{color:#333}.language-css .token.function,code.language-css{color:#0086b3}.language-yaml .token.atrule{color:#63a35c}code.language-yaml{color:#183691}.language-ruby .token.function{color:#333}.language-markdown .token.url{color:#795da3}.language-makefile .token.symbol{color:#795da3}.language-makefile .token.variable{color:#183691}.language-makefile .token.builtin{color:#0086b3}.language-bash .token.keyword{color:#0086b3}pre[data-line]{position:relative;padding:1em 0 1em 3em}pre[data-line] .line-highlight-wrapper{position:absolute;top:0;left:0;background-color:transparent;display:block;width:100%}pre[data-line] .line-highlight{position:absolute;left:0;right:0;padding:inherit 0;margin-top:1em;background:hsla(24,20%,50%,.08);background:linear-gradient(to right,hsla(24,20%,50%,.1) 70%,hsla(24,20%,50%,0));pointer-events:none;line-height:inherit;white-space:pre}pre[data-line] .line-highlight:before,pre[data-line] .line-highlight[data-end]:after{content:attr(data-start);position:absolute;top:.4em;left:.6em;min-width:1em;padding:0 .5em;background-color:hsla(24,20%,50%,.4);color:#f4f1ef;font:bold 65%/1.5 sans-serif;text-align:center;vertical-align:.3em;border-radius:999px;text-shadow:none;box-shadow:0 1px #fff}pre[data-line] .line-highlight[data-end]:after{content:attr(data-end);top:auto;bottom:.4em}html body{font-family:'Helvetica Neue',Helvetica,'Segoe UI',Arial,freesans,sans-serif;font-size:16px;line-height:1.6;color:#333;background-color:#fff;overflow:initial;box-sizing:border-box;word-wrap:break-word}html body>:first-child{margin-top:0}html body h1,html body h2,html body h3,html body h4,html body h5,html body h6{line-height:1.2;margin-top:1em;margin-bottom:16px;color:#000}html body h1{font-size:2.25em;font-weight:300;padding-bottom:.3em}html body h2{font-size:1.75em;font-weight:400;padding-bottom:.3em}html body h3{font-size:1.5em;font-weight:500}html body h4{font-size:1.25em;font-weight:600}html body h5{font-size:1.1em;font-weight:600}html body h6{font-size:1em;font-weight:600}html body h1,html body h2,html body h3,html body h4,html body h5{font-weight:600}html body h5{font-size:1em}html body h6{color:#5c5c5c}html body strong{color:#000}html body del{color:#5c5c5c}html body a:not([href]){color:inherit;text-decoration:none}html body a{color:#08c;text-decoration:none}html body a:hover{color:#00a3f5;text-decoration:none}html body img{max-width:100%}html body>p{margin-top:0;margin-bottom:16px;word-wrap:break-word}html body>ol,html body>ul{margin-bottom:16px}html body ol,html body ul{padding-left:2em}html body ol.no-list,html body ul.no-list{padding:0;list-style-type:none}html body ol ol,html body ol ul,html body ul ol,html body ul ul{margin-top:0;margin-bottom:0}html body li{margin-bottom:0}html body li.task-list-item{list-style:none}html body li>p{margin-top:0;margin-bottom:0}html body .task-list-item-checkbox{margin:0 .2em .25em -1.8em;vertical-align:middle}html body .task-list-item-checkbox:hover{cursor:pointer}html body blockquote{margin:16px 0;font-size:inherit;padding:0 15px;color:#5c5c5c;background-color:#f0f0f0;border-left:4px solid #d6d6d6}html body blockquote>:first-child{margin-top:0}html body blockquote>:last-child{margin-bottom:0}html body hr{height:4px;margin:32px 0;background-color:#d6d6d6;border:0 none}html body table{margin:10px 0 15px 0;border-collapse:collapse;border-spacing:0;display:block;width:100%;overflow:auto;word-break:normal;word-break:keep-all}html body table th{font-weight:700;color:#000}html body table td,html body table th{border:1px solid #d6d6d6;padding:6px 13px}html body dl{padding:0}html body dl dt{padding:0;margin-top:16px;font-size:1em;font-style:italic;font-weight:700}html body dl dd{padding:0 16px;margin-bottom:16px}html body code{font-family:Menlo,Monaco,Consolas,'Courier New',monospace;font-size:.85em;color:#000;background-color:#f0f0f0;border-radius:3px;padding:.2em 0}html body code::after,html body code::before{letter-spacing:-.2em;content:'\00a0'}html body pre>code{padding:0;margin:0;word-break:normal;white-space:pre;background:0 0;border:0}html body .highlight{margin-bottom:16px}html body .highlight pre,html body pre{padding:1em;overflow:auto;line-height:1.45;border:#d6d6d6;border-radius:3px}html body .highlight pre{margin-bottom:0;word-break:normal}html body pre code,html body pre tt{display:inline;max-width:initial;padding:0;margin:0;overflow:initial;line-height:inherit;word-wrap:normal;background-color:transparent;border:0}html body pre code:after,html body pre code:before,html body pre tt:after,html body pre tt:before{content:normal}html body blockquote,html body dl,html body ol,html body p,html body pre,html body ul{margin-top:0;margin-bottom:16px}html body kbd{color:#000;border:1px solid #d6d6d6;border-bottom:2px solid #c7c7c7;padding:2px 4px;background-color:#f0f0f0;border-radius:3px}@media print{html body{background-color:#fff}html body h1,html body h2,html body h3,html body h4,html body h5,html body h6{color:#000;page-break-after:avoid}html body blockquote{color:#5c5c5c}html body pre{page-break-inside:avoid}html body table{display:table}html body img{display:block;max-width:100%;max-height:100%}html body code,html body pre{word-wrap:break-word;white-space:pre}}.markdown-preview{width:100%;height:100%;box-sizing:border-box}.markdown-preview ul{list-style:disc}.markdown-preview ul ul{list-style:circle}.markdown-preview ul ul ul{list-style:square}.markdown-preview ol{list-style:decimal}.markdown-preview ol ol,.markdown-preview ul ol{list-style-type:lower-roman}.markdown-preview ol ol ol,.markdown-preview ol ul ol,.markdown-preview ul ol ol,.markdown-preview ul ul ol{list-style-type:lower-alpha}.markdown-preview .newpage,.markdown-preview .pagebreak{page-break-before:always}.markdown-preview pre.line-numbers{position:relative;padding-left:3.8em;counter-reset:linenumber}.markdown-preview pre.line-numbers>code{position:relative}.markdown-preview pre.line-numbers .line-numbers-rows{position:absolute;pointer-events:none;top:1em;font-size:100%;left:0;width:3em;letter-spacing:-1px;border-right:1px solid #999;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.markdown-preview pre.line-numbers .line-numbers-rows>span{pointer-events:none;display:block;counter-increment:linenumber}.markdown-preview pre.line-numbers .line-numbers-rows>span:before{content:counter(linenumber);color:#999;display:block;padding-right:.8em;text-align:right}.markdown-preview .mathjax-exps .MathJax_Display{text-align:center!important}.markdown-preview:not([data-for=preview]) .code-chunk .code-chunk-btn-group{display:none}.markdown-preview:not([data-for=preview]) .code-chunk .status{display:none}.markdown-preview:not([data-for=preview]) .code-chunk .output-div{margin-bottom:16px}.markdown-preview .md-toc{padding:0}.markdown-preview .md-toc .md-toc-details{margin:0;padding:0;border:none}.markdown-preview .md-toc summary.md-toc-link-wrapper{cursor:pointer;list-style-position:outside}.markdown-preview .md-toc summary.md-toc-link-wrapper::marker{font-size:.85em}.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link{display:inline;padding:.25rem 0}.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link div,.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link p{display:inline}.markdown-preview .md-toc .md-toc-link-wrapper.highlighted .md-toc-link{font-weight:800}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='0']{margin-left:12px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='1']{margin-left:28px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='2']{margin-left:44px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='3']{margin-left:60px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='4']{margin-left:76px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='5']{margin-left:80px}.markdown-preview a.tag,.markdown-preview a.tag:active,.markdown-preview a.tag:link,.markdown-preview a.tag:visited,.markdown-preview span.tag{display:inline-block;background-color:var(--vscode-badge-background,rgba(127,127,127,.18));color:var(--vscode-badge-foreground,currentColor);border-radius:2em;font-size:.85em;font-weight:500;padding:.05em .55em;line-height:1.5;white-space:nowrap;text-decoration:none;text-shadow:none;box-shadow:none;transition:background-color .12s ease,opacity .12s ease}.markdown-preview a.tag{cursor:pointer}.markdown-preview a.tag:focus,.markdown-preview a.tag:hover{background-color:var(--vscode-badge-background,rgba(127,127,127,.32));color:var(--vscode-badge-foreground,currentColor);opacity:.85;text-decoration:none;outline:0}.markdown-preview .wikilink-embed-content{border-left:3px solid var(--vscode-textBlockQuote-border,rgba(128,128,128,.3));background:var(--vscode-textBlockQuote-background,rgba(128,128,128,.05));margin:.5em 0;padding:.5em .75em;border-radius:0 3px 3px 0}.markdown-preview .wikilink-embed-content.wikilink-embed-error{border-left-color:var(--vscode-errorForeground,#cf222e);color:var(--vscode-errorForeground,#cf222e);font-style:italic;opacity:.8}.markdown-preview .wikilink-embed-content h1:first-child,.markdown-preview .wikilink-embed-content h2:first-child,.markdown-preview .wikilink-embed-content h3:first-child,.markdown-preview .wikilink-embed-content h4:first-child,.markdown-preview .wikilink-embed-content h5:first-child,.markdown-preview .wikilink-embed-content h6:first-child{margin-top:.25em}.markdown-preview .wikilink-embed-content .wikilink-embed-content{margin:.25em 0;padding:.25em .5em}.markdown-preview .block-id{display:none}.scrollbar-style::-webkit-scrollbar{width:8px}.scrollbar-style::-webkit-scrollbar-track{border-radius:10px;background-color:transparent}.scrollbar-style::-webkit-scrollbar-thumb{border-radius:5px;background-color:rgba(150,150,150,.66);border:4px solid rgba(150,150,150,.66);background-clip:content-box}html body[for=html-export]:not([data-presentation-mode]){position:relative;width:100%;height:100%;top:0;left:0;margin:0;padding:0;overflow:auto}html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{position:relative;top:0;min-height:100vh}@media screen and (min-width:914px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{padding:2em calc(50% - 457px + 2em)}}@media screen and (max-width:914px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{padding:2em}}@media screen and (max-width:450px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{font-size:14px!important;padding:1em}}@media print{html body[for=html-export]:not([data-presentation-mode]) #sidebar-toc-btn{display:none}}html body[for=html-export]:not([data-presentation-mode]) #sidebar-toc-btn{position:fixed;bottom:8px;left:8px;font-size:28px;cursor:pointer;color:inherit;z-index:99;width:32px;text-align:center;opacity:.4}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] #sidebar-toc-btn{opacity:1}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc{position:fixed;top:0;left:0;width:300px;height:100%;padding:32px 0 48px 0;font-size:14px;box-shadow:0 0 4px rgba(150,150,150,.33);box-sizing:border-box;overflow:auto;background-color:inherit}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar{width:8px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar-track{border-radius:10px;background-color:transparent}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar-thumb{border-radius:5px;background-color:rgba(150,150,150,.66);border:4px solid rgba(150,150,150,.66);background-clip:content-box}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc a{text-decoration:none}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc{padding:0 16px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-details{margin:0;padding:0;border:none}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link{display:inline;padding:.25rem 0}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link div,html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link p{display:inline}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper.highlighted .md-toc-link{font-weight:800}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='0']{padding-left:0}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='1']{padding-left:16px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='2']{padding-left:32px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='3']{padding-left:48px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='4']{padding-left:64px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='5']{padding-left:80px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{left:300px;width:calc(100% - 300px);padding:2em calc(50% - 457px - 300px / 2);margin:0;box-sizing:border-box}@media screen and (max-width:1274px){html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{padding:2em}}@media screen and (max-width:450px){html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{width:100%}}html body[for=html-export]:not([data-presentation-mode]):not([html-show-sidebar-toc]) .markdown-preview{left:50%;transform:translateX(-50%)}html body[for=html-export]:not([data-presentation-mode]):not([html-show-sidebar-toc]) .md-sidebar-toc{display:none}
+/* Please visit the URL below for more information: */
+/*   https://shd101wyy.github.io/markdown-preview-enhanced/#/customize-css */
+
+      </style>
+      <script type="text/javascript">
+  document.addEventListener("DOMContentLoaded", function () {
+    // your code here
+  });
+</script>
+    </head>
+    <body for="html-export">
+      <div class="crossnote markdown-preview  ">
+      
+<h1 id="01_项目代码仓库与工程结构说明">01_项目代码仓库与工程结构说明 </h1>
+<h2 id="一-代码仓库基本情况">一、代码仓库基本情况 </h2>
+<p>本项目代码仓库采用前后端分离结构，围绕“案件材料接入—证据图谱构建—图谱支撑检索—智能分析—侦查画像—证据溯源”的业务链路组织。后端以 FastAPI 为核心，提供案件管理、材料导入、证据地图、智能分析、画像报告、法律知识库和检察分析技能包等接口；前端基于 Vue3 + Vite + TypeScript，实现案件导入、图谱展示、智能分析、画像生成和溯源查看等交互页面。系统同时包含脱敏演示数据、法律知识库、结构化样本数据、截图脚本和运行部署配置，能够支撑比赛演示和功能验证。</p>
+<h2 id="二-工程结构说明">二、工程结构说明 </h2>
+<pre data-role="codeBlock" data-info="text" class="language-text text"><code>law_project/
+├─ backend/                 后端服务
+│  ├─ app/
+│  │  ├─ api/v1/routes/      FastAPI 路由层
+│  │  ├─ services/           核心业务服务层
+│  │  ├─ adapters/           算法与 HippoRAG 适配层
+│  │  ├─ schemas/            Pydantic 数据契约
+│  │  ├─ hipporag/           本地 HippoRAG 相关代码
+│  │  └─ storage/            SQLite 与状态存储
+│  ├─ tests/                 后端测试
+│  ├─ requirements.txt       Python 依赖
+│  └─ README.md              后端运行说明
+├─ frontend/                 前端工程
+│  ├─ src/
+│  │  ├─ views/              页面视图
+│  │  ├─ components/         图谱、溯源、布局等组件
+│  │  ├─ api/backend.ts      前端 API 封装
+│  │  └─ router.ts           前端路由
+│  ├─ scripts/               Playwright 截图脚本
+│  └─ package.json           前端依赖与启动脚本
+├─ data/                     数据目录
+│  ├─ realtest/              原始演示案件
+│  ├─ realcleantest/         脱敏演示案件
+│  ├─ legal_knowledge/       法律知识库
+│  └─ structured/            结构化流水、通话、时间线数据
+├─ docs/                     项目文档
+├─ outputs/                  SQLite、截图、HippoRAG 输出
+├─ scripts/                  辅助脚本
+└─ Caddyfile.jcmx            部署相关配置
+</code></pre><h2 id="三-后端代码说明">三、后端代码说明 </h2>
+<p>后端主要位于 <code>backend/app</code> 下。<code>api/v1/routes</code> 负责提供 HTTP 接口，覆盖案件管理、材料导入、图谱查询、证据地图、智能分析、画像报告、法律知识和技能包等功能；<code>services</code> 是业务服务层，承担材料接入、分析、图谱、画像、规则包、法律知识等核心逻辑；<code>adapters</code> 负责算法与 HippoRAG 适配；<code>schemas</code> 定义前后端数据契约；<code>storage</code> 负责 SQLite JSON payload 持久化。</p>
+<p>其中，支撑方案蓝图和核心功能的重点文件包括：</p>
+<pre data-role="codeBlock" data-info="text" class="language-text text"><code>backend/app/services/evidence_map_service.py
+backend/app/services/analysis_service.py
+backend/app/services/retrieval_planner_service.py
+backend/app/services/report_service.py
+backend/app/services/ingestion_service.py
+backend/app/services/legal_knowledge_service.py
+backend/app/services/analysis_skill_service.py
+backend/app/adapters/algorithm.py
+backend/app/storage/memory_store.py
+</code></pre><h2 id="四-前端代码说明">四、前端代码说明 </h2>
+<p>前端主要位于 <code>frontend/src</code> 下。<code>views</code> 目录承载核心页面，包括案件导入与管理、案件证据地图、智能分析、侦查画像、法律知识库等；<code>components</code> 目录包含图谱组件、G6 图谱渲染组件和页面通用组件；<code>api/backend.ts</code> 负责封装后端接口调用；<code>router.ts</code> 负责页面路由。图谱展示主要由 <code>Graph.vue</code> 和 <code>G6EvidenceGraph.vue</code> 实现，智能分析页面由 <code>Intelligence.vue</code> 实现，画像页面由 <code>Portrait.vue</code> 实现。</p>
+<h2 id="五-数据库与状态存储说明">五、数据库与状态存储说明 </h2>
+<p>当前系统没有使用传统 ORM 模型，而是采用 SQLite 表保存 JSON payload，同时保留内存字典缓存。SQLite 用于保存案件、证据、原文、抽取结果、图谱、画像、分析会话、检索过程、文件母图和规则运行记录，是原型阶段的统一状态仓库。相关数据模型包括 <code>cases</code>、<code>evidence</code>、<code>raw_contents</code>、<code>extractions</code>、<code>graphs</code>、<code>reports</code>、<code>portrait_facts</code>、<code>analysis_threads</code>、<code>analysis_messages</code>、<code>retrieval_sessions</code>、<code>retrieval_steps</code>、<code>document_mother_nodes</code>、<code>analysis_skill_registry</code>、<code>rule_pack_runs</code> 等。</p>
+<h2 id="六-代码与赛题要求的对应关系">六、代码与赛题要求的对应关系 </h2>
+<p>本项目代码结构与赛题要求具有直接对应关系：</p>
+<pre data-role="codeBlock" data-info="text" class="language-text text"><code>材料导入与处理 → ingestion_service.py / information_extraction.py
+案件证据图谱 → evidence_map_service.py / algorithm.py / Graph.vue
+图谱支撑机制 → Graph.vue / G6EvidenceGraph.vue / retrieval_planner_service.py
+智能分析 → analysis_service.py / Intelligence.vue
+侦查画像 → portrait_facts / report_service.py / Portrait.vue
+证据溯源 → GroundedSentence / PortraitFact / evidence detail API
+法律实务知识 → legal_knowledge_service.py / data/legal_knowledge
+检察 Skills → analysis_skill_service.py / rule-packs API
+</code></pre><hr>
+<h1 id="02_系统功能实现清单">02_系统功能实现清单 </h1>
+<table>
+<thead>
+<tr>
+<th>功能模块</th>
+<th>对应赛题要求</th>
+<th>实现内容</th>
+<th>代码 / 页面依据</th>
+<th>实现状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>案件管理</td>
+<td>办案场景承载</td>
+<td>支持案件创建、案件列表、案件更新、案件删除</td>
+<td><code>cases.py</code> / Dashboard</td>
+<td>已实现</td>
+</tr>
+<tr>
+<td>多源材料导入</td>
+<td>数据处理</td>
+<td>支持文本、文件、多文件、ZIP 压缩包导入</td>
+<td><code>ingestion.py</code> / <code>ingestion_service.py</code></td>
+<td>已实现</td>
+</tr>
+<tr>
+<td>文件解析</td>
+<td>数据处理</td>
+<td>支持 <code>.txt</code>、<code>.md</code>、<code>.csv</code>、<code>.xlsx</code>、<code>.json</code>、<code>.pdf</code>、<code>.docx</code> 等格式，<code>.doc</code> 暂不支持</td>
+<td><code>information_extraction.py</code></td>
+<td>已实现</td>
+</tr>
+<tr>
+<td>证据切片与编号</td>
+<td>数据处理</td>
+<td>将材料解析为证据片段，并生成 evidence_id</td>
+<td><code>information_extraction.py</code> / <code>schemas/common.py</code></td>
+<td>已实现</td>
+</tr>
+<tr>
+<td>实体与事实关系抽取</td>
+<td>分析基础</td>
+<td>抽取人员、单位、时间、地点、账户、金额、行为等要素及事实关系</td>
+<td><code>algorithm.py</code> / HippoRAG / <code>information_extraction.py</code></td>
+<td>部分实现</td>
+</tr>
+<tr>
+<td>三层证据图谱</td>
+<td>数据处理、分析</td>
+<td>构建文件层、片段层、事实关系层证据图谱</td>
+<td><code>evidence_map_service.py</code> / <code>Graph.vue</code></td>
+<td>已实现</td>
+</tr>
+<tr>
+<td>图谱可视化</td>
+<td>人物关系、线索分析</td>
+<td>支持 G6 图谱展示、图层切换、节点详情</td>
+<td><code>G6EvidenceGraph.vue</code> / <code>Graph.vue</code></td>
+<td>已实现</td>
+</tr>
+<tr>
+<td>图谱筛选</td>
+<td>分析、碰撞</td>
+<td>支持按节点类型、关系类型筛选</td>
+<td><code>Graph.vue</code></td>
+<td>原型实现</td>
+</tr>
+<tr>
+<td>核心邻域</td>
+<td>分析、碰撞</td>
+<td>围绕选中节点展示一跳关系</td>
+<td><code>buildCoreNeighborhoodSubgraph</code></td>
+<td>演示性实现</td>
+</tr>
+<tr>
+<td>邻域扩展</td>
+<td>分析、碰撞</td>
+<td>基于前端 BFS 展示二跳关系</td>
+<td><code>buildExpandedNeighborhoodSubgraph</code></td>
+<td>演示性实现</td>
+</tr>
+<tr>
+<td>多跳召回</td>
+<td>线索分析</td>
+<td>展示目标节点之间 2-4 跳路径</td>
+<td><code>buildMultihopPathSubgraph</code> / <code>shortestPath</code></td>
+<td>演示性实现</td>
+</tr>
+<tr>
+<td>子图交叉</td>
+<td>碰撞分析</td>
+<td>展示两个对象或主题子图的交集与桥接边</td>
+<td><code>buildIntersectionSubgraph</code></td>
+<td>演示性实现</td>
+</tr>
+<tr>
+<td>智能分析会话</td>
+<td>分析、参考建议</td>
+<td>支持假设验证、可疑资金流、多轮会话、继续追问、删除会话</td>
+<td><code>analysis_service.py</code> / <code>Intelligence.vue</code></td>
+<td>已实现</td>
+</tr>
+<tr>
+<td>Agentic RAG</td>
+<td>分析、线索分析</td>
+<td>支持检索计划、工具调用、文档检索、图谱检索、法律检索、节点扩展等</td>
+<td><code>retrieval_planner_service.py</code></td>
+<td>部分实现</td>
+</tr>
+<tr>
+<td>检索过程保存</td>
+<td>可解释分析</td>
+<td>保存 RetrievalSession、RetrievalStep、ToolCall 等过程信息</td>
+<td><code>memory_store.py</code> / <code>retrieval_planner_service.py</code></td>
+<td>已实现</td>
+</tr>
+<tr>
+<td>法律知识库</td>
+<td>法律实务支撑</td>
+<td>支持法律知识检索、罪名模板、办案流程知识</td>
+<td><code>legal_knowledge_service.py</code></td>
+<td>部分实现</td>
+</tr>
+<tr>
+<td>检察分析 Skills</td>
+<td>任务化分析</td>
+<td>支持规则包列表与规则包运行，供 Agentic RAG 调用</td>
+<td><code>analysis_skill_service.py</code> / <code>analysis_skills.py</code></td>
+<td>部分实现</td>
+</tr>
+<tr>
+<td>侦查画像</td>
+<td>信息画像</td>
+<td>生成关系叙述、行为叙述、关系事实、行为事实</td>
+<td><code>portrait_facts</code> / <code>Portrait.vue</code></td>
+<td>已实现</td>
+</tr>
+<tr>
+<td>画像报告</td>
+<td>参考建议</td>
+<td>生成画像报告、建议和支撑事实</td>
+<td><code>report_service.py</code> / <code>reports.py</code></td>
+<td>已实现</td>
+</tr>
+<tr>
+<td>证据溯源</td>
+<td>可复核</td>
+<td>智能分析句子、画像事实、报告 claim 可绑定证据片段或图谱路径</td>
+<td><code>GroundedSentence</code> / <code>PortraitFact</code></td>
+<td>已实现</td>
+</tr>
+<tr>
+<td>人工编辑</td>
+<td>人机协同</td>
+<td>支持图谱节点和边的新增、修改、删除、复核</td>
+<td><code>PATCH /graph/interventions</code></td>
+<td>已实现</td>
+</tr>
+<tr>
+<td>跨案碰撞</td>
+<td>扩展能力</td>
+<td>存在跨案合并图接口和 cross_case 疑点分析入口</td>
+<td><code>/graph/merged</code> / <code>suspicion_analysis</code></td>
+<td>原型实现</td>
+</tr>
+<tr>
+<td>GNN 异常识别</td>
+<td>未来增强</td>
+<td>未见真实 GNN 代码</td>
+<td>无</td>
+<td>规划增强</td>
+</tr>
+</tbody>
+</table>
+<p>当前功能状态中，材料导入、证据切片、三层证据图谱、智能分析、画像生成、证据溯源和人工编辑均可演示；邻域扩展、多跳召回、子图交叉主要属于前端基于已加载图谱的演示性图操作，后续可下沉到后端图算法；Agentic RAG 和检察分析 Skills 已接入主流程，技能包选择器、后端图数据库级碰撞和 GNN 异常识别仍可继续增强。</p>
+<hr>
+<h1 id="03_核心技术模块说明">03_核心技术模块说明 </h1>
+<h2 id="一-证据接入与预处理模块">一、证据接入与预处理模块 </h2>
+<h3 id="模块目标">模块目标 </h3>
+<p>该模块用于解决案件材料来源多、格式复杂、文本长、结构化记录数量大等问题。系统通过统一导入、解析、切片和编号，将原始卷宗、笔录、流水、通信等材料转化为后续可检索、可建图、可溯源的证据单元。</p>
+<h3 id="实现方式">实现方式 </h3>
+<p>系统提供文本导入、单文件导入、多文件导入和 ZIP 压缩包导入能力。材料进入系统后，先进行文件类型判断和内容解析，再对非结构化文本进行切句或切片，对结构化数据进行行级解析，并生成 evidence_id 保存入库。支持格式包括 <code>.txt</code>、<code>.md</code>、<code>.csv</code>、<code>.xlsx</code>、<code>.json</code>、<code>.pdf</code>、<code>.docx</code>，其中 <code>.doc</code> 暂不支持。</p>
+<h3 id="输出结果">输出结果 </h3>
+<p>模块输出包括证据文件元数据、原文内容、证据片段、结构化抽取结果和基础事实关系，为证据图谱构建和检索分析提供底座。</p>
+<hr>
+<h2 id="二-案件证据图谱构建模块">二、案件证据图谱构建模块 </h2>
+<h3 id="模块目标-1">模块目标 </h3>
+<p>该模块用于解决材料分散、事实要素隐藏、证据之间缺乏结构化关联的问题，将案件材料组织为“文件—片段—事实—关系”的案件证据图谱体系。</p>
+<h3 id="实现方式-1">实现方式 </h3>
+<p>系统通过 <code>EvidenceMapService</code> 和 <code>EvidenceMapBuilder</code> 构建证据地图，返回 documents、passages、triples、document_edges、passage_edges、containment_edges 等结构。文件层基于 <code>EvidenceRecord</code> 与 <code>DocumentMotherNode</code> 构建，片段层基于 <code>ExtractionResult.passages</code> 和原文切片构建，事实关系层基于 <code>ExtractionResult.triples</code>、HippoRAG OpenIE 合并图和本地抽取结果构建。三层图谱分别对应材料边界、证据定位和事实关系分析。</p>
+<h3 id="输出结果-1">输出结果 </h3>
+<p>形成文件层图谱、片段层图谱和事实关系层图谱。文件层回答“材料从哪里来”，片段层回答“证据在哪里”，事实关系层回答“事实如何关联”。这些图谱为后续关系扩展、智能分析和侦查画像提供结构化基础。</p>
+<hr>
+<h2 id="三-图谱支撑检索模块">三、图谱支撑检索模块 </h2>
+<h3 id="模块目标-2">模块目标 </h3>
+<p>该模块用于解决普通检索只能找到相似文本、难以发现多跳关系和交叉线索的问题。系统通过图谱筛选、邻域扩展、多跳召回和子图交叉，把分散证据组织为可观察的局部证据网络。</p>
+<h3 id="实现方式-2">实现方式 </h3>
+<p>前端图谱页面由 <code>Graph.vue</code> 和 <code>G6EvidenceGraph.vue</code> 实现，系统支持文件层、片段层、事实关系层切换。图谱页中的核心邻域、邻域扩展、多跳召回和子图交叉，当前主要由前端基于已加载图谱数据进行过滤、BFS、路径搜索和交集计算实现。后端同时提供 <code>/graph</code>、<code>/evidence-map</code> 和 <code>/graph/interventions</code> 等接口，支持图谱数据获取和人工编辑。</p>
+<h3 id="输出结果-2">输出结果 </h3>
+<p>系统能够围绕目标对象、关键事件或侦查假设展示一跳关系、二跳扩展、多跳路径和交叉子图，辅助办案人员观察共同节点、关系路径、时间交叉和线索碰撞。</p>
+<h3 id="边界说明">边界说明 </h3>
+<p>当前图谱页的邻域扩展、多跳召回、子图交叉主要属于前端演示性图操作，不是完整后端图数据库查询；PPR 检索在 Agentic RAG / trace 中存在，但图谱页按钮本身未确认直接调用后端 PPR。</p>
+<hr>
+<h2 id="四-agentic-rag-与任务化分析模块">四、Agentic RAG 与任务化分析模块 </h2>
+<h3 id="模块目标-3">模块目标 </h3>
+<p>该模块用于解决大模型直接分析案件时证据范围不清、输出结构不稳定、结论难以核查的问题。系统通过检索计划、工具调用、证据组织和分析上下文构建，使大模型在任务约束和证据约束下生成分析结果。</p>
+<h3 id="实现方式-3">实现方式 </h3>
+<p>系统中的 Agentic RAG 检索计划器为 <code>RetrievalPlannerService</code>。它支持文档检索、图谱检索、节点扩展、时间范围检索、法律知识检索、规则包列表和规则包运行等工具。若模型配置可用，系统可调用 planner 模型生成 JSON 工具计划；若模型不可用或解析失败，则走 fallback 固定工具序列。检索过程被持久化为 <code>RetrievalSession</code> 和 <code>RetrievalStep</code>，并可在智能分析页面查看。</p>
+<h3 id="输出结果-3">输出结果 </h3>
+<p>系统可围绕用户提出的对象、行为、资金流、假设等问题，组织案件证据、图谱关系和法律知识，形成任务化分析上下文，再生成智能分析结果、行为还原、可疑信息和核查建议。</p>
+<h3 id="边界说明-1">边界说明 </h3>
+<p>系统对话入口采用 <code>@...</code> 作为任务上下文指定方式，可用于指定证据材料、法律知识和检察分析技能。检察 Skills 在后端以 <code>list_rule_packs</code>、<code>run_rule_pack</code> 等工具形式接入 Agentic RAG，前端可通过 <code>@行为画像分析</code> 等任务约束表达分析方向，并与规则包能力联动。</p>
+<hr>
+<h2 id="五-侦查画像生成模块">五、侦查画像生成模块 </h2>
+<h3 id="模块目标-4">模块目标 </h3>
+<p>该模块用于将案件证据、图谱关系、检索结果和法律知识整合为面向目标对象的侦查画像结果，支撑人物关系还原、行为方式分析和侦查参考建议生成。</p>
+<h3 id="实现方式-4">实现方式 </h3>
+<p>画像页面 <code>Portrait.vue</code> 调用 <code>POST /cases/{case_id}/analysis/portrait-facts</code>。后端 <code>AnalysisService.portrait_facts</code> 会调用 <code>RetrievalPlannerService.run(mode="portrait")</code>，收集 retrieval artifacts，再通过画像生成逻辑形成 <code>PortraitFactsResult</code>，前端展示人物关系、行为还原和证据溯源。画像输入包括案件标题、罪名、证据原文、抽取结果、图谱、Agentic RAG artifacts、法律知识 passages、图谱事实和文档检索 passage 等。</p>
+<h3 id="输出结果-4">输出结果 </h3>
+<p>画像结果包括 <code>relationship_narrative</code>、<code>behavior_narrative</code>、<code>relationship_facts</code>、<code>behavior_facts</code>、<code>tool_calls</code>、<code>retrieval_session_id</code> 等字段，对应人物关系还原、行为事实分析、可疑信息提示和画像建议。</p>
+<hr>
+<h2 id="六-证据溯源与人机协同模块">六、证据溯源与人机协同模块 </h2>
+<h3 id="模块目标-5">模块目标 </h3>
+<p>该模块用于避免黑箱式智能输出，保证分析结论、画像事实和图谱关系能够回查原始材料和证据片段，并支持办案人员继续追问、人工修正和复核。</p>
+<h3 id="实现方式-5">实现方式 </h3>
+<p>智能分析句子使用 <code>GroundedSentence.supporting_passages/supporting_graph_paths</code> 保存来源，画像事实使用 <code>PortraitFact.passages/evidence_ids</code> 保存来源，画像报告 claim 使用 <code>PortraitClaim.supporting_passages</code> 保存支撑证据。图谱节点和边也可通过 <code>evidence_ids</code> 与证据原文关联，前端在 <code>Intelligence.vue</code>、<code>Portrait.vue</code> 和 <code>Graph.vue</code> 中提供溯源抽屉或详情面板。</p>
+<h3 id="输出结果-5">输出结果 </h3>
+<p>用户可以点击分析句、画像事实或图谱节点查看支撑证据、来源文件、证据片段和关系路径。需要说明的是，当前系统尽量将句子与 passage、图谱路径或 evidence_id 绑定，但并非所有生成句子都保证强证据支撑；若模型输出无法与 passage 匹配，支撑强度会降低或无支撑。</p>
+<hr>
+<h1 id="04_系统运行与演示说明">04_系统运行与演示说明 </h1>
+<h2 id="一-运行环境">一、运行环境 </h2>
+<p>系统分为后端和前端两部分。后端基于 Python 3.10 与 FastAPI，前端基于 Vue3 + Vite + TypeScript。运行前需要安装后端 Python 依赖和前端 npm 依赖，并根据需要配置模型 API Key、HippoRAG、SQLite 存储路径和 embedding 模型路径。</p>
+<h2 id="二-后端启动">二、后端启动 </h2>
+<pre data-role="codeBlock" data-info="powershell" class="language-powershell powershell"><code>cd C:\Users\adm14\Desktop\law_project\backend
+C:\Users\adm14\AppData\Local\Programs\Python\Python310\python<span class="token punctuation">.</span>exe <span class="token operator">-</span>m uvicorn app<span class="token punctuation">.</span>main:app <span class="token operator">--</span>reload <span class="token operator">--</span>host 127<span class="token punctuation">.</span>0<span class="token punctuation">.</span>0<span class="token punctuation">.</span>1 <span class="token operator">--</span>port 8000
+</code></pre><h2 id="三-前端启动">三、前端启动 </h2>
+<pre data-role="codeBlock" data-info="powershell" class="language-powershell powershell"><code>cd C:\Users\adm14\Desktop\law_project\frontend
+npm install
+npm run dev
+</code></pre><p>前端默认端口为 5173。</p>
+<h2 id="四-环境变量说明">四、环境变量说明 </h2>
+<pre data-role="codeBlock" data-info="text" class="language-text text"><code>DEEPSEEK_API_KEY              DeepSeek / HippoRAG LLM 调用
+DEEPSEEK_ANALYSIS_MODEL       分析生成模型，默认 deepseek-reasoner
+DEEPSEEK_PLANNER_MODEL        planner 模型，默认 deepseek-chat
+ALGORITHM_PROVIDER=hipporag   启用 HippoRAG
+HIPPORAG_EMBEDDING_MODEL      BGE-M3 路径
+STORAGE_DB_PATH               SQLite 状态库路径
+</code></pre><p>首次启动时，<code>MemoryStore.__post_init__</code> 会执行 <code>_initialize_db</code> 创建 SQLite 表。</p>
+<h2 id="五-推荐演示流程">五、推荐演示流程 </h2>
+<pre data-role="codeBlock" data-info="text" class="language-text text"><code>1. 打开系统首页，创建或选择案件；
+2. 导入 data/realcleantest.zip 脱敏演示案件；
+3. 点击运行分析，完成材料处理和图谱构建；
+4. 进入 /graph，依次展示文件层、片段层和事实关系层；
+5. 在事实关系层展示核心邻域、邻域扩展、多跳召回和子图交叉；
+6. 进入 /intelligence，展示任务化智能分析和检索过程；
+7. 进入 /portrait，展示人物关系、行为事实和证据溯源。
+</code></pre><p>这一路线覆盖数据导入、证据图谱、图谱支撑机制、智能分析、侦查画像和证据溯源，是比赛演示中最完整的推荐路径。</p>
+<h2 id="六-常见注意事项">六、常见注意事项 </h2>
+<ol>
+<li><code>.doc</code> 文件暂不支持，可优先使用 <code>.docx</code>、<code>.pdf</code>、<code>.txt</code>、<code>.xlsx</code>、<code>.csv</code> 等格式。</li>
+<li>若模型 API Key 未配置，Agentic RAG planner 可能走 fallback 计划。</li>
+<li>图谱页的邻域扩展、多跳召回、子图交叉当前主要是前端演示性图操作，不等同于完整后端图数据库查询。</li>
+<li><code>@...</code> 可用于在对话中指定证据、法律知识和检察分析技能，便于把用户任务转化为有约束的分析流程。</li>
+<li>GNN 异常识别当前属于规划增强方向，演示中不应宣称已实现。</li>
+</ol>
+<hr>
+<h1 id="05_数据来源-合规与边界说明">05_数据来源、合规与边界说明 </h1>
+<h2 id="一-数据来源说明">一、数据来源说明 </h2>
+<p>本项目演示数据主要来源于脱敏样本数据和模拟生成数据。仓库中包含 <code>data/realtest</code>、<code>data/realcleantest</code>、<code>data/structured</code>、<code>data/legal_knowledge</code> 等目录，其中 <code>realcleantest</code> 用于脱敏演示案件，<code>structured</code> 用于结构化流水、通话、时间线等样本，<code>legal_knowledge</code> 用于法律知识库和罪名模板支撑。</p>
+<h2 id="二-合规定位">二、合规定位 </h2>
+<p>系统定位为检察侦查辅助工具，仅用于依法立案侦查后，对依法调取的数据进行辅助处理、组织、分析和展示。系统不替代办案人员作出事实认定、法律判断或侦查结论，而是提供可回查、可复核、可修正的侦查参考信息。</p>
+<h2 id="三-证据处理原则">三、证据处理原则 </h2>
+<p>系统强调证据来源绑定和结果可回查。材料导入后，系统保存 evidence_id、原文内容、抽取结果、证据片段和图谱关系；在智能分析和画像生成中，系统尽量将结论句、画像事实和报告 claim 绑定到 supporting passages、graph paths 或 evidence_ids，从而降低黑箱式生成风险。</p>
+<h2 id="四-功能边界说明">四、功能边界说明 </h2>
+<p>当前系统已经实现多源材料导入、证据切片、三层证据图谱、智能分析、画像生成、证据溯源和人工编辑等功能；实体与事实关系抽取、Agentic RAG、检察分析 Skills、法律知识库和可疑资金流等已形成可演示链路；邻域扩展、多跳召回和子图交叉主要属于演示性前端图操作；跨案碰撞为原型实现；GNN 异常识别属于后续增强方向。</p>
+<h2 id="五-后续完善方向">五、后续完善方向 </h2>
+<p>后续可围绕以下方向继续完善：</p>
+<pre data-role="codeBlock" data-info="text" class="language-text text"><code>1. 提升图谱质量：优化实体识别、事实关系抽取、时间标注和证据来源绑定；
+2. 增强图谱分析：将邻域扩展、多跳召回、子图交叉等能力下沉到后端图算法；
+3. 完善检察 Skills：增强技能选择、技能编辑、技能测试和技能回放；
+4. 优化法律知识库：统一前后端接口，增强罪名模板和实务规则调用；
+5. 强化溯源质量：提升生成句与证据片段的绑定准确性；
+6. 拓展异常识别：探索资金异常、关系异常和高风险节点识别；
+7. 推进实务验证：结合更多脱敏样本和检察官反馈优化办案辅助体验。
+</code></pre><hr>
+<h1 id="06_实现状态与边界说明">06_实现状态与边界说明 </h1>
+<p>为了保证支撑材料真实可信，本项目对功能实现状态作如下说明：</p>
+<pre data-role="codeBlock" data-info="text" class="language-text text"><code>已实现：
+多源材料导入、证据切片、三层证据图谱、图谱页面、智能分析会话、画像生成、证据溯源、人工编辑。
+
+部分实现：
+实体/事实关系抽取、Agentic RAG、检察分析 Skills、法律知识库、可疑资金流分析。
+
+演示性实现：
+核心邻域、邻域扩展、多跳召回、子图交叉等图谱支撑视图，目前主要基于前端图谱数据进行过滤、路径搜索和交集计算。
+
+原型实现：
+跨案合并图与 cross_case 疑点分析入口。
+
+规划增强：
+GNN 异常识别、后端图数据库级路径分析、跨案件长期索引、技能测试回放、稳定证据矩阵。
+</code></pre><hr>
+<h1 id="07_关键代码与代表性实现摘录">07_关键代码与代表性实现摘录 </h1>
+<p>本节摘录项目中最能体现系统实现能力的核心代码片段。为便于支撑材料阅读，代码仅保留关键逻辑，完整实现以仓库对应文件为准。</p>
+<h2 id="一-多源材料导入与统一证据编号">一、多源材料导入与统一证据编号 </h2>
+<p>对应文件：<code>backend/app/services/ingestion_service.py</code></p>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code><span class="token keyword keyword-def">def</span> <span class="token function">ingest_file</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> case_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> filename<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> content<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">,</span> source_type<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> IngestionResult<span class="token punctuation">:</span>
+    resolved_type <span class="token operator">=</span> resolve_source_type<span class="token punctuation">(</span>source_type<span class="token punctuation">,</span> filename<span class="token punctuation">)</span>
+    text <span class="token operator">=</span> extract_content<span class="token punctuation">(</span>source_type<span class="token operator">=</span>resolved_type<span class="token punctuation">,</span> raw_bytes<span class="token operator">=</span>content<span class="token punctuation">)</span>
+    <span class="token keyword keyword-return">return</span> self<span class="token punctuation">.</span>_save_evidence<span class="token punctuation">(</span>
+        case_id<span class="token operator">=</span>case_id<span class="token punctuation">,</span>
+        title<span class="token operator">=</span>filename<span class="token punctuation">,</span>
+        source_type<span class="token operator">=</span>resolved_type<span class="token punctuation">,</span>
+        content<span class="token operator">=</span>text<span class="token punctuation">,</span>
+        raw_bytes<span class="token operator">=</span>content<span class="token punctuation">,</span>
+        filename<span class="token operator">=</span>filename<span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+
+<span class="token keyword keyword-def">def</span> <span class="token function">ingest_archive</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> case_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> filename<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> content<span class="token punctuation">:</span> <span class="token builtin">bytes</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> BatchIngestionResult<span class="token punctuation">:</span>
+    <span class="token keyword keyword-with">with</span> zipfile<span class="token punctuation">.</span>ZipFile<span class="token punctuation">(</span>io<span class="token punctuation">.</span>BytesIO<span class="token punctuation">(</span>content<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token keyword keyword-as">as</span> archive<span class="token punctuation">:</span>
+        <span class="token keyword keyword-for">for</span> info <span class="token keyword keyword-in">in</span> archive<span class="token punctuation">.</span>infolist<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+            <span class="token keyword keyword-if">if</span> info<span class="token punctuation">.</span>is_dir<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token keyword keyword-or">or</span> self<span class="token punctuation">.</span>_should_skip<span class="token punctuation">(</span>info<span class="token punctuation">.</span>filename<span class="token punctuation">)</span><span class="token punctuation">:</span>
+                <span class="token keyword keyword-continue">continue</span>
+            results<span class="token punctuation">.</span>append<span class="token punctuation">(</span>self<span class="token punctuation">.</span>ingest_file<span class="token punctuation">(</span>case_id<span class="token punctuation">,</span> info<span class="token punctuation">.</span>filename<span class="token punctuation">,</span> archive<span class="token punctuation">.</span>read<span class="token punctuation">(</span>info<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token string">"unknown"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+</code></pre><p>说明：该片段体现系统将单文件、多文件和 ZIP 压缩包统一进入证据接入流程。进入 <code>_save_evidence</code> 后，系统生成 <code>evidence_id</code>，保存原文、证据元数据和抽取结果，为后续图谱与溯源提供稳定主键。</p>
+<h2 id="二-文档解析-结构化行解析与证据切片">二、文档解析、结构化行解析与证据切片 </h2>
+<p>对应文件：<code>backend/app/services/information_extraction.py</code></p>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code><span class="token keyword keyword-def">def</span> <span class="token function">route_extraction</span><span class="token punctuation">(</span>source_type<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> content<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> raw_bytes<span class="token punctuation">:</span> <span class="token builtin">bytes</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span><span class="token punctuation">,</span>
+                     filename<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span><span class="token punctuation">,</span> evidence_id<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> ExtractionResult<span class="token punctuation">:</span>
+    resolved <span class="token operator">=</span> resolve_source_type<span class="token punctuation">(</span>source_type<span class="token punctuation">,</span> filename<span class="token punctuation">)</span>
+    <span class="token keyword keyword-if">if</span> resolved <span class="token keyword keyword-in">in</span> STRUCTURED_TYPES<span class="token punctuation">:</span>
+        rows <span class="token operator">=</span> parse_structured_content<span class="token punctuation">(</span>source_type<span class="token operator">=</span>resolved<span class="token punctuation">,</span> content<span class="token operator">=</span>content<span class="token punctuation">,</span> raw_bytes<span class="token operator">=</span>raw_bytes<span class="token punctuation">)</span>
+        triples <span class="token operator">=</span> map_rows_to_triples<span class="token punctuation">(</span>rows<span class="token punctuation">,</span> evidence_id<span class="token operator">=</span>evidence_id<span class="token punctuation">,</span> filename<span class="token operator">=</span>filename<span class="token punctuation">)</span>
+        passages <span class="token operator">=</span> build_passages_from_triples<span class="token punctuation">(</span>triples<span class="token punctuation">)</span>
+        <span class="token keyword keyword-return">return</span> ExtractionResult<span class="token punctuation">(</span>triples<span class="token operator">=</span>triples<span class="token punctuation">,</span> passages<span class="token operator">=</span>passages<span class="token punctuation">,</span> metadata<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">"rows_count"</span><span class="token punctuation">:</span> <span class="token builtin">len</span><span class="token punctuation">(</span>rows<span class="token punctuation">)</span><span class="token punctuation">}</span><span class="token punctuation">)</span>
+
+    triples<span class="token punctuation">,</span> passages <span class="token operator">=</span> extract_unstructured_triples<span class="token punctuation">(</span>content<span class="token punctuation">,</span> evidence_id<span class="token operator">=</span>evidence_id<span class="token punctuation">)</span>
+    <span class="token keyword keyword-return">return</span> ExtractionResult<span class="token punctuation">(</span>triples<span class="token operator">=</span>triples<span class="token punctuation">,</span> passages<span class="token operator">=</span>passages<span class="token punctuation">,</span> metadata<span class="token operator">=</span><span class="token punctuation">{</span><span class="token string">"chars"</span><span class="token punctuation">:</span> <span class="token builtin">len</span><span class="token punctuation">(</span>content<span class="token punctuation">)</span><span class="token punctuation">}</span><span class="token punctuation">)</span>
+</code></pre><p>说明：该片段体现系统对结构化材料和非结构化文本采取不同处理路径。流水、通话、时间线等结构化数据按行解析；笔录、文书等非结构化文本切分为 passage，并进入事实关系抽取链路。</p>
+<h2 id="三-案件证据地图三层构建">三、案件证据地图三层构建 </h2>
+<p>对应文件：<code>backend/app/services/evidence_map_service.py</code></p>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code><span class="token keyword keyword-def">def</span> <span class="token function">build</span><span class="token punctuation">(</span>self<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> EvidenceMap<span class="token punctuation">:</span>
+    documents <span class="token operator">=</span> self<span class="token punctuation">.</span>_build_documents<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    passages<span class="token punctuation">,</span> triples<span class="token punctuation">,</span> containment_edges <span class="token operator">=</span> self<span class="token punctuation">.</span>_build_passages_and_triples<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    documents <span class="token operator">=</span> <span class="token punctuation">[</span>
+        doc<span class="token punctuation">.</span>model_copy<span class="token punctuation">(</span>update<span class="token operator">=</span><span class="token punctuation">{</span>
+            <span class="token string">"passage_count"</span><span class="token punctuation">:</span> <span class="token builtin">len</span><span class="token punctuation">(</span>self<span class="token punctuation">.</span>passages_by_doc<span class="token punctuation">.</span>get<span class="token punctuation">(</span>doc<span class="token punctuation">.</span><span class="token builtin">id</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+            <span class="token string">"triple_count"</span><span class="token punctuation">:</span> <span class="token builtin">len</span><span class="token punctuation">(</span>self<span class="token punctuation">.</span>triples_by_doc<span class="token punctuation">.</span>get<span class="token punctuation">(</span>doc<span class="token punctuation">.</span><span class="token builtin">id</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+            <span class="token string">"quality_status"</span><span class="token punctuation">:</span> doc<span class="token punctuation">.</span>quality_status
+                <span class="token keyword keyword-if">if</span> self<span class="token punctuation">.</span>passages_by_doc<span class="token punctuation">.</span>get<span class="token punctuation">(</span>doc<span class="token punctuation">.</span><span class="token builtin">id</span><span class="token punctuation">)</span> <span class="token keyword keyword-and">and</span> self<span class="token punctuation">.</span>triples_by_doc<span class="token punctuation">.</span>get<span class="token punctuation">(</span>doc<span class="token punctuation">.</span><span class="token builtin">id</span><span class="token punctuation">)</span>
+                <span class="token keyword keyword-else">else</span> <span class="token string">"needs_review"</span><span class="token punctuation">,</span>
+        <span class="token punctuation">}</span><span class="token punctuation">)</span>
+        <span class="token keyword keyword-for">for</span> doc <span class="token keyword keyword-in">in</span> documents
+    <span class="token punctuation">]</span>
+    document_edges <span class="token operator">=</span> self<span class="token punctuation">.</span>_limit_document_edges<span class="token punctuation">(</span>self<span class="token punctuation">.</span>_build_document_edges<span class="token punctuation">(</span>documents<span class="token punctuation">,</span> passages<span class="token punctuation">,</span> triples<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    passage_edges <span class="token operator">=</span> self<span class="token punctuation">.</span>_build_passage_edges<span class="token punctuation">(</span>passages<span class="token punctuation">,</span> triples<span class="token punctuation">)</span>
+    <span class="token keyword keyword-return">return</span> EvidenceMap<span class="token punctuation">(</span>
+        case_id<span class="token operator">=</span>self<span class="token punctuation">.</span>case_id<span class="token punctuation">,</span>
+        documents<span class="token operator">=</span>documents<span class="token punctuation">,</span>
+        passages<span class="token operator">=</span>passages<span class="token punctuation">,</span>
+        triples<span class="token operator">=</span>triples<span class="token punctuation">,</span>
+        document_edges<span class="token operator">=</span>document_edges<span class="token punctuation">,</span>
+        passage_edges<span class="token operator">=</span>passage_edges<span class="token punctuation">,</span>
+        containment_edges<span class="token operator">=</span>containment_edges<span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+</code></pre><p>说明：该片段是“案件证据地图”的核心。系统把同一案件材料组织为文件层、片段层和事实关系层，并生成文件边、片段边和包含边，支持从材料边界到事实关系的逐级观察。</p>
+<h2 id="四-图谱邻域-路径与交叉视图">四、图谱邻域、路径与交叉视图 </h2>
+<p>对应文件：<code>frontend/src/views/Graph.vue</code></p>
+<pre data-role="codeBlock" data-info="ts" class="language-ts ts"><code><span class="token keyword keyword-function">function</span> <span class="token function">buildDemoSubgraph</span><span class="token punctuation">(</span>nodes<span class="token operator">:</span> GraphNode<span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">,</span> edges<span class="token operator">:</span> GraphEdge<span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+  <span class="token keyword keyword-const">const</span> seed <span class="token operator">=</span> selectedGraphNodeId<span class="token punctuation">.</span>value <span class="token operator">||</span> <span class="token function">pickDefaultSeed</span><span class="token punctuation">(</span>nodes<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token keyword keyword-if">if</span> <span class="token punctuation">(</span><span class="token operator">!</span>seed<span class="token punctuation">)</span> <span class="token keyword keyword-return">return</span> <span class="token punctuation">{</span> nodes<span class="token operator">:</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">,</span> edges<span class="token operator">:</span> <span class="token punctuation">[</span><span class="token punctuation">]</span> <span class="token punctuation">}</span><span class="token punctuation">;</span>
+  <span class="token keyword keyword-if">if</span> <span class="token punctuation">(</span>demoMode<span class="token punctuation">.</span>value <span class="token operator">===</span> <span class="token string">'coreNeighborhood'</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword keyword-return">return</span> <span class="token function">buildCoreNeighborhoodSubgraph</span><span class="token punctuation">(</span>nodes<span class="token punctuation">,</span> edges<span class="token punctuation">,</span> seed<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span>
+  <span class="token keyword keyword-if">if</span> <span class="token punctuation">(</span>demoMode<span class="token punctuation">.</span>value <span class="token operator">===</span> <span class="token string">'expandedNeighborhood'</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword keyword-return">return</span> <span class="token function">buildExpandedNeighborhoodSubgraph</span><span class="token punctuation">(</span>nodes<span class="token punctuation">,</span> edges<span class="token punctuation">,</span> seed<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span>
+  <span class="token keyword keyword-if">if</span> <span class="token punctuation">(</span>demoMode<span class="token punctuation">.</span>value <span class="token operator">===</span> <span class="token string">'multiHopPaths'</span><span class="token punctuation">)</span> <span class="token punctuation">{</span>
+    <span class="token keyword keyword-return">return</span> <span class="token function">buildMultihopPathSubgraph</span><span class="token punctuation">(</span>nodes<span class="token punctuation">,</span> edges<span class="token punctuation">,</span> seed<span class="token punctuation">)</span><span class="token punctuation">;</span>
+  <span class="token punctuation">}</span>
+  <span class="token keyword keyword-return">return</span> <span class="token function">buildIntersectionSubgraph</span><span class="token punctuation">(</span>nodes<span class="token punctuation">,</span> edges<span class="token punctuation">,</span> seed<span class="token punctuation">)</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre><p>说明：该片段体现图谱页围绕目标对象提供多种观察视角：核心邻域用于观察一跳直接关系，邻域扩展用于观察二跳外围关系，多跳召回用于展示关系路径，子图交叉用于观察两个主题网络的重合与桥接。</p>
+<h2 id="五-agentic-rag-检索计划与工具调用">五、Agentic RAG 检索计划与工具调用 </h2>
+<p>对应文件：<code>backend/app/services/retrieval_planner_service.py</code></p>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code><span class="token keyword keyword-for">for</span> round_index <span class="token keyword keyword-in">in</span> <span class="token builtin">range</span><span class="token punctuation">(</span><span class="token number">1</span><span class="token punctuation">,</span> <span class="token builtin">max</span><span class="token punctuation">(</span>settings<span class="token punctuation">.</span>agentic_rag_max_rounds<span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span> <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    plan <span class="token operator">=</span> self<span class="token punctuation">.</span>_plan_next_round<span class="token punctuation">(</span>
+        case_title<span class="token operator">=</span>case_title<span class="token punctuation">,</span>
+        mode<span class="token operator">=</span>mode<span class="token punctuation">,</span>
+        question<span class="token operator">=</span>question<span class="token punctuation">,</span>
+        graph<span class="token operator">=</span>graph<span class="token punctuation">,</span>
+        evidence<span class="token operator">=</span>evidence<span class="token punctuation">,</span>
+        previous_summary<span class="token operator">=</span>previous_summary<span class="token punctuation">,</span>
+        unresolved_gaps<span class="token operator">=</span>unresolved_gaps<span class="token punctuation">,</span>
+        forced_evidence_ids<span class="token operator">=</span>forced_evidence_ids <span class="token keyword keyword-if">if</span> round_index <span class="token operator">==</span> <span class="token number">1</span> <span class="token keyword keyword-else">else</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+        initial_goals<span class="token operator">=</span>initial_goals <span class="token keyword keyword-or">or</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+    tool_specs <span class="token operator">=</span> _sanitize_tool_specs<span class="token punctuation">(</span>plan<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"tool_calls"</span><span class="token punctuation">)</span><span class="token punctuation">,</span> mode<span class="token punctuation">,</span> question<span class="token punctuation">,</span> forced_evidence_ids<span class="token punctuation">)</span>
+    <span class="token keyword keyword-for">for</span> spec <span class="token keyword keyword-in">in</span> tool_specs<span class="token punctuation">[</span><span class="token punctuation">:</span> <span class="token builtin">max</span><span class="token punctuation">(</span>settings<span class="token punctuation">.</span>agentic_rag_max_tool_calls_per_round<span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">]</span><span class="token punctuation">:</span>
+        call <span class="token operator">=</span> self<span class="token punctuation">.</span>_execute_tool<span class="token punctuation">(</span>case_id<span class="token operator">=</span>case_id<span class="token punctuation">,</span> spec<span class="token operator">=</span>spec<span class="token punctuation">,</span> evidence<span class="token operator">=</span>evidence<span class="token punctuation">,</span>
+                                  raw_contents<span class="token operator">=</span>raw_contents<span class="token punctuation">,</span> extractions<span class="token operator">=</span>extractions<span class="token punctuation">,</span>
+                                  graph<span class="token operator">=</span>graph<span class="token punctuation">,</span> offense_id<span class="token operator">=</span>offense_id<span class="token punctuation">)</span>
+        tool_calls<span class="token punctuation">.</span>append<span class="token punctuation">(</span>call<span class="token punctuation">)</span>
+</code></pre><p>说明：该片段体现系统不是让模型直接裸答，而是先生成检索计划，再执行文档检索、图谱检索、节点扩展、时间检索、法律知识检索等工具调用，逐轮构建分析上下文。</p>
+<h2 id="六-检索过程持久化">六、检索过程持久化 </h2>
+<p>对应文件：<code>backend/app/services/retrieval_planner_service.py</code></p>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code>step <span class="token operator">=</span> RetrievalStep<span class="token punctuation">(</span>
+    step_id<span class="token operator">=</span>new_id<span class="token punctuation">(</span><span class="token string">"rstep"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+    session_id<span class="token operator">=</span>session<span class="token punctuation">.</span>session_id<span class="token punctuation">,</span>
+    round_index<span class="token operator">=</span>round_index<span class="token punctuation">,</span>
+    retrieval_goals<span class="token operator">=</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">(</span>item<span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token punctuation">:</span><span class="token number">120</span><span class="token punctuation">]</span> <span class="token keyword keyword-for">for</span> item <span class="token keyword keyword-in">in</span> _safe_list<span class="token punctuation">(</span>plan<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"retrieval_goals"</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+    tool_calls<span class="token operator">=</span>tool_calls<span class="token punctuation">,</span>
+    coverage_summary<span class="token operator">=</span>coverage_summary<span class="token punctuation">,</span>
+    unresolved_gaps<span class="token operator">=</span>unresolved_gaps<span class="token punctuation">,</span>
+    ready_to_answer<span class="token operator">=</span>ready<span class="token punctuation">,</span>
+    created_at<span class="token operator">=</span>now_utc<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+<span class="token punctuation">)</span>
+self<span class="token punctuation">.</span>store<span class="token punctuation">.</span>retrieval_steps<span class="token punctuation">.</span>setdefault<span class="token punctuation">(</span>case_id<span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">.</span>append<span class="token punctuation">(</span>step<span class="token punctuation">)</span>
+session <span class="token operator">=</span> session<span class="token punctuation">.</span>model_copy<span class="token punctuation">(</span>update<span class="token operator">=</span><span class="token punctuation">{</span>
+    <span class="token string">"retrieval_steps_count"</span><span class="token punctuation">:</span> <span class="token builtin">len</span><span class="token punctuation">(</span>steps<span class="token punctuation">)</span><span class="token punctuation">,</span>
+    <span class="token string">"tool_call_summary"</span><span class="token punctuation">:</span> _tool_call_summary<span class="token punctuation">(</span>steps<span class="token punctuation">)</span><span class="token punctuation">,</span>
+    <span class="token string">"status"</span><span class="token punctuation">:</span> <span class="token string">"completed"</span> <span class="token keyword keyword-if">if</span> ready <span class="token keyword keyword-else">else</span> <span class="token string">"running"</span><span class="token punctuation">,</span>
+<span class="token punctuation">}</span><span class="token punctuation">)</span>
+</code></pre><p>说明：该片段体现系统会保存每轮检索目标、工具调用、覆盖摘要和信息缺口。前端可以展示“检索与调用细节”，让分析过程可审计、可复核。</p>
+<h2 id="七-智能分析会话与继续追问">七、智能分析会话与继续追问 </h2>
+<p>对应文件：<code>backend/app/services/analysis_service.py</code></p>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code><span class="token keyword keyword-def">def</span> <span class="token function">create_thread</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> case_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> payload<span class="token punctuation">:</span> AnalysisThreadCreate<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> AnalysisThreadDetail<span class="token punctuation">:</span>
+    thread <span class="token operator">=</span> AnalysisThread<span class="token punctuation">(</span>
+        thread_id<span class="token operator">=</span>new_id<span class="token punctuation">(</span><span class="token string">"ath"</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        case_id<span class="token operator">=</span>case_id<span class="token punctuation">,</span>
+        mode<span class="token operator">=</span>payload<span class="token punctuation">.</span>mode<span class="token punctuation">,</span>
+        title<span class="token operator">=</span>payload<span class="token punctuation">.</span>title <span class="token keyword keyword-or">or</span> _thread_title<span class="token punctuation">(</span>payload<span class="token punctuation">.</span>initial_question<span class="token punctuation">,</span> payload<span class="token punctuation">.</span>mode<span class="token punctuation">)</span><span class="token punctuation">,</span>
+        created_at<span class="token operator">=</span>now_utc<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        updated_at<span class="token operator">=</span>now_utc<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span>
+        message_count<span class="token operator">=</span><span class="token number">0</span><span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+    self<span class="token punctuation">.</span>store<span class="token punctuation">.</span>analysis_threads<span class="token punctuation">.</span>setdefault<span class="token punctuation">(</span>case_id<span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">.</span>append<span class="token punctuation">(</span>thread<span class="token punctuation">)</span>
+    self<span class="token punctuation">.</span>store<span class="token punctuation">.</span>flush_case<span class="token punctuation">(</span>case_id<span class="token punctuation">)</span>
+    <span class="token keyword keyword-return">return</span> self<span class="token punctuation">.</span>add_thread_message<span class="token punctuation">(</span>
+        case_id<span class="token punctuation">,</span>
+        thread<span class="token punctuation">.</span>thread_id<span class="token punctuation">,</span>
+        AnalysisThreadMessageCreate<span class="token punctuation">(</span>question<span class="token operator">=</span>payload<span class="token punctuation">.</span>initial_question<span class="token punctuation">)</span><span class="token punctuation">,</span>
+    <span class="token punctuation">)</span>
+</code></pre><p>说明：该片段体现智能分析页采用会话式结构，支持新建分析、继续追问和删除会话。每个会话可关联检索过程、工具调用摘要、回答句子和证据来源。</p>
+<h2 id="八-句级证据溯源">八、句级证据溯源 </h2>
+<p>对应文件：<code>backend/app/services/analysis_service.py</code></p>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code><span class="token keyword keyword-def">def</span> <span class="token function">_ground_answer_sentences</span><span class="token punctuation">(</span>answer<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> passages<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span>TracePassage<span class="token punctuation">]</span><span class="token punctuation">,</span>
+                             graph_context<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span><span class="token builtin">str</span><span class="token punctuation">]</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> <span class="token builtin">list</span><span class="token punctuation">[</span>GroundedSentence<span class="token punctuation">]</span><span class="token punctuation">:</span>
+    claims<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span>GroundedSentence<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    <span class="token keyword keyword-for">for</span> sentence <span class="token keyword keyword-in">in</span> _split_fact_sentences<span class="token punctuation">(</span>answer<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        scored <span class="token operator">=</span> <span class="token builtin">sorted</span><span class="token punctuation">(</span>
+            <span class="token punctuation">(</span><span class="token punctuation">(</span>_score_sentence_against_passage<span class="token punctuation">(</span>sentence<span class="token punctuation">,</span> item<span class="token punctuation">.</span>text<span class="token punctuation">)</span><span class="token punctuation">,</span> item<span class="token punctuation">)</span> <span class="token keyword keyword-for">for</span> item <span class="token keyword keyword-in">in</span> passages<span class="token punctuation">)</span><span class="token punctuation">,</span>
+            key<span class="token operator">=</span><span class="token keyword keyword-lambda">lambda</span> item<span class="token punctuation">:</span> item<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+            reverse<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">,</span>
+        <span class="token punctuation">)</span>
+        supporting <span class="token operator">=</span> <span class="token punctuation">[</span>item <span class="token keyword keyword-for">for</span> score<span class="token punctuation">,</span> item <span class="token keyword keyword-in">in</span> scored<span class="token punctuation">[</span><span class="token punctuation">:</span><span class="token number">4</span><span class="token punctuation">]</span> <span class="token keyword keyword-if">if</span> score <span class="token operator">&gt;</span> <span class="token number">0</span><span class="token punctuation">]</span>
+        claims<span class="token punctuation">.</span>append<span class="token punctuation">(</span>GroundedSentence<span class="token punctuation">(</span>
+            text<span class="token operator">=</span>sentence<span class="token punctuation">,</span>
+            supporting_passages<span class="token operator">=</span>supporting<span class="token punctuation">,</span>
+            supporting_graph_paths<span class="token operator">=</span>_rank_graph_paths<span class="token punctuation">(</span>sentence<span class="token punctuation">,</span> graph_context<span class="token punctuation">)</span><span class="token punctuation">,</span>
+        <span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword keyword-return">return</span> claims
+</code></pre><p>说明：该片段体现分析结果并非纯文本展示，而是将回答拆成句子，并为每一句匹配证据片段和图谱路径。前端点击结论句即可查看来源材料。</p>
+<h2 id="九-画像事实生成与溯源">九、画像事实生成与溯源 </h2>
+<p>对应文件：<code>backend/app/services/analysis_service.py</code></p>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code>retrieval_detail <span class="token operator">=</span> self<span class="token punctuation">.</span>retrieval_planner<span class="token punctuation">.</span>run<span class="token punctuation">(</span>
+    case_id<span class="token operator">=</span>case_id<span class="token punctuation">,</span>
+    mode<span class="token operator">=</span><span class="token string">"portrait"</span><span class="token punctuation">,</span>
+    question<span class="token operator">=</span><span class="token string-interpolation"><span class="token string">f"</span><span class="token interpolation"><span class="token punctuation">{</span><span class="token keyword keyword-case">case</span><span class="token punctuation">.</span>title<span class="token punctuation">}</span></span><span class="token string"> 事实画像 人物关系 行为事实 时间线 结果后果"</span></span><span class="token punctuation">,</span>
+    case_title<span class="token operator">=</span><span class="token keyword keyword-case">case</span><span class="token punctuation">.</span>title<span class="token punctuation">,</span>
+    evidence<span class="token operator">=</span>evidence<span class="token punctuation">,</span>
+    raw_contents<span class="token operator">=</span>raw_contents<span class="token punctuation">,</span>
+    extractions<span class="token operator">=</span>extractions<span class="token punctuation">,</span>
+    offense_id<span class="token operator">=</span><span class="token keyword keyword-case">case</span><span class="token punctuation">.</span>offense_id<span class="token punctuation">,</span>
+    graph<span class="token operator">=</span>graph<span class="token punctuation">,</span>
+<span class="token punctuation">)</span>
+passages<span class="token punctuation">,</span> graph_context<span class="token punctuation">,</span> legal_passages <span class="token operator">=</span> collect_session_artifacts<span class="token punctuation">(</span>retrieval_detail<span class="token punctuation">)</span>
+relationship_facts <span class="token operator">=</span> _facts_from_hipporag_passages<span class="token punctuation">(</span>passages<span class="token punctuation">,</span> <span class="token string">"relationship"</span><span class="token punctuation">)</span>
+behavior_facts <span class="token operator">=</span> _facts_from_graph<span class="token punctuation">(</span>graph<span class="token punctuation">,</span> <span class="token string">"behavior"</span><span class="token punctuation">)</span> <span class="token operator">+</span> _facts_from_hipporag_passages<span class="token punctuation">(</span>passages<span class="token punctuation">,</span> <span class="token string">"behavior"</span><span class="token punctuation">)</span>
+</code></pre><p>说明：该片段体现画像页以检索结果、图谱关系和证据片段为基础，生成关系事实、行为事实和画像叙述，并保留事实对应的证据来源。</p>
+<h2 id="十-图谱人工编辑与复核">十、图谱人工编辑与复核 </h2>
+<p>对应文件：<code>backend/app/services/graph_service.py</code></p>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code><span class="token keyword keyword-def">def</span> <span class="token function">apply_intervention</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> case_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> payload<span class="token punctuation">:</span> GraphInterventionRequest<span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> InvestigationGraph<span class="token punctuation">:</span>
+    graph <span class="token operator">=</span> self<span class="token punctuation">.</span>get_graph<span class="token punctuation">(</span>case_id<span class="token punctuation">)</span>
+    <span class="token keyword keyword-if">if</span> payload<span class="token punctuation">.</span>action <span class="token operator">==</span> <span class="token string">"upsert_node"</span> <span class="token keyword keyword-and">and</span> payload<span class="token punctuation">.</span>node<span class="token punctuation">:</span>
+        graph<span class="token punctuation">.</span>nodes <span class="token operator">=</span> <span class="token punctuation">[</span>node <span class="token keyword keyword-for">for</span> node <span class="token keyword keyword-in">in</span> graph<span class="token punctuation">.</span>nodes <span class="token keyword keyword-if">if</span> node<span class="token punctuation">.</span>node_id <span class="token operator">!=</span> payload<span class="token punctuation">.</span>node<span class="token punctuation">.</span>node_id<span class="token punctuation">]</span>
+        graph<span class="token punctuation">.</span>nodes<span class="token punctuation">.</span>append<span class="token punctuation">(</span>payload<span class="token punctuation">.</span>node<span class="token punctuation">)</span>
+    <span class="token keyword keyword-elif">elif</span> payload<span class="token punctuation">.</span>action <span class="token operator">==</span> <span class="token string">"upsert_edge"</span> <span class="token keyword keyword-and">and</span> payload<span class="token punctuation">.</span>edge<span class="token punctuation">:</span>
+        graph<span class="token punctuation">.</span>edges <span class="token operator">=</span> <span class="token punctuation">[</span>edge <span class="token keyword keyword-for">for</span> edge <span class="token keyword keyword-in">in</span> graph<span class="token punctuation">.</span>edges <span class="token keyword keyword-if">if</span> edge<span class="token punctuation">.</span>edge_id <span class="token operator">!=</span> payload<span class="token punctuation">.</span>edge<span class="token punctuation">.</span>edge_id<span class="token punctuation">]</span>
+        graph<span class="token punctuation">.</span>edges<span class="token punctuation">.</span>append<span class="token punctuation">(</span>payload<span class="token punctuation">.</span>edge<span class="token punctuation">)</span>
+    <span class="token keyword keyword-elif">elif</span> payload<span class="token punctuation">.</span>action <span class="token operator">==</span> <span class="token string">"delete_node"</span><span class="token punctuation">:</span>
+        graph<span class="token punctuation">.</span>nodes <span class="token operator">=</span> <span class="token punctuation">[</span>node <span class="token keyword keyword-for">for</span> node <span class="token keyword keyword-in">in</span> graph<span class="token punctuation">.</span>nodes <span class="token keyword keyword-if">if</span> node<span class="token punctuation">.</span>node_id <span class="token operator">!=</span> payload<span class="token punctuation">.</span>node_id<span class="token punctuation">]</span>
+        graph<span class="token punctuation">.</span>edges <span class="token operator">=</span> <span class="token punctuation">[</span>edge <span class="token keyword keyword-for">for</span> edge <span class="token keyword keyword-in">in</span> graph<span class="token punctuation">.</span>edges <span class="token keyword keyword-if">if</span> edge<span class="token punctuation">.</span>source <span class="token operator">!=</span> payload<span class="token punctuation">.</span>node_id <span class="token keyword keyword-and">and</span> edge<span class="token punctuation">.</span>target <span class="token operator">!=</span> payload<span class="token punctuation">.</span>node_id<span class="token punctuation">]</span>
+</code></pre><p>说明：该片段体现系统支持办案人员对图谱节点和关系进行人工增删改查、复核和修正，保证算法抽取结果可以被人工校正。</p>
+<h2 id="十一-法律知识检索">十一、法律知识检索 </h2>
+<p>对应文件：<code>backend/app/services/legal_knowledge_service.py</code></p>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code><span class="token keyword keyword-def">def</span> <span class="token function">retrieve</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> query<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> offense_id<span class="token punctuation">:</span> <span class="token builtin">str</span> <span class="token operator">|</span> <span class="token boolean">None</span> <span class="token operator">=</span> <span class="token boolean">None</span><span class="token punctuation">,</span> top_k<span class="token punctuation">:</span> <span class="token builtin">int</span> <span class="token operator">=</span> <span class="token number">8</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> TraceResult<span class="token punctuation">:</span>
+    docs<span class="token punctuation">,</span> doc_titles <span class="token operator">=</span> self<span class="token punctuation">.</span>_build_legal_docs<span class="token punctuation">(</span>offense_id<span class="token punctuation">)</span>
+    terms <span class="token operator">=</span> _query_terms<span class="token punctuation">(</span>query<span class="token punctuation">)</span>
+    scored <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    <span class="token keyword keyword-for">for</span> index<span class="token punctuation">,</span> doc <span class="token keyword keyword-in">in</span> <span class="token builtin">enumerate</span><span class="token punctuation">(</span>docs<span class="token punctuation">)</span><span class="token punctuation">:</span>
+        score <span class="token operator">=</span> _score_text<span class="token punctuation">(</span>doc<span class="token punctuation">,</span> terms<span class="token punctuation">)</span>
+        <span class="token keyword keyword-if">if</span> score <span class="token operator">&gt;</span> <span class="token number">0</span><span class="token punctuation">:</span>
+            scored<span class="token punctuation">.</span>append<span class="token punctuation">(</span><span class="token punctuation">(</span>score<span class="token punctuation">,</span> index<span class="token punctuation">,</span> doc<span class="token punctuation">)</span><span class="token punctuation">)</span>
+    scored<span class="token punctuation">.</span>sort<span class="token punctuation">(</span>key<span class="token operator">=</span><span class="token keyword keyword-lambda">lambda</span> item<span class="token punctuation">:</span> item<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">,</span> reverse<span class="token operator">=</span><span class="token boolean">True</span><span class="token punctuation">)</span>
+    passages <span class="token operator">=</span> <span class="token punctuation">[</span>
+        TracePassage<span class="token punctuation">(</span>rank<span class="token operator">=</span>rank <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">,</span> score<span class="token operator">=</span>score<span class="token punctuation">,</span> evidence_id<span class="token operator">=</span><span class="token string-interpolation"><span class="token string">f"legal_</span><span class="token interpolation"><span class="token punctuation">{</span>index<span class="token punctuation">}</span></span><span class="token string">"</span></span><span class="token punctuation">,</span>
+                     title<span class="token operator">=</span>doc_titles<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token builtin">str</span><span class="token punctuation">(</span>index<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token string">"法律知识"</span><span class="token punctuation">)</span><span class="token punctuation">,</span> text<span class="token operator">=</span>_shorten<span class="token punctuation">(</span>doc<span class="token punctuation">,</span> <span class="token number">600</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+        <span class="token keyword keyword-for">for</span> rank<span class="token punctuation">,</span> <span class="token punctuation">(</span>score<span class="token punctuation">,</span> index<span class="token punctuation">,</span> doc<span class="token punctuation">)</span> <span class="token keyword keyword-in">in</span> <span class="token builtin">enumerate</span><span class="token punctuation">(</span>scored<span class="token punctuation">[</span><span class="token punctuation">:</span>top_k<span class="token punctuation">]</span><span class="token punctuation">)</span>
+    <span class="token punctuation">]</span>
+    <span class="token keyword keyword-return">return</span> TraceResult<span class="token punctuation">(</span>query<span class="token operator">=</span>query<span class="token punctuation">,</span> passages<span class="token operator">=</span>passages<span class="token punctuation">,</span> paths<span class="token operator">=</span><span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+</code></pre><p>说明：该片段体现法律知识库可按罪名模板、流程知识和证据标准召回相关内容，为智能分析和画像报告提供法律实务上下文。</p>
+<h2 id="十二-检察分析-skills-规则包运行">十二、检察分析 Skills 规则包运行 </h2>
+<p>对应文件：<code>backend/app/services/analysis_skill_service.py</code></p>
+<pre data-role="codeBlock" data-info="python" class="language-python python"><code><span class="token keyword keyword-def">def</span> <span class="token function">run_rule_pack</span><span class="token punctuation">(</span>self<span class="token punctuation">,</span> case_id<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">,</span> pack_name<span class="token punctuation">:</span> <span class="token builtin">str</span><span class="token punctuation">)</span> <span class="token operator">-</span><span class="token operator">&gt;</span> RulePackRunResult<span class="token punctuation">:</span>
+    checks <span class="token operator">=</span> _load_checks<span class="token punctuation">(</span>self<span class="token punctuation">.</span>packs_dir<span class="token punctuation">,</span> pack_name<span class="token punctuation">)</span>
+    mother_nodes <span class="token operator">=</span> self<span class="token punctuation">.</span>store<span class="token punctuation">.</span>document_mother_nodes<span class="token punctuation">.</span>get<span class="token punctuation">(</span>case_id<span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+    evidence <span class="token operator">=</span> self<span class="token punctuation">.</span>store<span class="token punctuation">.</span>evidence<span class="token punctuation">.</span>get<span class="token punctuation">(</span>case_id<span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+    findings<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span>RuleFinding<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    not_triggered<span class="token punctuation">:</span> <span class="token builtin">list</span><span class="token punctuation">[</span>NotTriggeredRule<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token punctuation">[</span><span class="token punctuation">]</span>
+    <span class="token keyword keyword-for">for</span> rule <span class="token keyword keyword-in">in</span> checks<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"checks"</span><span class="token punctuation">,</span> <span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+        result <span class="token operator">=</span> self<span class="token punctuation">.</span>_evaluate_rule<span class="token punctuation">(</span>rule<span class="token punctuation">,</span> mother_nodes<span class="token punctuation">,</span> evidence<span class="token punctuation">)</span>
+        <span class="token keyword keyword-if">if</span> result<span class="token punctuation">:</span>
+            findings<span class="token punctuation">.</span>append<span class="token punctuation">(</span>result<span class="token punctuation">)</span>
+        <span class="token keyword keyword-else">else</span><span class="token punctuation">:</span>
+            not_triggered<span class="token punctuation">.</span>append<span class="token punctuation">(</span>NotTriggeredRule<span class="token punctuation">(</span>rule_id<span class="token operator">=</span>rule<span class="token punctuation">.</span>get<span class="token punctuation">(</span><span class="token string">"id"</span><span class="token punctuation">,</span> <span class="token string">""</span><span class="token punctuation">)</span><span class="token punctuation">,</span> reason<span class="token operator">=</span><span class="token string">"当前证据结构未触发该规则"</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword keyword-return">return</span> RulePackRunResult<span class="token punctuation">(</span>skill_name<span class="token operator">=</span>pack_name<span class="token punctuation">,</span> findings<span class="token operator">=</span>findings<span class="token punctuation">,</span>
+                             not_triggered<span class="token operator">=</span>not_triggered<span class="token punctuation">,</span> data_gaps<span class="token operator">=</span>_data_gaps<span class="token punctuation">(</span>mother_nodes<span class="token punctuation">)</span><span class="token punctuation">)</span>
+</code></pre><p>说明：该片段体现检察分析 Skills 不是普通提示词，而是可被后端执行的规则包。规则运行结果可进入智能分析和证据结构提示，帮助系统发现材料缺口和流程异常。</p>
+<hr>
+<h1 id="08_提交版功能边界表述">08_提交版功能边界表述 </h1>
+<p>为保证比赛支撑材料真实、稳妥，本项目对若干增强能力采用如下表述：</p>
+<table>
+<thead>
+<tr>
+<th>能力</th>
+<th>提交版表述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Agentic RAG</td>
+<td>已实现检索计划、工具调用、证据组织和过程持久化，支持文档、图谱、时间和法律知识等多源召回。</td>
+</tr>
+<tr>
+<td>检察 Skills</td>
+<td>已实现规则包注册、列表、运行和对话任务约束接入，用于材料完整性、流程转向、权限控制和行为画像等分析方向；技能库管理可继续完善。</td>
+</tr>
+<tr>
+<td>图谱路径与交叉</td>
+<td>已提供核心邻域、邻域扩展、多跳路径和子图交叉等图谱观察视角，用于演示复杂关系梳理和线索碰撞。</td>
+</tr>
+<tr>
+<td>证据溯源</td>
+<td>分析句、画像事实和报告结论均尽量绑定证据片段、图谱路径或 evidence_id，支持回查原始材料。</td>
+</tr>
+<tr>
+<td>可疑资金流</td>
+<td>当前以结构化流水、通话记录、图谱关系和智能分析为主；更复杂的 GNN 异常识别可作为后续增强方向。</td>
+</tr>
+</tbody>
+</table>
+<p>以上表述既能体现系统已经完成的技术路径，也避免把原型能力包装成已经完全工程化的生产系统。</p>
+
+      </div>
+      
+      
+    
+    
+    
+    
+    
+    
+  
+    </body></html>

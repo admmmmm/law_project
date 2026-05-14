@@ -89,7 +89,7 @@
               </div>
             </div>
             <div class="quick-actions">
-              <button class="secondary" :disabled="!selectedCaseId" @click="openWorkspace('graph')">证据图谱</button>
+              <button class="secondary" :disabled="!selectedCaseId" @click="openWorkspace('graph')">案件证据地图</button>
               <button class="secondary" :disabled="!selectedCaseId" @click="openWorkspace('portrait')">画像页</button>
               <button class="secondary" :disabled="!selectedCaseId" @click="openWorkspace('intelligence')">智能分析</button>
               <button class="danger" :disabled="!selectedCaseId || loading" @click="deleteSelectedCase">删除案件</button>
@@ -99,7 +99,7 @@
           <section class="status-strip">
             <div><b>{{ selectedCase ? statusLabel(selectedCase.status) : '-' }}</b><span>状态</span></div>
             <div><b>{{ currentEvidenceCount }}</b><span>证据材料</span></div>
-            <div><b>{{ currentTripleCount }}</b><span>三元组</span></div>
+            <div><b>{{ currentTripleCount }}</b><span>事实关系</span></div>
             <div><b>{{ currentSkippedCount }}</b><span>跳过文件</span></div>
           </section>
 
@@ -115,7 +115,7 @@
 
             <div class="card">
               <h2>分析入口</h2>
-              <button class="primary" :disabled="!selectedCaseId || loading" @click="runAnalysis">运行分析并进图谱</button>
+              <button class="primary" :disabled="!selectedCaseId || loading" @click="runAnalysis">运行分析并进地图</button>
               <p class="hint">{{ analysisSummary || '导入后点击分析。' }}</p>
             </div>
           </section>
@@ -133,7 +133,7 @@
               <div class="stats">
                 <div><b>{{ currentImportedCount }}</b><span>已导入</span></div>
                 <div><b>{{ currentSkippedCount }}</b><span>已跳过</span></div>
-                <div><b>{{ currentTripleCount }}</b><span>三元组</span></div>
+                <div><b>{{ currentTripleCount }}</b><span>事实关系</span></div>
               </div>
               <p v-if="!batchResult" class="hint status-note">这是后端案件列表返回的已导入证据数量，不展示任何演示数据。</p>
               <div v-if="batchResult?.skipped.length" class="skipped">
@@ -437,8 +437,8 @@ async function runAnalysis() {
     },
     {
       label: '正在运行分析',
-      detail: '后端正在抽取关系、构建图谱并生成线索',
-      successLabel: '分析完成，正在进入图谱',
+      detail: '后端正在抽取关系、构建证据地图数据并生成线索',
+      successLabel: '分析完成，正在进入案件证据地图',
     },
   );
 }

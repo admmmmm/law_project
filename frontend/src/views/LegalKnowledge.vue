@@ -4,7 +4,7 @@
       <header class="page-head">
         <div>
           <h1>法律知识库</h1>
-          <p>浏览 14 个罪名模板，并用 HippoRAG 检索法律知识。</p>
+          <p>浏览 14 个罪名模板，并检索法律条文、证据标准和办案流程。</p>
         </div>
         <button class="secondary" @click="router.push('/')">返回案件管理</button>
       </header>
@@ -58,13 +58,13 @@
 
           <div class="search-line">
             <input v-model="query" class="field" placeholder="例如：徇私枉法罪需要核查哪些证据缺口" @keydown.enter="retrieve" />
-            <button class="primary" :disabled="loading || !query.trim()" @click="retrieve">HippoRAG 检索</button>
+            <button class="primary" :disabled="loading || !query.trim()" @click="retrieve">知识检索</button>
           </div>
 
           <section class="knowledge-ingest">
             <details>
               <summary>添加系统级办案先验 / 法律知识</summary>
-              <p>这里保存的是全系统知识，不属于单个案件。保存后会进入法律知识 HippoRAG 检索。</p>
+              <p>这里保存的是全系统知识，不属于单个案件。保存后会进入法律知识检索库。</p>
               <input v-model="newKnowledge.title" class="field" placeholder="标题，例如：刑事案件办理标准流程" />
               <textarea v-model="newKnowledge.content" rows="8" placeholder="粘贴流程图、应有材料、证据标准、专家补充意见等 Markdown/文本内容。" />
               <div class="upload-line">
@@ -91,7 +91,7 @@
             <div v-if="result.error" class="error">{{ result.error }}</div>
             <article v-for="passage in result.passages" :key="`${passage.rank}-${passage.passage}`" class="passage">
               <div>
-                <strong>#{{ passage.rank }} / {{ passage.score.toFixed(4) }}</strong>
+                <strong>结果 {{ passage.rank }}</strong>
                 <span>{{ passage.evidence_title || '法律知识库' }}</span>
               </div>
               <p>{{ passage.passage }}</p>
@@ -99,7 +99,7 @@
           </section>
 
           <section v-else class="hint">
-            选择左侧罪名后可以查看模板；输入问题后会直接调用法律知识 HippoRAG。
+            选择左侧罪名后可以查看模板；输入问题后会检索法律知识库。
           </section>
         </main>
       </section>

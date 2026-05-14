@@ -1,11 +1,11 @@
 <template>
-  <div class="portrait-page">
-    <section class="shell">
+  <div class="portrait-page" data-testid="portrait-page">
+    <section class="shell" data-testid="portrait-report">
       <header class="topbar">
         <div>
-          <p class="eyebrow">HippoRAG 事实画像</p>
+          <p class="eyebrow">证据事实画像</p>
           <h1>人物关系与行为还原</h1>
-          <p class="subtext">后端用 HippoRAG 多问题 PPR 检索召回证据，再整理成可点击事实。前端只负责展示。</p>
+          <p class="subtext">系统从案件证据与关系图谱中召回材料，整理成可点击、可溯源的事实片段。</p>
         </div>
         <button class="primary-btn" :disabled="!activeCaseId || loading" @click="refreshFacts(true)">
           {{ loading ? '检索中...' : '重新生成事实画像' }}
@@ -40,18 +40,18 @@
           <strong>{{ facts?.queries.length || 0 }}</strong>
         </div>
         <div class="metric">
-          <span>RAG 调用</span>
+          <span>检索调用</span>
           <strong>{{ facts?.tool_calls.length || 0 }}</strong>
         </div>
       </section>
 
-      <details v-if="facts?.retrieval_session_id" class="retrieval-details" @toggle="onRetrievalToggle(facts.retrieval_session_id, $event)">
+      <details v-if="facts?.retrieval_session_id" class="retrieval-details" data-testid="retrieval-session" @toggle="onRetrievalToggle(facts.retrieval_session_id, $event)">
         <summary>检索与调用细节</summary>
         <div v-if="retrievalLoading" class="muted">正在读取检索记录...</div>
         <div v-else-if="retrievalDetail" class="retrieval-body">
           <div class="retrieval-meta">
-            <span>{{ retrievalDetail.session.planner_model }}</span>
-            <span>{{ retrievalDetail.session.analysis_model }}</span>
+            <span>检索规划</span>
+            <span>答案生成</span>
             <span>{{ retrievalDetail.session.status }}</span>
           </div>
           <section v-for="step in retrievalDetail.steps" :key="step.step_id" class="retrieval-step">
@@ -73,10 +73,10 @@
                 </ul>
               </div>
               <div v-if="call.passages.length" class="tool-block">
-                <b>证据 passage</b>
+                <b>证据片段</b>
                 <ul>
                   <li v-for="passage in call.passages.slice(0, 5)" :key="`${passage.rank}-${passage.passage}`">
-                    Doc {{ passage.rank }}：{{ passage.evidence_title || passage.evidence_id || '未映射证据' }} - {{ compactText(passage.passage, 110) }}
+                    证据 {{ passage.rank }}：{{ passage.evidence_title || passage.evidence_id || '未映射证据' }} - {{ compactText(passage.passage, 110) }}
                   </li>
                 </ul>
               </div>
@@ -97,7 +97,7 @@
                 </ul>
               </div>
               <div v-if="call.document_groups.length" class="tool-block">
-                <b>文件母图聚合</b>
+                <b>文件聚合</b>
                 <ul>
                   <li v-for="group in call.document_groups.slice(0, 8)" :key="String(group.doc_id || group.name || group.title)">
                     {{ group.doc_id || group.name || '文件' }}：{{ group.process_stage || group.title || '' }} {{ compactText(String(group.proof_purpose || group.document_summary || group.description || ''), 100) }}
@@ -108,25 +108,6 @@
           </section>
         </div>
       </details>
-
-      <section class="fact-section">
-        <div class="section-head">
-          <div>
-            <h2>文件母图概览</h2>
-            <p>每份证据作为一个局部母图节点，保留流程阶段、证明事项和 verified claims。</p>
-          </div>
-          <button class="secondary" :disabled="loading || !activeCaseId" @click="rebuildMotherGraph">重建母图</button>
-        </div>
-        <div v-if="documentMother.nodes.length" class="doc-grid">
-          <button v-for="node in documentMother.nodes" :key="node.doc_id" class="doc-card" @click="openMotherNode(node)">
-            <strong>{{ node.doc_id }} · {{ node.doc_type }}</strong>
-            <span>{{ node.process_stage }} / {{ node.quality_status }}</span>
-            <p>{{ compactText(node.proof_purpose || node.summary, 120) }}</p>
-            <small>{{ node.risk_tags.slice(0, 4).join('、') }}</small>
-          </button>
-        </div>
-        <div v-else class="empty-box">暂无文件母图。点击“重建母图”生成。</div>
-      </section>
 
       <section class="fact-section">
         <div class="section-head">
@@ -159,7 +140,7 @@
         <div class="section-head">
           <div>
             <h2>人物关系</h2>
-            <p>DeepSeek 基于 HippoRAG passage 与图谱三元组写成文段。点击下方依据句查看证据。</p>
+            <p>系统基于证据片段和图谱关系整理成人物关系文段。点击依据句可查看证据来源。</p>
           </div>
         </div>
         <div v-if="facts?.relationship_narrative" class="narrative-card" @mouseup="openSelectionTrace('relationship')">
@@ -168,6 +149,7 @@
               v-for="(sentence, sIndex) in paragraph"
               :key="`${pIndex}-${sIndex}`"
               :class="['narrative-sentence', { sourceable: sentence.fact }]"
+              data-testid="evidence-citation"
               @click="openSentenceTrace(sentence)"
             >
               {{ sentence.text }}
@@ -175,7 +157,7 @@
           </p>
           <p v-if="facts?.tool_call_summary || facts?.tool_call_note" class="tool-note">{{ facts.tool_call_summary || facts.tool_call_note }}</p>
         </div>
-        <div v-else class="empty-box">暂无关系事实。点击“生成事实画像”后查看 HippoRAG 检索结果。</div>
+        <div v-else class="empty-box">暂无关系事实。点击“生成事实画像”后查看证据检索结果。</div>
       </section>
 
       <section class="fact-section">
@@ -191,6 +173,7 @@
               v-for="(sentence, sIndex) in paragraph"
               :key="`${pIndex}-${sIndex}`"
               :class="['narrative-sentence', { sourceable: sentence.fact }]"
+              data-testid="evidence-citation"
               @click="openSentenceTrace(sentence)"
             >
               {{ sentence.text }}
@@ -198,7 +181,7 @@
           </p>
           <p v-if="facts?.tool_call_summary || facts?.tool_call_note" class="tool-note">{{ facts.tool_call_summary || facts.tool_call_note }}</p>
         </div>
-        <div v-else class="empty-box">暂无行为事实。若这里很少，说明 HippoRAG 召回或 OpenIE passage 切分还要继续调。</div>
+        <div v-else class="empty-box">暂无行为事实。若这里很少，说明证据召回或片段切分还要继续调。</div>
       </section>
 
       <section class="deferred-section">
@@ -228,7 +211,7 @@
       </section>
     </section>
 
-    <aside v-if="traceOpen" class="trace-panel">
+    <aside v-if="traceOpen" class="trace-panel" data-testid="provenance-modal">
       <div class="trace-head">
         <div>
           <p class="eyebrow">证据溯源</p>
@@ -243,15 +226,15 @@
       </section>
 
       <section class="trace-block">
-        <h3>HippoRAG PPR passage</h3>
+        <h3>关联证据片段</h3>
         <article v-for="item in selectedFact?.passages || []" :key="`${item.rank}-${item.evidence_id}-${item.score}`" class="passage">
           <div>
-            <strong>#{{ item.rank }} / {{ item.score.toFixed(3) }}</strong>
+            <strong>证据片段 {{ item.rank }}</strong>
             <span>{{ item.evidence_title || item.evidence_id || '未知证据' }}</span>
           </div>
           <p>{{ compactText(item.passage) }}</p>
         </article>
-        <p v-if="!selectedFact?.passages.length" class="muted">这条来自图谱补充，没有直接绑定 PPR passage。</p>
+        <p v-if="!selectedFact?.passages.length" class="muted">这条来自图谱补充，暂未直接绑定检索片段。</p>
       </section>
 
       <section class="trace-block">
@@ -268,7 +251,7 @@
     <aside v-if="selectedMotherNode || selectedFinding" class="trace-panel">
       <div class="trace-head">
         <div>
-          <p class="eyebrow">{{ selectedFinding ? '规则 Finding' : '文件母图' }}</p>
+          <p class="eyebrow">{{ selectedFinding ? '规则 Finding' : '文件节点' }}</p>
           <h2>{{ selectedFinding?.title || selectedMotherNode?.title }}</h2>
         </div>
         <button @click="selectedMotherNode = null; selectedFinding = null">关闭</button>
@@ -356,7 +339,7 @@ async function refreshFacts(force = false) {
   loading.value = true;
   error.value = '';
   progress.start({
-    label: 'HippoRAG 正在检索事实',
+    label: '正在检索事实',
     detail: '多角度查询人物关系、请托、指派、调解、释放和资金事实。',
   });
   try {
@@ -365,7 +348,7 @@ async function refreshFacts(force = false) {
     if (facts.value.error) error.value = facts.value.error;
     await progress.finish({
       label: '事实画像已生成',
-      detail: '人物关系和行为还原来自 HippoRAG 检索结果。',
+      detail: '人物关系和行为还原来自证据检索结果。',
     });
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err);
@@ -541,8 +524,8 @@ function formatArgs(args: Record<string, unknown>) {
 }
 
 function sourceLabel(source: string) {
-  if (source === 'deepseek') return 'DeepSeek生成';
-  if (source === 'hipporag') return 'PPR召回';
+  if (source === 'deepseek') return '模型生成';
+  if (source === 'hipporag') return '证据召回';
   return '图谱补充';
 }
 

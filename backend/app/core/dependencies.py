@@ -7,6 +7,7 @@ from app.services.analysis_skill_service import AnalysisSkillService
 from app.services.analysis_service import AnalysisService
 from app.services.case_service import CaseService
 from app.services.document_mother_service import DocumentMotherService
+from app.services.evidence_map_service import EvidenceMapService
 from app.services.graph_service import GraphService
 from app.services.ingestion_service import IngestionService
 from app.services.legal_knowledge_service import LegalKnowledgeService
@@ -25,6 +26,10 @@ def get_ingestion_service(store: MemoryStore = Depends(get_store)) -> IngestionS
 
 def get_graph_service(store: MemoryStore = Depends(get_store)) -> GraphService:
     return GraphService(store)
+
+
+def get_evidence_map_service(store: MemoryStore = Depends(get_store)) -> EvidenceMapService:
+    return EvidenceMapService(store)
 
 
 def get_document_mother_service(store: MemoryStore = Depends(get_store)) -> DocumentMotherService:
@@ -57,6 +62,7 @@ def get_legal_knowledge_service() -> LegalKnowledgeService:
 CaseServiceDep = Annotated[CaseService, Depends(get_case_service)]
 IngestionServiceDep = Annotated[IngestionService, Depends(get_ingestion_service)]
 GraphServiceDep = Annotated[GraphService, Depends(get_graph_service)]
+EvidenceMapServiceDep = Annotated[EvidenceMapService, Depends(get_evidence_map_service)]
 DocumentMotherServiceDep = Annotated[DocumentMotherService, Depends(get_document_mother_service)]
 AnalysisServiceDep = Annotated[AnalysisService, Depends(get_analysis_service)]
 AnalysisSkillServiceDep = Annotated[AnalysisSkillService, Depends(get_analysis_skill_service)]
