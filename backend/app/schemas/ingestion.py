@@ -18,10 +18,43 @@ class EvidenceRecord(BaseModel):
     source_ref: str | None = None
     content_preview: str
     created_at: datetime
+    updated_at: datetime | None = None
+    name: str | None = None
+    brief: str = ""
+    evidence_type: str = ""
+    proof_item: str = ""
+    status: str = "已解析"
+    passage_count: int = 0
+    review_note: str | None = None
+
+
+class EvidenceReviewUpdate(BaseModel):
+    brief: str | None = None
+    proof_item: str | None = None
+    status: str | None = None
+    review_note: str | None = None
+
+
+class PassageDetail(BaseModel):
+    passage_id: str
+    text: str
+    summary: str = ""
+    index: int = 0
+
+
+class TripleDetail(BaseModel):
+    triple_id: str
+    subject: str
+    predicate: str
+    object: str
+    source_passage_id: str | None = None
 
 
 class EvidenceDetail(EvidenceRecord):
     content: str
+    metadata: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
+    passages: list[PassageDetail] = Field(default_factory=list)
+    triples: list[TripleDetail] = Field(default_factory=list)
 
 
 class ExtractedTriple(BaseModel):

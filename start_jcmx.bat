@@ -10,11 +10,12 @@ echo  JCMX one-click web launcher
 echo ========================================
 echo.
 
-cd /d "%ROOT%frontend"
-echo [1/3] Building frontend for /jcmx ...
+cd /d "%ROOT%frontend_v2"
+echo [1/3] Building frontend_v2 for /jcmx ...
+set VITE_BASE_PATH=/jcmx/
 call npm.cmd run build
 if errorlevel 1 (
-  echo Frontend build failed.
+  echo frontend_v2 build failed.
   pause
   exit /b 1
 )

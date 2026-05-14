@@ -79,6 +79,58 @@ class EvidencePassageEdge(BaseModel):
     visible_by_default: bool = True
 
 
+class EvidenceMapLegendItem(BaseModel):
+    type: str
+    label: str
+    description: str = ""
+
+
+class EvidenceMapLegend(BaseModel):
+    node_types: list[EvidenceMapLegendItem] = Field(default_factory=list)
+    edge_types: list[EvidenceMapLegendItem] = Field(default_factory=list)
+
+
+class EvidenceMapLayerStats(BaseModel):
+    nodes: int = 0
+    edges: int = 0
+
+
+class EvidenceMapLayerNode(BaseModel):
+    id: str
+    label: str
+    type: str
+    layer: str
+    summary: str = ""
+    properties: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
+    source: dict[str, str | None] = Field(default_factory=dict)
+
+
+class EvidenceMapLayerEdge(BaseModel):
+    id: str
+    source: str
+    target: str
+    type: str
+    label: str = ""
+    properties: dict[str, str | int | float | bool | None] = Field(default_factory=dict)
+    source_refs: list[dict[str, str | None]] = Field(default_factory=list)
+
+
+class EvidenceMapLayer(BaseModel):
+    label: str
+    nodes: list[EvidenceMapLayerNode] = Field(default_factory=list)
+    edges: list[EvidenceMapLayerEdge] = Field(default_factory=list)
+    legend: EvidenceMapLegend = Field(default_factory=EvidenceMapLegend)
+    stats: EvidenceMapLayerStats = Field(default_factory=EvidenceMapLayerStats)
+    editable: bool = False
+
+
+class EvidenceMapStats(BaseModel):
+    documents: int = 0
+    passages: int = 0
+    raw_nodes: int = 0
+    raw_edges: int = 0
+
+
 class EvidenceMap(BaseModel):
     case_id: str
     documents: list[EvidenceDocumentNode] = Field(default_factory=list)
@@ -88,3 +140,5 @@ class EvidenceMap(BaseModel):
     passage_edges: list[EvidencePassageEdge] = Field(default_factory=list)
     containment_edges: list[EvidenceContainmentEdge] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+    layers: dict[str, EvidenceMapLayer] = Field(default_factory=dict)
+    stats: EvidenceMapStats = Field(default_factory=EvidenceMapStats)

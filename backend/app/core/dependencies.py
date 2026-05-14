@@ -6,6 +6,7 @@ from app.adapters.algorithm import AlgorithmAdapter, get_algorithm_adapter
 from app.services.analysis_skill_service import AnalysisSkillService
 from app.services.analysis_service import AnalysisService
 from app.services.case_service import CaseService
+from app.services.case_overview_service import CaseOverviewService
 from app.services.document_mother_service import DocumentMotherService
 from app.services.evidence_map_service import EvidenceMapService
 from app.services.graph_service import GraphService
@@ -18,6 +19,10 @@ from app.storage.memory_store import MemoryStore, get_store
 
 def get_case_service(store: MemoryStore = Depends(get_store)) -> CaseService:
     return CaseService(store)
+
+
+def get_case_overview_service(store: MemoryStore = Depends(get_store)) -> CaseOverviewService:
+    return CaseOverviewService(store)
 
 
 def get_ingestion_service(store: MemoryStore = Depends(get_store)) -> IngestionService:
@@ -60,6 +65,7 @@ def get_legal_knowledge_service() -> LegalKnowledgeService:
 
 
 CaseServiceDep = Annotated[CaseService, Depends(get_case_service)]
+CaseOverviewServiceDep = Annotated[CaseOverviewService, Depends(get_case_overview_service)]
 IngestionServiceDep = Annotated[IngestionService, Depends(get_ingestion_service)]
 GraphServiceDep = Annotated[GraphService, Depends(get_graph_service)]
 EvidenceMapServiceDep = Annotated[EvidenceMapService, Depends(get_evidence_map_service)]

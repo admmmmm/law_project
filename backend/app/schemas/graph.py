@@ -1,3 +1,5 @@
+from typing import Any, Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -54,3 +56,20 @@ class GraphInterventionRequest(BaseModel):
     edge: GraphEdge | None = None
     target_id: str | None = None
     reason: str | None = None
+
+
+RawGraphAction = Literal["create_node", "update_node", "delete_node", "create_edge", "update_edge", "delete_edge"]
+
+
+class RawGraphActionRequest(BaseModel):
+    action: RawGraphAction
+    layer: str = "raw"
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class RawGraphActionResponse(BaseModel):
+    status: str = "ok"
+    message: str
+    action: RawGraphAction
+    updated_layer: str = "raw"
+    graph: dict[str, Any] = Field(default_factory=dict)

@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from app.core.dependencies import CaseServiceDep
-from app.schemas.case import CaseCreate, CaseDetail, CaseSummary, CaseUpdate
+from app.core.dependencies import CaseOverviewServiceDep, CaseServiceDep
+from app.schemas.case import CaseCreate, CaseDetail, CaseOverview, CaseSummary, CaseUpdate
 
 router = APIRouter()
 
@@ -19,6 +19,11 @@ def list_cases(service: CaseServiceDep) -> list[CaseSummary]:
 @router.get("/{case_id}", response_model=CaseDetail)
 def get_case(case_id: str, service: CaseServiceDep) -> CaseDetail:
     return service.get_case(case_id)
+
+
+@router.get("/{case_id}/overview", response_model=CaseOverview)
+def get_case_overview(case_id: str, service: CaseOverviewServiceDep) -> CaseOverview:
+    return service.get_overview(case_id)
 
 
 @router.patch("/{case_id}", response_model=CaseDetail)

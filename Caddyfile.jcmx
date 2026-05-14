@@ -30,7 +30,7 @@ adm143.xyz, www.adm143.xyz {
 	}
 
 	handle_path /jcmx/* {
-		root * C:\Users\adm14\Desktop\law_project\frontend\dist
+		root * C:\Users\adm14\Desktop\law_project\frontend_v2\dist
 		try_files {path} /index.html
 		file_server
 	}

@@ -13,10 +13,18 @@ from app.schemas.evidence_map import (
     EvidenceDocumentEdge,
     EvidenceDocumentNode,
     EvidenceMap,
+    EvidenceMapLayer,
+    EvidenceMapLayerEdge,
+    EvidenceMapLayerNode,
+    EvidenceMapLayerStats,
+    EvidenceMapLegend,
+    EvidenceMapLegendItem,
+    EvidenceMapStats,
     EvidencePassageEdge,
     EvidencePassageNode,
     EvidenceTripleNode,
 )
+from app.schemas.graph import InvestigationGraph
 from app.schemas.ingestion import EvidenceRecord, ExtractedTriple, ExtractionResult, PassageRecord
 from app.storage.memory_store import MemoryStore
 
@@ -69,7 +77,8 @@ class EvidenceMapService:
             extractions = {item.evidence_id: self.store.extractions.get(item.evidence_id) for item in evidence}
             mother_nodes = {node.evidence_id: node for node in self.store.document_mother_nodes.get(case_id, [])}
             rule_runs = list(self.store.rule_pack_runs.get(case_id, []))
-        return EvidenceMapBuilder(case_id, evidence, raw_contents, extractions, mother_nodes, rule_runs).build()
+            raw_graph = self.store.graphs.get(case_id)
+        return EvidenceMapBuilder(case_id, evidence, raw_contents, extractions, mother_nodes, rule_runs, raw_graph).build()
 
 
 class EvidenceMapBuilder:
@@ -88,12 +97,14 @@ class EvidenceMapBuilder:
         extractions: dict[str, ExtractionResult | None],
         mother_nodes: dict[str, DocumentMotherNode],
         rule_runs: list[Any],
+        raw_graph: InvestigationGraph | None = None,
     ) -> None:
         self.case_id = case_id
         self.evidence = evidence
         self.raw_contents = raw_contents
         self.extractions = extractions
         self.mother_nodes = mother_nodes
+        self.raw_graph = raw_graph
         self.findings = [finding for run in rule_runs for finding in getattr(run, "findings", [])]
         self.doc_by_evidence: dict[str, str] = {}
         self.passages_by_doc: dict[str, list[EvidencePassageNode]] = defaultdict(list)
@@ -115,6 +126,7 @@ class EvidenceMapBuilder:
         ]
         document_edges = self._limit_document_edges(self._build_document_edges(documents, passages, triples))
         passage_edges = self._build_passage_edges(passages, triples)
+        layers = self._build_layers(documents, passages, triples, document_edges, passage_edges)
         return EvidenceMap(
             case_id=self.case_id,
             documents=documents,
@@ -123,6 +135,164 @@ class EvidenceMapBuilder:
             document_edges=document_edges,
             passage_edges=passage_edges,
             containment_edges=containment_edges,
+            layers=layers,
+            stats=EvidenceMapStats(
+                documents=len(documents),
+                passages=len(passages),
+                raw_nodes=len(layers.get("raw", EvidenceMapLayer(label="原始图谱层")).nodes),
+                raw_edges=len(layers.get("raw", EvidenceMapLayer(label="原始图谱层")).edges),
+            ),
+        )
+
+    def _build_layers(
+        self,
+        documents: list[EvidenceDocumentNode],
+        passages: list[EvidencePassageNode],
+        triples: list[EvidenceTripleNode],
+        document_edges: list[EvidenceDocumentEdge],
+        passage_edges: list[EvidencePassageEdge],
+    ) -> dict[str, EvidenceMapLayer]:
+        document_nodes = [
+            EvidenceMapLayerNode(
+                id=_layer_doc_id(doc.id),
+                label=doc.title or doc.id,
+                type="document",
+                layer="document",
+                summary=doc.summary,
+                properties={
+                    "doc_type": doc.doc_type,
+                    "process_stage": doc.process_stage,
+                    "proof_purpose": doc.proof_purpose,
+                    "quality_status": doc.quality_status,
+                    "passage_count": doc.passage_count,
+                    "triple_count": doc.triple_count,
+                    "finding_count": doc.finding_count,
+                    "map_tags": ",".join(doc.map_tags),
+                },
+                source={"evidence_id": doc.evidence_id, "passage_id": None},
+            )
+            for doc in documents
+        ]
+        document_edges_layer = [
+            EvidenceMapLayerEdge(
+                id=edge.id,
+                source=_layer_doc_id(edge.source),
+                target=_layer_doc_id(edge.target),
+                type=edge.type,
+                label=edge.label,
+                properties={
+                    "reason": edge.reason,
+                    "weight": edge.weight,
+                    "shared_entities": ",".join(edge.shared_entities),
+                    "visible_by_default": edge.visible_by_default,
+                },
+                source_refs=[{"evidence_id": None, "passage_id": pid} for pid in edge.supporting_passage_ids],
+            )
+            for edge in document_edges
+        ]
+
+        passage_nodes = [
+            EvidenceMapLayerNode(
+                id=passage.id,
+                label=passage.summary or passage.text_preview or passage.id,
+                type="passage",
+                layer="passage",
+                summary=passage.text_preview,
+                properties={
+                    "parent_doc_id": _layer_doc_id(passage.parent_doc_id),
+                    "passage_index": passage.passage_index,
+                    "triple_count": passage.triple_count,
+                    "entities": ",".join(passage.entities),
+                },
+                source={"evidence_id": passage.evidence_id, "passage_id": passage.id},
+            )
+            for passage in passages
+        ]
+        passage_edges_layer = [
+            EvidenceMapLayerEdge(
+                id=edge.id,
+                source=edge.source,
+                target=edge.target,
+                type=edge.type,
+                label=edge.label,
+                properties={
+                    "weight": edge.weight,
+                    "shared_entities": ",".join(edge.shared_entities),
+                    "visible_by_default": edge.visible_by_default,
+                },
+                source_refs=[{"evidence_id": None, "passage_id": edge.source}, {"evidence_id": None, "passage_id": edge.target}],
+            )
+            for edge in passage_edges
+        ]
+
+        raw_nodes, raw_edges = self._raw_layer()
+        layers = {
+            "document": self._closed_layer("文件证据图", document_nodes, document_edges_layer, editable=False),
+            "passage": self._closed_layer("片段证据图", passage_nodes, passage_edges_layer, editable=False),
+            "raw": self._closed_layer("原始图谱层", raw_nodes, raw_edges, editable=True),
+        }
+        return layers
+
+    def _raw_layer(self) -> tuple[list[EvidenceMapLayerNode], list[EvidenceMapLayerEdge]]:
+        if not self.raw_graph:
+            return [], []
+        id_map = {node.node_id: _layer_raw_id(node.node_id, node.type) for node in self.raw_graph.nodes}
+        nodes = [
+            EvidenceMapLayerNode(
+                id=id_map[node.node_id],
+                label=node.label,
+                type=node.type or "entity",
+                layer="raw",
+                summary="",
+                properties={
+                    **node.properties,
+                    "raw_id": node.node_id,
+                    "tags": ",".join(node.tags),
+                    "manually_verified": node.manually_verified,
+                    "timestamp": node.timestamp,
+                },
+                source={"evidence_id": node.evidence_ids[0] if node.evidence_ids else None, "passage_id": None},
+            )
+            for node in self.raw_graph.nodes
+        ]
+        edges = [
+            EvidenceMapLayerEdge(
+                id=edge.edge_id,
+                source=id_map.get(edge.source_id, _layer_raw_id(edge.source_id, "entity")),
+                target=id_map.get(edge.target_id, _layer_raw_id(edge.target_id, "entity")),
+                type=edge.relation or "fact_relation",
+                label=edge.relation,
+                properties={
+                    **edge.properties,
+                    "raw_id": edge.edge_id,
+                    "confidence": edge.confidence,
+                    "tags": ",".join(edge.tags),
+                    "manually_verified": edge.manually_verified,
+                    "timestamp": edge.timestamp,
+                },
+                source_refs=[{"evidence_id": evidence_id, "passage_id": None} for evidence_id in edge.evidence_ids],
+            )
+            for edge in self.raw_graph.edges
+        ]
+        return nodes, edges
+
+    def _closed_layer(
+        self,
+        label: str,
+        nodes: list[EvidenceMapLayerNode],
+        edges: list[EvidenceMapLayerEdge],
+        editable: bool,
+    ) -> EvidenceMapLayer:
+        deduped_nodes = _dedupe_layer_nodes(nodes)
+        node_ids = {node.id for node in deduped_nodes}
+        closed_edges = _dedupe_layer_edges([edge for edge in edges if edge.source in node_ids and edge.target in node_ids])
+        return EvidenceMapLayer(
+            label=label,
+            nodes=deduped_nodes,
+            edges=closed_edges,
+            legend=_legend_for(deduped_nodes, closed_edges),
+            stats=EvidenceMapLayerStats(nodes=len(deduped_nodes), edges=len(closed_edges)),
+            editable=editable,
         )
 
     def _build_documents(self) -> list[EvidenceDocumentNode]:
@@ -394,6 +564,121 @@ def _doc_id(evidence: EvidenceRecord, mother: DocumentMotherNode | None, index: 
         return mother.doc_id
     match = re.search(r"证据\d+(?:-\d+)?", evidence.title)
     return match.group(0) if match else f"doc:{index + 1}:{evidence.evidence_id}"
+
+
+def _layer_doc_id(value: str) -> str:
+    text = str(value or "").strip()
+    return text if text.startswith("doc:") else f"doc:{text}"
+
+
+def _layer_raw_id(value: str, node_type: str) -> str:
+    text = str(value or "").strip()
+    if ":" in text:
+        return text
+    prefix = {
+        "person": "person",
+        "organization": "org",
+        "account": "account",
+        "transaction": "fact",
+        "event": "event",
+        "time": "time",
+        "evidence": "evidence",
+        "document": "doc",
+    }.get(str(node_type or "").lower(), "entity")
+    return f"{prefix}:{text}"
+
+
+def _dedupe_layer_nodes(nodes: list[EvidenceMapLayerNode]) -> list[EvidenceMapLayerNode]:
+    result: dict[str, EvidenceMapLayerNode] = {}
+    for node in nodes:
+        if not node.id:
+            continue
+        if node.id not in result:
+            result[node.id] = node
+    return list(result.values())
+
+
+def _dedupe_layer_edges(edges: list[EvidenceMapLayerEdge]) -> list[EvidenceMapLayerEdge]:
+    result: dict[str, EvidenceMapLayerEdge] = {}
+    for edge in edges:
+        if not edge.id or not edge.source or not edge.target:
+            continue
+        if edge.id not in result:
+            result[edge.id] = edge
+    return list(result.values())
+
+
+def _legend_for(nodes: list[EvidenceMapLayerNode], edges: list[EvidenceMapLayerEdge]) -> EvidenceMapLegend:
+    node_types = sorted({node.type or "entity" for node in nodes})
+    edge_types = sorted({edge.type or "related" for edge in edges})
+    return EvidenceMapLegend(
+        node_types=[EvidenceMapLegendItem(type=item, label=_node_type_label(item), description=_node_type_desc(item)) for item in node_types],
+        edge_types=[EvidenceMapLegendItem(type=item, label=_edge_type_label(item), description=_edge_type_desc(item)) for item in edge_types],
+    )
+
+
+def _node_type_label(node_type: str) -> str:
+    mapping = {
+        "document": "文件节点",
+        "passage": "片段节点",
+        "person": "人物节点",
+        "organization": "机构节点",
+        "org": "机构节点",
+        "event": "事件节点",
+        "time": "时间节点",
+        "account": "账户 / 资金节点",
+        "transaction": "资金流水节点",
+        "evidence": "证据节点",
+        "fact": "事实节点",
+        "entity": "实体节点",
+        "call_record": "通信记录节点",
+        "fund_flow": "资金往来节点",
+    }
+    return mapping.get(node_type, f"{node_type} 节点")
+
+
+def _node_type_desc(node_type: str) -> str:
+    mapping = {
+        "document": "一份已导入证据材料。",
+        "passage": "证据材料中的一个原文片段。",
+        "person": "案件图谱中的人员对象。",
+        "organization": "案件图谱中的机构或单位对象。",
+        "account": "账户、现金柜台、ATM 等资金对象。",
+        "transaction": "结构化资金流水或交易记录。",
+        "event": "案情事件或程序节点。",
+        "time": "时间点或时间段。",
+    }
+    return mapping.get(node_type, "当前图层中出现的节点类型。")
+
+
+def _edge_type_label(edge_type: str) -> str:
+    mapping = {
+        "CONTAINS": "包含关系",
+        "SAME_DOCUMENT_ORDER": "同文件相邻",
+        "SHARED_ENTITY": "共享实体",
+        "SUPPORTS_SAME_FINDING": "共同支撑核查项",
+        "AUTHORITY_CHAIN": "权限链",
+        "PROCESS_NEXT": "流程相邻",
+        "contains": "包含关系",
+        "supports": "支撑关系",
+        "related": "关联关系",
+        "fact_relation": "事实关系",
+        "source_ref": "来源关系",
+        "mentions": "提及关系",
+    }
+    return mapping.get(edge_type, edge_type)
+
+
+def _edge_type_desc(edge_type: str) -> str:
+    mapping = {
+        "CONTAINS": "文件包含片段。",
+        "SAME_DOCUMENT_ORDER": "同一文件内相邻片段。",
+        "SHARED_ENTITY": "两端对象共享关键实体。",
+        "SUPPORTS_SAME_FINDING": "两端对象共同支撑同一规则核查结果。",
+        "AUTHORITY_CHAIN": "多份材料共同体现审批、批准、指派、同意或释放等权力动作。",
+        "PROCESS_NEXT": "两个文件位于相邻流程阶段，且存在支撑依据。",
+    }
+    return mapping.get(edge_type, "当前图层中出现的关系类型。")
 
 
 def _passages(evidence: EvidenceRecord, content: str, extraction: ExtractionResult | None) -> list[PassageRecord]:
